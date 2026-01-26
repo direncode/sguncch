@@ -12,7 +12,7 @@
 import { Router, Request, Response } from 'express';
 import { asyncHandler, ApiError } from '../middleware/error.js';
 import { authenticateToken, optionalAuth, requireCabinet } from '../middleware/auth.js';
-import { DEPARTMENTS, POLICIES } from '@project-bold/shared';
+import { DEPARTMENTS, POLICIES, Department, Policy } from '../types/index.js';
 
 const router = Router();
 
@@ -128,8 +128,8 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     // Calculate overall policy progress
     const totalPolicies = Object.keys(POLICIES).length;
-    const departmentStats = Object.values(DEPARTMENTS).map(dept => {
-      const deptPolicies = Object.values(POLICIES).filter(p => p.departmentId === dept.slug);
+    const departmentStats = Object.values(DEPARTMENTS).map((dept: Department) => {
+      const deptPolicies = Object.values(POLICIES).filter((p: Policy) => p.departmentId === dept.id);
       return {
         department: dept.name,
         slug: dept.slug,

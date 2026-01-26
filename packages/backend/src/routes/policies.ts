@@ -8,7 +8,7 @@
 import { Router, Request, Response } from 'express';
 import { asyncHandler, ApiError } from '../middleware/error.js';
 import { authenticateToken, requireCabinet, optionalAuth } from '../middleware/auth.js';
-import { POLICIES, DEPARTMENTS } from '@project-bold/shared';
+import { POLICIES, DEPARTMENTS } from '../types/index.js';
 
 const router = Router();
 

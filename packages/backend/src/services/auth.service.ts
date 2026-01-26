@@ -13,7 +13,7 @@ import {
   generateRefreshToken,
   verifyRefreshToken,
 } from '../middleware/auth.js';
-import type { User, SAMLAttributes, AuthSession, UserRole } from '@project-bold/shared';
+import type { User, SAMLAttributes, AuthSession, UserRole } from '../types/index.js';
 
 // =============================================================================
 // MOCK USER DATA (Development Only)

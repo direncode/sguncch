@@ -8,7 +8,7 @@
 import { Router, Request, Response } from 'express';
 import { asyncHandler } from '../middleware/error.js';
 import { optionalAuth } from '../middleware/auth.js';
-import { DEPARTMENTS, POLICIES } from '@project-bold/shared';
+import { DEPARTMENTS, POLICIES, Department, Policy } from '../types/index.js';
 
 const router = Router();
 
@@ -19,10 +19,10 @@ const router = Router();
 router.get(
   '/',
   optionalAuth,
-  asyncHandler(async (req: Request, res: Response) => {
-    const departments = Object.values(DEPARTMENTS).map(dept => ({
+  asyncHandler(async (_req: Request, res: Response) => {
+    const departments = Object.values(DEPARTMENTS).map((dept: Department) => ({
       ...dept,
-      policyCount: Object.values(POLICIES).filter(p => p.departmentId === dept.slug).length,
+      policyCount: Object.values(POLICIES).filter((p: Policy) => p.departmentId === dept.id).length,
     }));
 
     res.json({
@@ -42,7 +42,7 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const { slug } = req.params;
 
-    const department = Object.values(DEPARTMENTS).find(d => d.slug === slug);
+    const department = Object.values(DEPARTMENTS).find((d: Department) => d.slug === slug);
 
     if (!department) {
       res.status(404).json({
@@ -56,8 +56,8 @@ router.get(
     }
 
     const policies = Object.values(POLICIES)
-      .filter(p => p.departmentId === slug)
-      .sort((a, b) => a.number - b.number);
+      .filter((p: Policy) => p.departmentId === department.id)
+      .sort((a: Policy, b: Policy) => a.number - b.number);
 
     res.json({
       success: true,
@@ -79,7 +79,7 @@ router.get(
   asyncHandler(async (req: Request, res: Response) => {
     const { slug } = req.params;
 
-    const department = Object.values(DEPARTMENTS).find(d => d.slug === slug);
+    const department = Object.values(DEPARTMENTS).find((d: Department) => d.slug === slug);
 
     if (!department) {
       res.status(404).json({
@@ -93,8 +93,8 @@ router.get(
     }
 
     const policies = Object.values(POLICIES)
-      .filter(p => p.departmentId === slug)
-      .sort((a, b) => a.number - b.number);
+      .filter((p: Policy) => p.departmentId === department.id)
+      .sort((a: Policy, b: Policy) => a.number - b.number);
 
     res.json({
       success: true,

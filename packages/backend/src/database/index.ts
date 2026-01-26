@@ -23,7 +23,7 @@ pool.on('connect', () => {
   logger.debug('Database pool: new client connected');
 });
 
-pool.on('error', (err) => {
+pool.on('error', (err: Error) => {
   logger.error('Database pool error', { error: err.message });
 });
 

@@ -23,7 +23,7 @@ export const rateLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
-  handler: (req, res, next, options) => {
+  handler: (req, res, _next, options) => {
     logger.warn('Rate limit exceeded', {
       ip: req.ip,
       path: req.path,

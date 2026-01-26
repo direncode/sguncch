@@ -10,7 +10,7 @@
 
 import { db } from './index.js';
 import { departments, policies, locations, wellnessResources, accountabilityMetrics } from './schema.js';
-import { DEPARTMENTS, POLICIES } from '@project-bold/shared';
+import { DEPARTMENTS, POLICIES } from '../types/index.js';
 import { logger } from '../utils/logger.js';
 
 async function seed() {
