@@ -6,11 +6,18 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { config } from '../config/index.js';
 import { ApiError } from './error.js';
 import { logAudit } from '../utils/logger.js';
 import type { UserRole, JWTPayload } from '../types/index.js';
+
+// Augment Express Request type
+declare module 'express-serve-static-core' {
+  interface Request {
+    user?: JWTPayload;
+  }
+}
 
 /**
  * Verify JWT token and attach user to request
@@ -119,19 +126,23 @@ export const requireOrgLeader = requireRoles('org_leader', 'senator', 'cabinet',
  * Generate JWT access token
  */
 export function generateAccessToken(payload: Omit<JWTPayload, 'iat' | 'exp'>): string {
-  return jwt.sign(payload, config.jwt.secret, {
+  const options: SignOptions = {
     expiresIn: config.jwt.accessExpiry,
-  });
+  };
+  return jwt.sign(payload, config.jwt.secret, options);
 }
 
 /**
  * Generate JWT refresh token
  */
 export function generateRefreshToken(userId: string): string {
+  const options: SignOptions = {
+    expiresIn: config.jwt.refreshExpiry,
+  };
   return jwt.sign(
     { sub: userId, type: 'refresh' },
     config.jwt.secret,
-    { expiresIn: config.jwt.refreshExpiry }
+    options
   );
 }
 

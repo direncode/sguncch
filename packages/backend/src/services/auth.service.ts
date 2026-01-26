@@ -45,6 +45,7 @@ const MOCK_USERS: Record<string, User & { samlAttributes: SAMLAttributes }> = {
       firstName: 'Jane',
       lastName: 'Smith',
       affiliation: 'student',
+      eduPersonEntitlement: [],
     },
   },
   'org_leader': {
@@ -72,6 +73,7 @@ const MOCK_USERS: Record<string, User & { samlAttributes: SAMLAttributes }> = {
       firstName: 'Michael',
       lastName: 'Jones',
       affiliation: 'student',
+      eduPersonEntitlement: [],
     },
   },
   'senator': {
@@ -99,6 +101,7 @@ const MOCK_USERS: Record<string, User & { samlAttributes: SAMLAttributes }> = {
       firstName: 'Taylor',
       lastName: 'Williams',
       affiliation: 'student',
+      eduPersonEntitlement: ['urn:mace:unc.edu:projectbold:senator'],
     },
   },
   'cabinet': {
@@ -109,7 +112,7 @@ const MOCK_USERS: Record<string, User & { samlAttributes: SAMLAttributes }> = {
     firstName: 'Alex',
     lastName: 'Brown',
     affiliation: 'undergraduate',
-    roles: ['student', 'cabinet_member'],
+    roles: ['student', 'cabinet'],
     createdAt: new Date(),
     updatedAt: new Date(),
     preferences: {
@@ -126,6 +129,7 @@ const MOCK_USERS: Record<string, User & { samlAttributes: SAMLAttributes }> = {
       firstName: 'Alex',
       lastName: 'Brown',
       affiliation: 'student',
+      eduPersonEntitlement: ['urn:mace:unc.edu:projectbold:cabinet'],
     },
   },
   'admin': {
@@ -153,6 +157,7 @@ const MOCK_USERS: Record<string, User & { samlAttributes: SAMLAttributes }> = {
       firstName: 'Devin',
       lastName: 'Duncan',
       affiliation: 'student',
+      eduPersonEntitlement: ['urn:mace:unc.edu:projectbold:admin'],
     },
   },
 };
@@ -351,7 +356,7 @@ class AuthService {
       roles.push('admin');
     }
     if (entitlements.includes('urn:mace:unc.edu:projectbold:cabinet')) {
-      roles.push('cabinet_member');
+      roles.push('cabinet');
     }
     if (entitlements.includes('urn:mace:unc.edu:projectbold:senator')) {
       roles.push('senator');
@@ -363,9 +368,9 @@ class AuthService {
   /**
    * Get mock users (dev only)
    */
-  getMockUsers(): typeof MOCK_USERS | null {
+  getMockUsers(): Record<string, User & { samlAttributes: SAMLAttributes }> {
     if (!config.saml.mockMode) {
-      return null;
+      return {};
     }
     return MOCK_USERS;
   }
