@@ -1,0 +1,42 @@
+{
+  "name": "project-bold-platform",
+  "version": "1.0.0",
+  "description": "Project Bold Policy Platform - A unified digital hub for UNC Student Government",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "npm run dev -w @project-bold/backend",
+    "dev:frontend": "npm run dev -w @project-bold/frontend",
+    "build": "npm run build -w @project-bold/shared && npm run build -w @project-bold/backend && npm run build -w @project-bold/frontend",
+    "build:shared": "npm run build -w @project-bold/shared",
+    "build:backend": "npm run build -w @project-bold/backend",
+    "build:frontend": "npm run build -w @project-bold/frontend",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "clean": "rm -rf node_modules packages/*/node_modules packages/*/dist packages/*/.next",
+    "docker:dev": "docker-compose -f docker-compose.dev.yml up",
+    "docker:build": "docker-compose build",
+    "db:migrate": "npm run migrate -w @project-bold/backend",
+    "db:seed": "npm run seed -w @project-bold/backend"
+  },
+  "keywords": [
+    "unc",
+    "student-government",
+    "project-bold",
+    "higher-ed",
+    "policy-platform"
+  ],
+  "author": "Project Bold Team",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  }
+}

@@ -1,0 +1,71 @@
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Environment files (keep examples)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+packages/backend/.env
+packages/frontend/.env.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage
+coverage/
+.nyc_output/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+coverage/
+.jest/
+
+# TypeScript
+*.tsbuildinfo
+
+# Docker
+.docker/
+
+# Certificates (SAML)
+certs/*.pem
+certs/*.key
+certs/*.crt
+!certs/.gitkeep
+
+# Uploads
+uploads/
+!uploads/.gitkeep
+
+# Temporary files
+tmp/
+temp/
