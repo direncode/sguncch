@@ -101,12 +101,13 @@ export default function AcademicPage() {
         </div>
         <div className="relative max-w-6xl mx-auto px-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 bg-[#388bfd]/10 border border-[#388bfd]/30 rounded text-xs font-mono text-[#388bfd] mb-6 uppercase tracking-widest">
-            Academic Affairs
+            <Editable k="academic.hero.label">Academic Affairs</Editable>
           </div>
-          <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-[#f0f6fc] mb-4">Academic Affairs</h1>
+          <h1 className="text-4xl md:text-5xl font-semibold tracking-tight text-[#f0f6fc] mb-4">
+            <Editable k="academic.hero.title">Academic Affairs</Editable>
+          </h1>
           <p className="text-lg text-[#8b949e] max-w-2xl">
-            Peer mentorship, midterm check-ins, STEM study centers, and academic success resources.
-            Supporting your academic journey at Carolina.
+            <Editable k="academic.hero.description" multiline>Peer mentorship, midterm check-ins, STEM study centers, and academic success resources. Supporting your academic journey at Carolina.</Editable>
           </p>
         </div>
       </div>

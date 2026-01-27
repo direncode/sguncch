@@ -118,11 +118,10 @@ export default function Home() {
                 <LiveClock />
               </div>
               <h1 className="text-5xl md:text-6xl font-bold text-[#f0f6fc] tracking-tight mb-4">
-                Operations <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00d4ff] to-[#a371f7]">Command</span>
+                <Editable k="home.hero.titlePart1">Operations</Editable> <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00d4ff] to-[#a371f7]"><Editable k="home.hero.titlePart2">Command</Editable></span>
               </h1>
               <p className="text-lg text-[#8b949e] max-w-2xl">
-                Real-time monitoring of <span className="text-[#00d4ff] font-mono">{policies.length}</span> policy initiatives across <span className="text-[#a371f7] font-mono">{departments.length}</span> departments.
-                Building a Carolina where every student thrives.
+                <Editable k="home.hero.description">Real-time monitoring of {policies.length} policy initiatives across {departments.length} departments. Building a Carolina where every student thrives.</Editable>
               </p>
             </div>
             <div className="hidden lg:flex items-start gap-3">

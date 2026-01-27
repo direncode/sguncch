@@ -106,13 +106,16 @@ export default function EnvironmentalPage() {
               <span className="text-2xl">🌱</span>
             </div>
             <div>
-              <p className="text-[#3fb950] text-xs font-mono uppercase tracking-widest mb-1">SUSTAINABILITY DIVISION</p>
-              <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-[#f0f6fc]">Environmental Affairs</h1>
+              <p className="text-[#3fb950] text-xs font-mono uppercase tracking-widest mb-1">
+                <Editable k="environmental.hero.label">SUSTAINABILITY DIVISION</Editable>
+              </p>
+              <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-[#f0f6fc]">
+                <Editable k="environmental.hero.title">Environmental Affairs</Editable>
+              </h1>
             </div>
           </div>
           <p className="text-[#8b949e] text-lg max-w-2xl mt-4">
-            Sustainability, climate action, and green initiatives. Building a more sustainable Carolina through
-            food waste reduction, campus cleanups, and environmental education.
+            <Editable k="environmental.hero.description" multiline>Sustainability, climate action, and green initiatives. Building a more sustainable Carolina through food waste reduction, campus cleanups, and environmental education.</Editable>
           </p>
         </div>
       </div>

@@ -95,13 +95,13 @@ export default function CommunicationsPage() {
 
         <div className="relative max-w-6xl mx-auto px-6">
           <p className="text-[#00d4ff] text-xs font-medium tracking-[0.2em] uppercase mb-4">
-            Transparency & Outreach
+            <Editable k="communications.hero.label">Transparency & Outreach</Editable>
           </p>
           <h1 className="text-4xl md:text-5xl font-bold text-[#f0f6fc] tracking-tight mb-4">
-            Communications
+            <Editable k="communications.hero.title">Communications</Editable>
           </h1>
           <p className="text-lg text-[#8b949e] max-w-2xl leading-relaxed">
-            Storytelling, transparency, and amplifying the student voice through innovative outreach campaigns.
+            <Editable k="communications.hero.description" multiline>Storytelling, transparency, and amplifying the student voice through innovative outreach campaigns.</Editable>
           </p>
         </div>
       </section>

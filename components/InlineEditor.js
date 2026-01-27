@@ -14,13 +14,13 @@ export function Editable({
   multiline = false,
   placeholder = 'Click to edit...',
 }) {
-  const { editMode, getSiteContent, setSiteContentValue } = useApp()
+  const { editMode, siteContent, setSiteContentValue } = useApp()
   const [isEditing, setIsEditing] = useState(false)
   const inputRef = useRef(null)
 
   // Get the current value - either from stored content or children (default)
   const defaultValue = typeof children === 'string' ? children : ''
-  const storedValue = getSiteContent(k, undefined)
+  const storedValue = siteContent?.[k]
   const currentValue = storedValue !== undefined ? storedValue : defaultValue
 
   const [editValue, setEditValue] = useState(currentValue)
@@ -132,12 +132,12 @@ export function EditableNum({
   min,
   max,
 }) {
-  const { editMode, getSiteContent, setSiteContentValue } = useApp()
+  const { editMode, siteContent, setSiteContentValue } = useApp()
   const [isEditing, setIsEditing] = useState(false)
   const inputRef = useRef(null)
 
   const defaultValue = typeof children === 'number' ? children : parseFloat(children) || 0
-  const storedValue = getSiteContent(k, undefined)
+  const storedValue = siteContent?.[k]
   const currentValue = storedValue !== undefined ? storedValue : defaultValue
 
   const [editValue, setEditValue] = useState(currentValue)
