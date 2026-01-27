@@ -147,7 +147,7 @@ export default function EnvironmentalPage() {
         <div className="relative max-w-6xl mx-auto px-6">
           <div className="flex items-center gap-4 mb-4">
             <div className="w-14 h-14 bg-[#3fb950]/20 border border-[#3fb950]/30 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">🌱</span>
+              <span className="text-2xl"></span>
             </div>
             <div>
               <p className="text-[#3fb950] text-xs font-mono uppercase tracking-widest mb-1">
@@ -313,7 +313,7 @@ export default function EnvironmentalPage() {
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
                   <div className="flex items-start gap-4">
                     <div className="w-12 h-12 bg-[#3fb950]/20 border border-[#3fb950]/40 rounded-lg flex items-center justify-center">
-                      <span className="text-2xl">♻️</span>
+                      <span className="text-2xl"></span>
                     </div>
                     <div>
                       <h4 className="font-semibold text-[#f0f6fc]"><Editable k="environmental.sustainWeek.event1.name">Zero-Waste Challenges</Editable></h4>
@@ -324,7 +324,7 @@ export default function EnvironmentalPage() {
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
                   <div className="flex items-start gap-4">
                     <div className="w-12 h-12 bg-[#3fb950]/20 border border-[#3fb950]/40 rounded-lg flex items-center justify-center">
-                      <span className="text-2xl">👗</span>
+                      <span className="text-2xl"></span>
                     </div>
                     <div>
                       <h4 className="font-semibold text-[#f0f6fc]"><Editable k="environmental.sustainWeek.event2.name">Sustainable Fashion Pop-Up</Editable></h4>
@@ -335,7 +335,7 @@ export default function EnvironmentalPage() {
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
                   <div className="flex items-start gap-4">
                     <div className="w-12 h-12 bg-[#3fb950]/20 border border-[#3fb950]/40 rounded-lg flex items-center justify-center">
-                      <span className="text-2xl">🎤</span>
+                      <span className="text-2xl"></span>
                     </div>
                     <div>
                       <h4 className="font-semibold text-[#f0f6fc]"><Editable k="environmental.sustainWeek.event3.name">Faculty Sustainability Panels</Editable></h4>
@@ -346,7 +346,7 @@ export default function EnvironmentalPage() {
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
                   <div className="flex items-start gap-4">
                     <div className="w-12 h-12 bg-[#3fb950]/20 border border-[#3fb950]/40 rounded-lg flex items-center justify-center">
-                      <span className="text-2xl">🧹</span>
+                      <span className="text-2xl"></span>
                     </div>
                     <div>
                       <h4 className="font-semibold text-[#f0f6fc]"><Editable k="environmental.sustainWeek.event4.name">Litter Cleanup Day</Editable></h4>
@@ -372,7 +372,6 @@ export default function EnvironmentalPage() {
                     rel="noopener noreferrer"
                     className="px-6 py-3 bg-[#21262d] border border-[#30363d] text-[#f0f6fc] rounded font-medium hover:bg-[#30363d] transition-colors inline-flex items-center gap-2"
                   >
-                    <span>📅</span>
                     <Editable k="environmental.sustainWeek.addToCalendar">Add to Calendar</Editable>
                   </a>
                 </div>
@@ -592,22 +591,22 @@ export default function EnvironmentalPage() {
                 <div className="bg-[#161b22] border border-[#3fb950]/30 rounded-lg p-6">
                   <h4 className="font-semibold text-[#3fb950] mb-4"><Editable k="environmental.composting.yesTitle">Yes - Compost These</Editable></h4>
                   <ul className="space-y-2 text-sm text-[#8b949e]">
-                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">✓</span> <Editable k="environmental.composting.yes1">Food scraps & leftovers</Editable></li>
-                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">✓</span> <Editable k="environmental.composting.yes2">Coffee grounds & filters</Editable></li>
-                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">✓</span> <Editable k="environmental.composting.yes3">Paper napkins & towels</Editable></li>
-                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">✓</span> <Editable k="environmental.composting.yes4">Cardboard (uncoated)</Editable></li>
-                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">✓</span> <Editable k="environmental.composting.yes5">Fruit & vegetable peels</Editable></li>
+                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">-</span> <Editable k="environmental.composting.yes1">Food scraps & leftovers</Editable></li>
+                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">-</span> <Editable k="environmental.composting.yes2">Coffee grounds & filters</Editable></li>
+                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">-</span> <Editable k="environmental.composting.yes3">Paper napkins & towels</Editable></li>
+                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">-</span> <Editable k="environmental.composting.yes4">Cardboard (uncoated)</Editable></li>
+                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">-</span> <Editable k="environmental.composting.yes5">Fruit & vegetable peels</Editable></li>
                   </ul>
                 </div>
 
                 <div className="bg-[#161b22] border border-[#f85149]/30 rounded-lg p-6">
                   <h4 className="font-semibold text-[#f85149] mb-4"><Editable k="environmental.composting.noTitle">No - Don't Compost These</Editable></h4>
                   <ul className="space-y-2 text-sm text-[#8b949e]">
-                    <li className="flex items-center gap-2"><span className="text-[#f85149]">✗</span> <Editable k="environmental.composting.no1">Plastic containers or utensils</Editable></li>
-                    <li className="flex items-center gap-2"><span className="text-[#f85149]">✗</span> <Editable k="environmental.composting.no2">Styrofoam</Editable></li>
-                    <li className="flex items-center gap-2"><span className="text-[#f85149]">✗</span> <Editable k="environmental.composting.no3">Metal or glass</Editable></li>
-                    <li className="flex items-center gap-2"><span className="text-[#f85149]">✗</span> <Editable k="environmental.composting.no4">Coated paper products</Editable></li>
-                    <li className="flex items-center gap-2"><span className="text-[#f85149]">✗</span> <Editable k="environmental.composting.no5">Meat bones (large)</Editable></li>
+                    <li className="flex items-center gap-2"><span className="text-[#f85149]">No</span> <Editable k="environmental.composting.no1">Plastic containers or utensils</Editable></li>
+                    <li className="flex items-center gap-2"><span className="text-[#f85149]">No</span> <Editable k="environmental.composting.no2">Styrofoam</Editable></li>
+                    <li className="flex items-center gap-2"><span className="text-[#f85149]">No</span> <Editable k="environmental.composting.no3">Metal or glass</Editable></li>
+                    <li className="flex items-center gap-2"><span className="text-[#f85149]">No</span> <Editable k="environmental.composting.no4">Coated paper products</Editable></li>
+                    <li className="flex items-center gap-2"><span className="text-[#f85149]">No</span> <Editable k="environmental.composting.no5">Meat bones (large)</Editable></li>
                   </ul>
                 </div>
               </div>
@@ -662,22 +661,22 @@ export default function EnvironmentalPage() {
               <h3 className="text-xl font-semibold text-[#f0f6fc] mb-5 uppercase tracking-wide"><Editable k="environmental.moveout.acceptedItemsTitle">What We Accept</Editable></h3>
               <div className="grid md:grid-cols-4 gap-4 mb-10">
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 text-center">
-                  <span className="text-3xl">🪑</span>
+                  <span className="text-3xl"></span>
                   <p className="text-[#f0f6fc] font-medium mt-2"><Editable k="environmental.moveout.item1.name">Furniture</Editable></p>
                   <p className="text-xs text-[#6e7681] mt-1"><Editable k="environmental.moveout.item1.examples">Chairs, desks, lamps, shelves</Editable></p>
                 </div>
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 text-center">
-                  <span className="text-3xl">💻</span>
+                  <span className="text-3xl"></span>
                   <p className="text-[#f0f6fc] font-medium mt-2"><Editable k="environmental.moveout.item2.name">Electronics</Editable></p>
                   <p className="text-xs text-[#6e7681] mt-1"><Editable k="environmental.moveout.item2.examples">Chargers, cables, small appliances</Editable></p>
                 </div>
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 text-center">
-                  <span className="text-3xl">📚</span>
+                  <span className="text-3xl"></span>
                   <p className="text-[#f0f6fc] font-medium mt-2"><Editable k="environmental.moveout.item3.name">School Supplies</Editable></p>
                   <p className="text-xs text-[#6e7681] mt-1"><Editable k="environmental.moveout.item3.examples">Notebooks, binders, organizers</Editable></p>
                 </div>
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 text-center">
-                  <span className="text-3xl">🛏️</span>
+                  <span className="text-3xl"></span>
                   <p className="text-[#f0f6fc] font-medium mt-2"><Editable k="environmental.moveout.item4.name">Dorm Items</Editable></p>
                   <p className="text-xs text-[#6e7681] mt-1"><Editable k="environmental.moveout.item4.examples">Bedding, storage, decor</Editable></p>
                 </div>
@@ -721,7 +720,7 @@ export default function EnvironmentalPage() {
                   <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
                     <div className="flex items-center gap-4 mb-4">
                       <div className="w-12 h-12 bg-[#3fb950]/20 border border-[#3fb950]/40 rounded-full flex items-center justify-center">
-                        <span className="text-xl">👤</span>
+                        <span className="text-xl"></span>
                       </div>
                       <div>
                         <p className="font-semibold text-[#f0f6fc]">{contact.lead.name}</p>
@@ -730,19 +729,19 @@ export default function EnvironmentalPage() {
                     </div>
                     <div className="space-y-3 text-sm">
                       <div className="flex items-center gap-3">
-                        <span className="text-[#8b949e]">📍</span>
+                        <span className="text-[#8b949e]"></span>
                         <span className="text-[#f0f6fc]">{contact.office}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-[#8b949e]">🕐</span>
+                        <span className="text-[#8b949e]"></span>
                         <span className="text-[#f0f6fc]">{contact.hours}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-[#8b949e]">📧</span>
+                        <span className="text-[#8b949e]"></span>
                         <a href={`mailto:${contact.lead.email}`} className="text-[#3fb950] hover:underline">{contact.lead.email}</a>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-[#8b949e]">📱</span>
+                        <span className="text-[#8b949e]"></span>
                         <span className="text-[#f0f6fc]">{contact.socialMedia}</span>
                       </div>
                     </div>
@@ -754,7 +753,7 @@ export default function EnvironmentalPage() {
                     {feedbackSubmitted ? (
                       <div className="text-center py-4">
                         <div className="w-12 h-12 bg-[#3fb950]/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                          <span className="text-2xl">✓</span>
+                          <span className="text-2xl"></span>
                         </div>
                         <p className="text-[#3fb950] font-medium"><Editable k="environmental.faq.feedbackThanks">Thanks for your feedback!</Editable></p>
                         <button onClick={() => setFeedbackSubmitted(false)} className="text-[#238636] text-sm mt-2 hover:underline"><Editable k="environmental.faq.sendAnother">Send another</Editable></button>

@@ -302,10 +302,10 @@ const InsightsEngine = ({ policies, feedback, activityLog, budgetData }) => {
 // ==========================================
 const QuickActionsPanel = ({ onAction }) => {
   const actions = [
-    { id: 'announcement', icon: '📢', label: 'New Announcement', color: 'cyan' },
-    { id: 'export', icon: '📦', label: 'Export Data', color: 'green' },
-    { id: 'feedback', icon: '📬', label: 'Review Feedback', color: 'purple' },
-    { id: 'budget', icon: '💰', label: 'Add Transaction', color: 'yellow' },
+    { id: 'announcement', icon: '', label: 'New Announcement', color: 'cyan' },
+    { id: 'export', icon: '', label: 'Export Data', color: 'green' },
+    { id: 'feedback', icon: '', label: 'Review Feedback', color: 'purple' },
+    { id: 'budget', icon: '', label: 'Add Transaction', color: 'yellow' },
   ]
 
   return (
@@ -515,13 +515,13 @@ export default function AdminDashboard() {
 
   // Tab configuration
   const tabs = [
-    { id: 'command', label: 'Command Center', icon: '🎯' },
-    { id: 'policies', label: 'Policies', icon: '📋', count: policies.length },
-    { id: 'budget', label: 'Budget', icon: '💰' },
-    { id: 'feedback', label: 'Feedback', icon: '📬', count: feedback.filter(f => f.status === 'new').length },
-    { id: 'announcements', label: 'Comms', icon: '📢' },
-    { id: 'analytics', label: 'Analytics', icon: '📊' },
-    { id: 'settings', label: 'Settings', icon: '⚙️' },
+    { id: 'command', label: 'Command Center', icon: '' },
+    { id: 'policies', label: 'Policies', icon: '', count: policies.length },
+    { id: 'budget', label: 'Budget', icon: '' },
+    { id: 'feedback', label: 'Feedback', icon: '', count: feedback.filter(f => f.status === 'new').length },
+    { id: 'announcements', label: 'Comms', icon: '' },
+    { id: 'analytics', label: 'Analytics', icon: '' },
+    { id: 'settings', label: 'Settings', icon: '' },
   ]
 
   // Modal Component
@@ -678,14 +678,12 @@ export default function AdminDashboard() {
                 label="Students Reached"
                 value={quickStats.totalStudentsReached?.toLocaleString() || '0'}
                 color="cyan"
-                icon="👥"
                 sparklineData={[12, 19, 3, 5, 2, 3, 9, 15, 22, 18, 25, 30]}
               />
               <MetricCard
                 label="Active Initiatives"
                 value={quickStats.activeInitiatives || statusCounts.in_progress}
                 color="yellow"
-                icon="🚀"
                 change="+3"
                 trend="up"
               />
@@ -693,26 +691,22 @@ export default function AdminDashboard() {
                 label="Events This Month"
                 value={quickStats.eventsThisMonth || '0'}
                 color="purple"
-                icon="📅"
               />
               <MetricCard
                 label="Feedback Queue"
                 value={feedback.filter(f => f.status === 'new').length}
                 color={feedback.filter(f => f.status === 'new').length > 5 ? 'red' : 'green'}
-                icon="📬"
               />
               <MetricCard
                 label="Budget Utilized"
                 value={`${((budgetData.spent / budgetData.total) * 100).toFixed(0)}%`}
                 subtitle={`$${budgetData.spent.toLocaleString()} spent`}
                 color="green"
-                icon="💰"
               />
               <MetricCard
                 label="Announcements"
                 value={announcements.length}
                 color="blue"
-                icon="📢"
                 subtitle={`${announcements.filter(a => a.pinned).length} pinned`}
               />
             </div>
@@ -962,9 +956,9 @@ export default function AdminDashboard() {
             </div>
 
             <div className="grid md:grid-cols-3 gap-4">
-              <MetricCard label="Total Budget" value={`$${budgetData.total.toLocaleString()}`} color="green" icon="💰" />
-              <MetricCard label="Allocated" value={`$${budgetData.allocated.toLocaleString()}`} color="cyan" icon="📊" />
-              <MetricCard label="Spent" value={`$${budgetData.spent.toLocaleString()}`} color="yellow" subtitle={`${((budgetData.spent / budgetData.total) * 100).toFixed(1)}% utilized`} icon="💸" />
+              <MetricCard label="Total Budget" value={`$${budgetData.total.toLocaleString()}`} color="green" />
+              <MetricCard label="Allocated" value={`$${budgetData.allocated.toLocaleString()}`} color="cyan" />
+              <MetricCard label="Spent" value={`$${budgetData.spent.toLocaleString()}`} color="yellow" subtitle={`${((budgetData.spent / budgetData.total) * 100).toFixed(1)}% utilized`} />
             </div>
 
             <Panel title="Category Breakdown" subtitle="Budget allocation by category">
@@ -1085,7 +1079,7 @@ export default function AdminDashboard() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-3">
-                        {a.pinned && <span className="text-[#d29922]">★</span>}
+                        {a.pinned && <span className="text-[#d29922] text-xs font-bold">PINNED</span>}
                         <StatusBadge status={
                           a.category === 'urgent' ? 'danger' :
                           a.category === 'event' ? 'info' :
@@ -1106,7 +1100,7 @@ export default function AdminDashboard() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
                       </button>
-                      <button onClick={() => { pinAnnouncement(a.id, !a.pinned); notify(a.pinned ? 'Unpinned' : 'Pinned') }} className="w-8 h-8 rounded-lg bg-[#21262d] border border-[#30363d] flex items-center justify-center hover:border-[#d29922] text-[#8b949e] hover:text-[#d29922] transition-all">★</button>
+                      <button onClick={() => { pinAnnouncement(a.id, !a.pinned); notify(a.pinned ? 'Unpinned' : 'Pinned') }} className="px-2 h-8 rounded-lg bg-[#21262d] border border-[#30363d] flex items-center justify-center hover:border-[#d29922] text-[#8b949e] hover:text-[#d29922] transition-all text-xs font-medium">PIN</button>
                       <button onClick={() => { deleteAnnouncement(a.id); notify('Deleted') }} className="w-8 h-8 rounded-lg bg-[#21262d] border border-[#30363d] flex items-center justify-center hover:border-[#f85149] text-[#8b949e] hover:text-[#f85149] transition-all">×</button>
                     </div>
                   </div>

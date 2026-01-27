@@ -324,7 +324,7 @@ export default function CommunicationsPage() {
               <div className="grid md:grid-cols-2 gap-6 mb-10">
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
                   <div className="w-12 h-12 bg-[#00d4ff]/20 border border-[#00d4ff]/40 rounded-lg flex items-center justify-center mb-4">
-                    <span className="text-2xl">🎬</span>
+                    <span className="text-2xl"></span>
                   </div>
                   <h3 className="font-semibold text-[#f0f6fc] text-lg mb-2"><Editable k="communications.whoIsCarolina.shareStory.title">Share Your Story</Editable></h3>
                   <p className="text-sm text-[#8b949e] mb-4"><Editable k="communications.whoIsCarolina.shareStory.description">Be featured in our campaign! Share what makes your Carolina experience unique.</Editable></p>
@@ -338,7 +338,7 @@ export default function CommunicationsPage() {
 
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
                   <div className="w-12 h-12 bg-[#a371f7]/20 border border-[#a371f7]/40 rounded-lg flex items-center justify-center mb-4">
-                    <span className="text-2xl">👤</span>
+                    <span className="text-2xl"></span>
                   </div>
                   <h3 className="font-semibold text-[#f0f6fc] text-lg mb-2"><Editable k="communications.whoIsCarolina.nominate.title">Nominate Someone</Editable></h3>
                   <p className="text-sm text-[#8b949e] mb-4"><Editable k="communications.whoIsCarolina.nominate.description">Know someone with an inspiring story? Nominate them to be featured!</Editable></p>
@@ -358,28 +358,28 @@ export default function CommunicationsPage() {
                   <div>
                     <h4 className="font-semibold text-[#f0f6fc] mb-3"><Editable k="communications.whoIsCarolina.lookingFor.diverseVoices.title">Diverse Voices</Editable></h4>
                     <ul className="space-y-2 text-sm text-[#8b949e]">
-                      <li><Editable k="communications.whoIsCarolina.lookingFor.diverseVoices.item1">• First-generation students</Editable></li>
-                      <li><Editable k="communications.whoIsCarolina.lookingFor.diverseVoices.item2">• Transfer students</Editable></li>
-                      <li><Editable k="communications.whoIsCarolina.lookingFor.diverseVoices.item3">• International students</Editable></li>
-                      <li><Editable k="communications.whoIsCarolina.lookingFor.diverseVoices.item4">• Student athletes</Editable></li>
+                      <li><Editable k="communications.whoIsCarolina.lookingFor.diverseVoices.item1">- First-generation students</Editable></li>
+                      <li><Editable k="communications.whoIsCarolina.lookingFor.diverseVoices.item2">- Transfer students</Editable></li>
+                      <li><Editable k="communications.whoIsCarolina.lookingFor.diverseVoices.item3">- International students</Editable></li>
+                      <li><Editable k="communications.whoIsCarolina.lookingFor.diverseVoices.item4">- Student athletes</Editable></li>
                     </ul>
                   </div>
                   <div>
                     <h4 className="font-semibold text-[#f0f6fc] mb-3"><Editable k="communications.whoIsCarolina.lookingFor.uniqueJourneys.title">Unique Journeys</Editable></h4>
                     <ul className="space-y-2 text-sm text-[#8b949e]">
-                      <li><Editable k="communications.whoIsCarolina.lookingFor.uniqueJourneys.item1">• Overcoming challenges</Editable></li>
-                      <li><Editable k="communications.whoIsCarolina.lookingFor.uniqueJourneys.item2">• Finding community</Editable></li>
-                      <li><Editable k="communications.whoIsCarolina.lookingFor.uniqueJourneys.item3">• Discovering passions</Editable></li>
-                      <li><Editable k="communications.whoIsCarolina.lookingFor.uniqueJourneys.item4">• Making an impact</Editable></li>
+                      <li><Editable k="communications.whoIsCarolina.lookingFor.uniqueJourneys.item1">- Overcoming challenges</Editable></li>
+                      <li><Editable k="communications.whoIsCarolina.lookingFor.uniqueJourneys.item2">- Finding community</Editable></li>
+                      <li><Editable k="communications.whoIsCarolina.lookingFor.uniqueJourneys.item3">- Discovering passions</Editable></li>
+                      <li><Editable k="communications.whoIsCarolina.lookingFor.uniqueJourneys.item4">- Making an impact</Editable></li>
                     </ul>
                   </div>
                   <div>
                     <h4 className="font-semibold text-[#f0f6fc] mb-3"><Editable k="communications.whoIsCarolina.lookingFor.carolinaPride.title">Carolina Pride</Editable></h4>
                     <ul className="space-y-2 text-sm text-[#8b949e]">
-                      <li><Editable k="communications.whoIsCarolina.lookingFor.carolinaPride.item1">• What Carolina means to you</Editable></li>
-                      <li><Editable k="communications.whoIsCarolina.lookingFor.carolinaPride.item2">• Favorite traditions</Editable></li>
-                      <li><Editable k="communications.whoIsCarolina.lookingFor.carolinaPride.item3">• Defining moments</Editable></li>
-                      <li><Editable k="communications.whoIsCarolina.lookingFor.carolinaPride.item4">• Future aspirations</Editable></li>
+                      <li><Editable k="communications.whoIsCarolina.lookingFor.carolinaPride.item1">- What Carolina means to you</Editable></li>
+                      <li><Editable k="communications.whoIsCarolina.lookingFor.carolinaPride.item2">- Favorite traditions</Editable></li>
+                      <li><Editable k="communications.whoIsCarolina.lookingFor.carolinaPride.item3">- Defining moments</Editable></li>
+                      <li><Editable k="communications.whoIsCarolina.lookingFor.carolinaPride.item4">- Future aspirations</Editable></li>
                     </ul>
                   </div>
                 </div>
@@ -409,19 +409,19 @@ export default function CommunicationsPage() {
                   <h3 className="font-semibold text-[#f0f6fc] text-lg mb-4"><Editable k="communications.vcAdvisory.responsibilities.title">Committee Responsibilities</Editable></h3>
                   <ul className="space-y-3 text-sm text-[#8b949e]">
                     <li className="flex items-start gap-3">
-                      <span className="text-[#00d4ff]">→</span>
+                      <span className="text-[#00d4ff]">&gt;</span>
                       <span><Editable k="communications.vcAdvisory.responsibilities.item1">Review and provide feedback on university communications</Editable></span>
                     </li>
                     <li className="flex items-start gap-3">
-                      <span className="text-[#00d4ff]">→</span>
+                      <span className="text-[#00d4ff]">&gt;</span>
                       <span><Editable k="communications.vcAdvisory.responsibilities.item2">Advise on student-facing messaging and branding</Editable></span>
                     </li>
                     <li className="flex items-start gap-3">
-                      <span className="text-[#00d4ff]">→</span>
+                      <span className="text-[#00d4ff]">&gt;</span>
                       <span><Editable k="communications.vcAdvisory.responsibilities.item3">Represent diverse student perspectives</Editable></span>
                     </li>
                     <li className="flex items-start gap-3">
-                      <span className="text-[#00d4ff]">→</span>
+                      <span className="text-[#00d4ff]">&gt;</span>
                       <span><Editable k="communications.vcAdvisory.responsibilities.item4">Meet monthly with VC Communications office</Editable></span>
                     </li>
                   </ul>
@@ -431,19 +431,19 @@ export default function CommunicationsPage() {
                   <h3 className="font-semibold text-[#f0f6fc] text-lg mb-4"><Editable k="communications.vcAdvisory.requirements.title">Member Requirements</Editable></h3>
                   <ul className="space-y-3 text-sm text-[#8b949e]">
                     <li className="flex items-start gap-3">
-                      <span className="text-[#3fb950]">✓</span>
+                      <span className="text-[#3fb950]">-</span>
                       <span><Editable k="communications.vcAdvisory.requirements.item1">Current undergraduate or graduate student</Editable></span>
                     </li>
                     <li className="flex items-start gap-3">
-                      <span className="text-[#3fb950]">✓</span>
+                      <span className="text-[#3fb950]">-</span>
                       <span><Editable k="communications.vcAdvisory.requirements.item2">Interest in communications, marketing, or media</Editable></span>
                     </li>
                     <li className="flex items-start gap-3">
-                      <span className="text-[#3fb950]">✓</span>
+                      <span className="text-[#3fb950]">-</span>
                       <span><Editable k="communications.vcAdvisory.requirements.item3">Commitment to monthly meetings</Editable></span>
                     </li>
                     <li className="flex items-start gap-3">
-                      <span className="text-[#3fb950]">✓</span>
+                      <span className="text-[#3fb950]">-</span>
                       <span><Editable k="communications.vcAdvisory.requirements.item4">Passion for student advocacy</Editable></span>
                     </li>
                   </ul>
@@ -509,7 +509,7 @@ export default function CommunicationsPage() {
               <div className="grid md:grid-cols-2 gap-6 mb-10">
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
                   <div className="w-12 h-12 bg-[#00d4ff]/20 border border-[#00d4ff]/40 rounded-lg flex items-center justify-center mb-4">
-                    <span className="text-2xl">🎙️</span>
+                    <span className="text-2xl"></span>
                   </div>
                   <h3 className="font-semibold text-[#f0f6fc] text-lg mb-2"><Editable k="communications.podcast.beGuest.title">Be a Guest</Editable></h3>
                   <p className="text-sm text-[#8b949e] mb-4"><Editable k="communications.podcast.beGuest.description">Share your Carolina story and inspire other students. We're always looking for interesting guests!</Editable></p>
@@ -523,7 +523,7 @@ export default function CommunicationsPage() {
 
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
                   <div className="w-12 h-12 bg-[#a371f7]/20 border border-[#a371f7]/40 rounded-lg flex items-center justify-center mb-4">
-                    <span className="text-2xl">👥</span>
+                    <span className="text-2xl"></span>
                   </div>
                   <h3 className="font-semibold text-[#f0f6fc] text-lg mb-2"><Editable k="communications.podcast.nominateGuest.title">Nominate a Guest</Editable></h3>
                   <p className="text-sm text-[#8b949e] mb-4"><Editable k="communications.podcast.nominateGuest.description">Know someone with an amazing story? Let us know who you'd like to hear from!</Editable></p>
@@ -585,14 +585,14 @@ export default function CommunicationsPage() {
               <h3 className="text-xl font-semibold text-[#f0f6fc] mb-5 uppercase tracking-wide"><Editable k="communications.talent.categories.title">Featured Categories</Editable></h3>
               <div className="grid md:grid-cols-4 gap-4 mb-10">
                 {[
-                  { name: 'Visual Arts', icon: '🎨', count: 0 },
-                  { name: 'Dance', icon: '💃', count: 0 },
-                  { name: 'Theater', icon: '🎭', count: 0 },
-                  { name: 'Comedy', icon: '😄', count: 0 },
-                  { name: 'Music', icon: '🎵', count: 0 },
-                  { name: 'Film', icon: '🎬', count: 0 },
-                  { name: 'Writing', icon: '✍️', count: 0 },
-                  { name: 'Other', icon: '✨', count: 0 },
+                  { name: 'Visual Arts', icon: '', count: 0 },
+                  { name: 'Dance', icon: '', count: 0 },
+                  { name: 'Theater', icon: '', count: 0 },
+                  { name: 'Comedy', icon: '', count: 0 },
+                  { name: 'Music', icon: '', count: 0 },
+                  { name: 'Film', icon: '', count: 0 },
+                  { name: 'Writing', icon: '', count: 0 },
+                  { name: 'Other', icon: '', count: 0 },
                 ].map((cat, i) => (
                   <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 text-center hover:border-[#00d4ff] transition-colors cursor-pointer">
                     <span className="text-3xl">{cat.icon}</span>
@@ -671,9 +671,9 @@ export default function CommunicationsPage() {
                   <h4 className="font-semibold text-[#f0f6fc] mb-3"><Editable k="communications.accountability.features.dashboard.title">Public Dashboard</Editable></h4>
                   <p className="text-sm text-[#8b949e] mb-4"><Editable k="communications.accountability.features.dashboard.description">Track real-time progress on all initiatives with clear metrics and timelines.</Editable></p>
                   <ul className="space-y-2 text-sm text-[#8b949e]">
-                    <li className="flex items-center gap-2"><span className="text-[#00d4ff]">→</span> <Editable k="communications.accountability.features.dashboard.item1">Progress percentages</Editable></li>
-                    <li className="flex items-center gap-2"><span className="text-[#00d4ff]">→</span> <Editable k="communications.accountability.features.dashboard.item2">Status updates</Editable></li>
-                    <li className="flex items-center gap-2"><span className="text-[#00d4ff]">→</span> <Editable k="communications.accountability.features.dashboard.item3">Milestone tracking</Editable></li>
+                    <li className="flex items-center gap-2"><span className="text-[#00d4ff]">&gt;</span> <Editable k="communications.accountability.features.dashboard.item1">Progress percentages</Editable></li>
+                    <li className="flex items-center gap-2"><span className="text-[#00d4ff]">&gt;</span> <Editable k="communications.accountability.features.dashboard.item2">Status updates</Editable></li>
+                    <li className="flex items-center gap-2"><span className="text-[#00d4ff]">&gt;</span> <Editable k="communications.accountability.features.dashboard.item3">Milestone tracking</Editable></li>
                   </ul>
                 </div>
 
@@ -681,9 +681,9 @@ export default function CommunicationsPage() {
                   <h4 className="font-semibold text-[#f0f6fc] mb-3"><Editable k="communications.accountability.features.reports.title">Regular Reports</Editable></h4>
                   <p className="text-sm text-[#8b949e] mb-4"><Editable k="communications.accountability.features.reports.description">Published updates ensure students stay informed on what we're accomplishing.</Editable></p>
                   <ul className="space-y-2 text-sm text-[#8b949e]">
-                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">→</span> <Editable k="communications.accountability.features.reports.item1">Monthly newsletters</Editable></li>
-                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">→</span> <Editable k="communications.accountability.features.reports.item2">Semester reviews</Editable></li>
-                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">→</span> <Editable k="communications.accountability.features.reports.item3">Annual reports</Editable></li>
+                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">&gt;</span> <Editable k="communications.accountability.features.reports.item1">Monthly newsletters</Editable></li>
+                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">&gt;</span> <Editable k="communications.accountability.features.reports.item2">Semester reviews</Editable></li>
+                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">&gt;</span> <Editable k="communications.accountability.features.reports.item3">Annual reports</Editable></li>
                   </ul>
                 </div>
               </div>
@@ -700,7 +700,7 @@ export default function CommunicationsPage() {
                   <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
                     <div className="flex items-center gap-4 mb-4">
                       <div className="w-12 h-12 bg-[#00d4ff]/20 border border-[#00d4ff]/40 rounded-full flex items-center justify-center">
-                        <span className="text-xl">👤</span>
+                        <span className="text-xl"></span>
                       </div>
                       <div>
                         <p className="font-semibold text-[#f0f6fc]">{contact.lead.name}</p>
@@ -709,19 +709,19 @@ export default function CommunicationsPage() {
                     </div>
                     <div className="space-y-3 text-sm">
                       <div className="flex items-center gap-3">
-                        <span className="text-[#8b949e]">📍</span>
+                        <span className="text-[#8b949e]"></span>
                         <span className="text-[#f0f6fc]">{contact.office}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-[#8b949e]">🕐</span>
+                        <span className="text-[#8b949e]"></span>
                         <span className="text-[#f0f6fc]">{contact.hours}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-[#8b949e]">📧</span>
+                        <span className="text-[#8b949e]"></span>
                         <a href={`mailto:${contact.lead.email}`} className="text-[#00d4ff] hover:underline">{contact.lead.email}</a>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-[#8b949e]">📱</span>
+                        <span className="text-[#8b949e]"></span>
                         <span className="text-[#f0f6fc]">{contact.socialMedia}</span>
                       </div>
                     </div>
@@ -733,7 +733,7 @@ export default function CommunicationsPage() {
                     {feedbackSubmitted ? (
                       <div className="text-center py-4">
                         <div className="w-12 h-12 bg-[#00d4ff]/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                          <span className="text-2xl">✓</span>
+                          <span className="text-2xl"></span>
                         </div>
                         <p className="text-[#00d4ff] font-medium"><Editable k="communications.faq.feedback.success">Thanks for your feedback!</Editable></p>
                         <button onClick={() => setFeedbackSubmitted(false)} className="text-[#00a8cc] text-sm mt-2 hover:underline"><Editable k="communications.faq.feedback.sendAnother">Send another</Editable></button>

@@ -456,16 +456,16 @@ export default function WellnessPage() {
 
                   <ul className="space-y-2 mb-6">
                     <li className="flex items-center gap-2 text-sm text-[#8b949e]">
-                      <span className="text-[#3fb950]">✓</span> <Editable k="wellness.rides.benefit1">Background check & training provided</Editable>
+                      <span className="text-[#3fb950]">-</span> <Editable k="wellness.rides.benefit1">Background check & training provided</Editable>
                     </li>
                     <li className="flex items-center gap-2 text-sm text-[#8b949e]">
-                      <span className="text-[#3fb950]">✓</span> <Editable k="wellness.rides.benefit2">Flexible scheduling</Editable>
+                      <span className="text-[#3fb950]">-</span> <Editable k="wellness.rides.benefit2">Flexible scheduling</Editable>
                     </li>
                     <li className="flex items-center gap-2 text-sm text-[#8b949e]">
-                      <span className="text-[#3fb950]">✓</span> <Editable k="wellness.rides.benefit3">Gas reimbursement included</Editable>
+                      <span className="text-[#3fb950]">-</span> <Editable k="wellness.rides.benefit3">Gas reimbursement included</Editable>
                     </li>
                     <li className="flex items-center gap-2 text-sm text-[#8b949e]">
-                      <span className="text-[#3fb950]">✓</span> <Editable k="wellness.rides.benefit4">Earn service hours</Editable>
+                      <span className="text-[#3fb950]">-</span> <Editable k="wellness.rides.benefit4">Earn service hours</Editable>
                     </li>
                   </ul>
 
@@ -681,25 +681,25 @@ export default function WellnessPage() {
                     <div className="space-y-4 mb-6">
                       <div className="flex items-center gap-3">
                         <div className="w-6 h-6 rounded bg-[#3fb950]/10 border border-[#3fb950]/30 flex items-center justify-center">
-                          <span className="text-[#3fb950] text-xs">✓</span>
+                          <span className="text-[#3fb950] text-xs">-</span>
                         </div>
                         <span className="text-sm text-[#f0f6fc]"><Editable k="wellness.events.req1">Transportation plan</Editable></span>
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="w-6 h-6 rounded bg-[#3fb950]/10 border border-[#3fb950]/30 flex items-center justify-center">
-                          <span className="text-[#3fb950] text-xs">✓</span>
+                          <span className="text-[#3fb950] text-xs">-</span>
                         </div>
                         <span className="text-sm text-[#f0f6fc]"><Editable k="wellness.events.req2">Crowd management strategy</Editable></span>
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="w-6 h-6 rounded bg-[#3fb950]/10 border border-[#3fb950]/30 flex items-center justify-center">
-                          <span className="text-[#3fb950] text-xs">✓</span>
+                          <span className="text-[#3fb950] text-xs">-</span>
                         </div>
                         <span className="text-sm text-[#f0f6fc]"><Editable k="wellness.events.req3">Emergency contact list</Editable></span>
                       </div>
                       <div className="flex items-center gap-3">
                         <div className="w-6 h-6 rounded bg-[#3fb950]/10 border border-[#3fb950]/30 flex items-center justify-center">
-                          <span className="text-[#3fb950] text-xs">✓</span>
+                          <span className="text-[#3fb950] text-xs">-</span>
                         </div>
                         <span className="text-sm text-[#f0f6fc]"><Editable k="wellness.events.req4">Sober monitor assignments</Editable></span>
                       </div>
@@ -728,7 +728,7 @@ export default function WellnessPage() {
                       <p className="text-sm text-[#8b949e] mt-1"><Editable k="wellness.events.workshopDesc">Learn the basics of creating effective safety plans. 5pm, Union 3201</Editable></p>
                       <a href={calendarEvents.eventSafetyWorkshop} target="_blank" rel="noopener noreferrer"
                         className="inline-flex items-center gap-2 mt-3 text-[#58a6ff] text-sm font-medium hover:underline">
-                        <span>📅</span> Add to Calendar
+                        Add to Calendar
                       </a>
                     </div>
 
@@ -797,7 +797,7 @@ export default function WellnessPage() {
                 <div className="bg-[#21262d] rounded-lg p-6 max-w-2xl">
                   <div className="flex items-center gap-4 mb-6 pb-4 border-b border-[#30363d]">
                     <div className="w-10 h-10 bg-[#3fb950] rounded-lg flex items-center justify-center">
-                      <span className="text-white font-bold">♥</span>
+                      <span className="text-white font-bold"></span>
                     </div>
                     <div>
                       <p className="font-semibold text-[#f0f6fc]"><Editable k="wellness.button.widgetTitle">Student Wellness</Editable></p>
@@ -807,10 +807,10 @@ export default function WellnessPage() {
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {[
-                      { icon: '🧠', label: 'CAPS', color: '#3fb950' },
-                      { icon: '🏥', label: 'Health', color: '#58a6ff' },
-                      { icon: '💊', label: 'Plan B/Narcan', color: '#a371f7' },
-                      { icon: '🚗', label: 'Safe Ride', color: '#d29922' },
+                      { icon: '', label: 'CAPS', color: '#3fb950' },
+                      { icon: '', label: 'Health', color: '#58a6ff' },
+                      { icon: '', label: 'Plan B/Narcan', color: '#a371f7' },
+                      { icon: '', label: 'Safe Ride', color: '#d29922' },
                     ].map((item, i) => (
                       <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-3 text-center hover:border-[#3fb950] transition-colors cursor-pointer">
                         <span className="text-2xl">{item.icon}</span>
@@ -861,10 +861,10 @@ export default function WellnessPage() {
               </h3>
               <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
                 {[
-                  { icon: '📅', title: 'Unified Scheduling', desc: 'One platform for all health appointments' },
-                  { icon: '📋', title: 'Coordinated Care', desc: 'Providers see your full health picture' },
-                  { icon: '🔔', title: 'Smart Reminders', desc: 'Automated appointment notifications' },
-                  { icon: '📱', title: 'Mobile Access', desc: 'Schedule from anywhere, anytime' },
+                  { icon: '', title: 'Unified Scheduling', desc: 'One platform for all health appointments' },
+                  { icon: '', title: 'Coordinated Care', desc: 'Providers see your full health picture' },
+                  { icon: '', title: 'Smart Reminders', desc: 'Automated appointment notifications' },
+                  { icon: '', title: 'Mobile Access', desc: 'Schedule from anywhere, anytime' },
                 ].map((item, i) => (
                   <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
                     <span className="text-2xl">{item.icon}</span>
@@ -925,7 +925,7 @@ export default function WellnessPage() {
                   <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
                     <div className="flex items-center gap-4 mb-4">
                       <div className="w-12 h-12 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded-full flex items-center justify-center">
-                        <span className="text-xl">👤</span>
+                        <span className="text-xl"></span>
                       </div>
                       <div>
                         <p className="font-semibold text-[#f0f6fc]">{contact.lead.name}</p>
@@ -934,19 +934,19 @@ export default function WellnessPage() {
                     </div>
                     <div className="space-y-3 text-sm">
                       <div className="flex items-center gap-3">
-                        <span className="text-[#8b949e]">📍</span>
+                        <span className="text-[#8b949e]"></span>
                         <span className="text-[#f0f6fc]">{contact.office}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-[#8b949e]">🕐</span>
+                        <span className="text-[#8b949e]"></span>
                         <span className="text-[#f0f6fc]">{contact.hours}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-[#8b949e]">📧</span>
+                        <span className="text-[#8b949e]"></span>
                         <a href={`mailto:${contact.lead.email}`} className="text-[#58a6ff] hover:underline">{contact.lead.email}</a>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-[#8b949e]">📱</span>
+                        <span className="text-[#8b949e]"></span>
                         <span className="text-[#f0f6fc]">{contact.socialMedia}</span>
                       </div>
                     </div>
@@ -960,7 +960,7 @@ export default function WellnessPage() {
                     {feedbackSubmitted ? (
                       <div className="text-center py-4">
                         <div className="w-12 h-12 bg-[#3fb950]/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                          <span className="text-2xl">✓</span>
+                          <span className="text-2xl"></span>
                         </div>
                         <p className="text-[#3fb950] font-medium">Thanks for your feedback!</p>
                         <button onClick={() => setFeedbackSubmitted(false)} className="text-[#58a6ff] text-sm mt-2 hover:underline">Send another</button>

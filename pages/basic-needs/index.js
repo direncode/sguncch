@@ -279,7 +279,7 @@ export default function BasicNeedsPage() {
               <div className="grid md:grid-cols-2 gap-5 mb-10">
                 <div className="bg-[#161b22] border border-[#d29922] rounded-lg p-6">
                   <div className="flex items-center gap-3 mb-4">
-                    <span className="text-2xl">🥕</span>
+                    <span className="text-2xl"></span>
                     <div>
                       <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.markets.pit.name">The Pit Market</Editable></h4>
                       <p className="text-sm text-[#8b949e]"><Editable k="basicneeds.markets.pit.subtitle">Main campus location</Editable></p>
@@ -294,7 +294,7 @@ export default function BasicNeedsPage() {
 
                 <div className="bg-[#161b22] border border-[#3fb950] rounded-lg p-6">
                   <div className="flex items-center gap-3 mb-4">
-                    <span className="text-2xl">🌽</span>
+                    <span className="text-2xl"></span>
                     <div>
                       <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.markets.south.name">South Campus Stand</Editable></h4>
                       <p className="text-sm text-[#8b949e]"><Editable k="basicneeds.markets.south.subtitle">Chase Farm partnership</Editable></p>
@@ -312,35 +312,35 @@ export default function BasicNeedsPage() {
               <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5"><Editable k="basicneeds.markets.findheading">What You'll Find</Editable></h3>
               <div className="grid md:grid-cols-4 gap-4 mb-10">
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 text-center">
-                  <span className="text-2xl">🍅</span>
+                  <span className="text-2xl"></span>
                   <p className="text-sm text-[#f0f6fc] mt-2"><Editable k="basicneeds.markets.product1">Fresh Vegetables</Editable></p>
                 </div>
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 text-center">
-                  <span className="text-2xl">🍎</span>
+                  <span className="text-2xl"></span>
                   <p className="text-sm text-[#f0f6fc] mt-2"><Editable k="basicneeds.markets.product2">Seasonal Fruits</Editable></p>
                 </div>
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 text-center">
-                  <span className="text-2xl">🥚</span>
+                  <span className="text-2xl"></span>
                   <p className="text-sm text-[#f0f6fc] mt-2"><Editable k="basicneeds.markets.product3">Farm Fresh Eggs</Editable></p>
                 </div>
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 text-center">
-                  <span className="text-2xl">🍯</span>
+                  <span className="text-2xl"></span>
                   <p className="text-sm text-[#f0f6fc] mt-2"><Editable k="basicneeds.markets.product4">Local Honey</Editable></p>
                 </div>
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 text-center">
-                  <span className="text-2xl">🥖</span>
+                  <span className="text-2xl"></span>
                   <p className="text-sm text-[#f0f6fc] mt-2"><Editable k="basicneeds.markets.product5">Artisan Breads</Editable></p>
                 </div>
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 text-center">
-                  <span className="text-2xl">🧀</span>
+                  <span className="text-2xl"></span>
                   <p className="text-sm text-[#f0f6fc] mt-2"><Editable k="basicneeds.markets.product6">Local Cheeses</Editable></p>
                 </div>
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 text-center">
-                  <span className="text-2xl">🌿</span>
+                  <span className="text-2xl"></span>
                   <p className="text-sm text-[#f0f6fc] mt-2"><Editable k="basicneeds.markets.product7">Fresh Herbs</Editable></p>
                 </div>
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 text-center">
-                  <span className="text-2xl">🥗</span>
+                  <span className="text-2xl"></span>
                   <p className="text-sm text-[#f0f6fc] mt-2"><Editable k="basicneeds.markets.product8">Prepared Foods</Editable></p>
                 </div>
               </div>
@@ -350,22 +350,22 @@ export default function BasicNeedsPage() {
                 <h3 className="font-semibold text-[#f0f6fc] mb-4"><Editable k="basicneeds.markets.partnersheading">Partner Farms & Vendors</Editable></h3>
                 <div className="grid md:grid-cols-3 gap-4">
                   <div className="flex items-center gap-2 text-sm text-[#8b949e]">
-                    <span className="text-[#3fb950]">✓</span> <Editable k="basicneeds.markets.farm1">Carrboro Farmers Market</Editable>
+                    <span className="text-[#3fb950]">-</span> <Editable k="basicneeds.markets.farm1">Carrboro Farmers Market</Editable>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-[#8b949e]">
-                    <span className="text-[#3fb950]">✓</span> <Editable k="basicneeds.markets.farm2">Chase Farm</Editable>
+                    <span className="text-[#3fb950]">-</span> <Editable k="basicneeds.markets.farm2">Chase Farm</Editable>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-[#8b949e]">
-                    <span className="text-[#3fb950]">✓</span> <Editable k="basicneeds.markets.farm3">Maple View Farm</Editable>
+                    <span className="text-[#3fb950]">-</span> <Editable k="basicneeds.markets.farm3">Maple View Farm</Editable>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-[#8b949e]">
-                    <span className="text-[#3fb950]">✓</span> <Editable k="basicneeds.markets.farm4">Cates Farm</Editable>
+                    <span className="text-[#3fb950]">-</span> <Editable k="basicneeds.markets.farm4">Cates Farm</Editable>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-[#8b949e]">
-                    <span className="text-[#3fb950]">✓</span> <Editable k="basicneeds.markets.farm5">Celebrity Dairy</Editable>
+                    <span className="text-[#3fb950]">-</span> <Editable k="basicneeds.markets.farm5">Celebrity Dairy</Editable>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-[#8b949e]">
-                    <span className="text-[#3fb950]">✓</span> <Editable k="basicneeds.markets.farm6">Sunrise Farm</Editable>
+                    <span className="text-[#3fb950]">-</span> <Editable k="basicneeds.markets.farm6">Sunrise Farm</Editable>
                   </div>
                 </div>
               </div>
@@ -431,28 +431,28 @@ export default function BasicNeedsPage() {
               <div className="grid md:grid-cols-4 gap-4">
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[#3fb950]">🧊</span>
+                    <span className="text-[#3fb950]"></span>
                     <h4 className="font-semibold text-[#f0f6fc] text-sm"><Editable k="basicneeds.hub.fridge1.location">Student Union</Editable></h4>
                   </div>
                   <p className="text-xs text-[#8b949e]"><Editable k="basicneeds.hub.fridge1.building">Near Room 1301</Editable></p>
                 </div>
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[#3fb950]">🧊</span>
+                    <span className="text-[#3fb950]"></span>
                     <h4 className="font-semibold text-[#f0f6fc] text-sm"><Editable k="basicneeds.hub.fridge2.location">Davis Library</Editable></h4>
                   </div>
                   <p className="text-xs text-[#8b949e]"><Editable k="basicneeds.hub.fridge2.building">Ground Floor</Editable></p>
                 </div>
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[#3fb950]">🧊</span>
+                    <span className="text-[#3fb950]"></span>
                     <h4 className="font-semibold text-[#f0f6fc] text-sm"><Editable k="basicneeds.hub.fridge3.location">Sitterson Hall</Editable></h4>
                   </div>
                   <p className="text-xs text-[#8b949e]"><Editable k="basicneeds.hub.fridge3.building">Main Lobby</Editable></p>
                 </div>
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[#3fb950]">🧊</span>
+                    <span className="text-[#3fb950]"></span>
                     <h4 className="font-semibold text-[#f0f6fc] text-sm"><Editable k="basicneeds.hub.fridge4.location">Kenan-Flagler</Editable></h4>
                   </div>
                   <p className="text-xs text-[#8b949e]"><Editable k="basicneeds.hub.fridge4.building">Student Lounge</Editable></p>
@@ -539,42 +539,42 @@ export default function BasicNeedsPage() {
                 <p className="text-sm text-[#8b949e] mb-6"><Editable k="basicneeds.plusswipe.proposeddesc" multiline>We're advocating to add these healthier off-campus options to Plus Swipe:</Editable></p>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="flex items-start gap-3">
-                    <span className="text-[#d29922]">→</span>
+                    <span className="text-[#d29922]">&gt;</span>
                     <div>
                       <p className="font-medium text-[#f0f6fc]"><Editable k="basicneeds.plusswipe.proposed1.name">Vimala's Curryblossom</Editable></p>
                       <p className="text-xs text-[#8b949e]"><Editable k="basicneeds.plusswipe.proposed1.reason">Local, healthy Indian cuisine</Editable></p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <span className="text-[#d29922]">→</span>
+                    <span className="text-[#d29922]">&gt;</span>
                     <div>
                       <p className="font-medium text-[#f0f6fc]"><Editable k="basicneeds.plusswipe.proposed2.name">Roots Natural Kitchen</Editable></p>
                       <p className="text-xs text-[#8b949e]"><Editable k="basicneeds.plusswipe.proposed2.reason">Build-your-own grain bowls</Editable></p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <span className="text-[#d29922]">→</span>
+                    <span className="text-[#d29922]">&gt;</span>
                     <div>
                       <p className="font-medium text-[#f0f6fc]"><Editable k="basicneeds.plusswipe.proposed3.name">Med Deli</Editable></p>
                       <p className="text-xs text-[#8b949e]"><Editable k="basicneeds.plusswipe.proposed3.reason">Mediterranean, vegetarian-friendly</Editable></p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <span className="text-[#d29922]">→</span>
+                    <span className="text-[#d29922]">&gt;</span>
                     <div>
                       <p className="font-medium text-[#f0f6fc]"><Editable k="basicneeds.plusswipe.proposed4.name">Cosmic Cantina</Editable></p>
                       <p className="text-xs text-[#8b949e]"><Editable k="basicneeds.plusswipe.proposed4.reason">Late-night healthy options</Editable></p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <span className="text-[#d29922]">→</span>
+                    <span className="text-[#d29922]">&gt;</span>
                     <div>
                       <p className="font-medium text-[#f0f6fc]"><Editable k="basicneeds.plusswipe.proposed5.name">Guasaca</Editable></p>
                       <p className="text-xs text-[#8b949e]"><Editable k="basicneeds.plusswipe.proposed5.reason">Fresh Venezuelan bowls</Editable></p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <span className="text-[#d29922]">→</span>
+                    <span className="text-[#d29922]">&gt;</span>
                     <div>
                       <p className="font-medium text-[#f0f6fc]"><Editable k="basicneeds.plusswipe.proposed6.name">Harvest 18</Editable></p>
                       <p className="text-xs text-[#8b949e]"><Editable k="basicneeds.plusswipe.proposed6.reason">Farm-to-table salads</Editable></p>
@@ -653,16 +653,16 @@ export default function BasicNeedsPage() {
 
                   <div className="space-y-4 mb-6">
                     <div className="flex items-center gap-2 text-sm text-[#8b949e]">
-                      <span className="text-[#3fb950]">✓</span> <Editable k="basicneeds.shuttle.feature1">Free for all UNC students</Editable>
+                      <span className="text-[#3fb950]">-</span> <Editable k="basicneeds.shuttle.feature1">Free for all UNC students</Editable>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-[#8b949e]">
-                      <span className="text-[#3fb950]">✓</span> <Editable k="basicneeds.shuttle.feature2">Bring your One Card</Editable>
+                      <span className="text-[#3fb950]">-</span> <Editable k="basicneeds.shuttle.feature2">Bring your One Card</Editable>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-[#8b949e]">
-                      <span className="text-[#3fb950]">✓</span> <Editable k="basicneeds.shuttle.feature3">1-2 hours shopping time</Editable>
+                      <span className="text-[#3fb950]">-</span> <Editable k="basicneeds.shuttle.feature3">1-2 hours shopping time</Editable>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-[#8b949e]">
-                      <span className="text-[#3fb950]">✓</span> <Editable k="basicneeds.shuttle.feature4">Help with groceries available</Editable>
+                      <span className="text-[#3fb950]">-</span> <Editable k="basicneeds.shuttle.feature4">Help with groceries available</Editable>
                     </div>
                   </div>
 
@@ -750,7 +750,7 @@ export default function BasicNeedsPage() {
                   <p className="text-sm text-[#8b949e]"><Editable k="basicneeds.offcampus.workshop1.datetime">Feb 15, 2026 at 5pm</Editable></p>
                   <p className="text-xs text-[#6e7681] mt-1"><Editable k="basicneeds.offcampus.workshop1.location">Union 3201</Editable></p>
                   <div className="flex items-center gap-4 mt-4">
-                    <a href={calendarEvents.leaseWorkshop} target="_blank" rel="noopener noreferrer" className="text-[#58a6ff] text-sm font-medium hover:underline">📅 Add to Calendar</a>
+                    <a href={calendarEvents.leaseWorkshop} target="_blank" rel="noopener noreferrer" className="text-[#58a6ff] text-sm font-medium hover:underline">Add to Calendar</a>
                   </div>
                 </div>
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
@@ -763,7 +763,7 @@ export default function BasicNeedsPage() {
                   <p className="text-sm text-[#8b949e]"><Editable k="basicneeds.offcampus.workshop2.datetime">Feb 22, 2026 at 4pm</Editable></p>
                   <p className="text-xs text-[#6e7681] mt-1"><Editable k="basicneeds.offcampus.workshop2.location">Union 3205</Editable></p>
                   <div className="flex items-center gap-4 mt-4">
-                    <a href={calendarEvents.budgetingWorkshop} target="_blank" rel="noopener noreferrer" className="text-[#58a6ff] text-sm font-medium hover:underline">📅 Add to Calendar</a>
+                    <a href={calendarEvents.budgetingWorkshop} target="_blank" rel="noopener noreferrer" className="text-[#58a6ff] text-sm font-medium hover:underline">Add to Calendar</a>
                   </div>
                 </div>
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
@@ -775,7 +775,7 @@ export default function BasicNeedsPage() {
                   </div>
                   <p className="text-sm text-[#8b949e]"><Editable k="basicneeds.offcampus.workshop3.datetime">Mar 1, 2026 at 5pm</Editable></p>
                   <p className="text-xs text-[#6e7681] mt-1"><Editable k="basicneeds.offcampus.workshop3.location">Union 3201</Editable></p>
-                  <button className="mt-4 text-[#58a6ff] text-sm font-medium hover:underline"><Editable k="basicneeds.offcampus.registerlink3">Register →</Editable></button>
+                  <button className="mt-4 text-[#58a6ff] text-sm font-medium hover:underline"><Editable k="basicneeds.offcampus.registerlink3">Register</Editable></button>
                 </div>
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
                   <div className="flex items-start justify-between mb-3">
@@ -786,7 +786,7 @@ export default function BasicNeedsPage() {
                   </div>
                   <p className="text-sm text-[#8b949e]"><Editable k="basicneeds.offcampus.workshop4.datetime">Mar 8, 2026 at 4pm</Editable></p>
                   <p className="text-xs text-[#6e7681] mt-1"><Editable k="basicneeds.offcampus.workshop4.location">Union 3205</Editable></p>
-                  <button className="mt-4 text-[#58a6ff] text-sm font-medium hover:underline"><Editable k="basicneeds.offcampus.registerlink4">Register →</Editable></button>
+                  <button className="mt-4 text-[#58a6ff] text-sm font-medium hover:underline"><Editable k="basicneeds.offcampus.registerlink4">Register</Editable></button>
                 </div>
               </div>
 
@@ -798,16 +798,16 @@ export default function BasicNeedsPage() {
                   <p className="text-sm text-[#8b949e] mb-4"><Editable k="basicneeds.offcampus.coach.description" multiline>Our coaches are now trained in housing-related budgeting and can help you plan for off-campus expenses.</Editable></p>
                   <ul className="space-y-2 mb-6">
                     <li className="flex items-center gap-2 text-sm text-[#8b949e]">
-                      <span className="text-[#58a6ff]">✓</span> <Editable k="basicneeds.offcampus.coach.feature1">One-on-one appointments</Editable>
+                      <span className="text-[#58a6ff]">-</span> <Editable k="basicneeds.offcampus.coach.feature1">One-on-one appointments</Editable>
                     </li>
                     <li className="flex items-center gap-2 text-sm text-[#8b949e]">
-                      <span className="text-[#58a6ff]">✓</span> <Editable k="basicneeds.offcampus.coach.feature2">Help with lease review</Editable>
+                      <span className="text-[#58a6ff]">-</span> <Editable k="basicneeds.offcampus.coach.feature2">Help with lease review</Editable>
                     </li>
                     <li className="flex items-center gap-2 text-sm text-[#8b949e]">
-                      <span className="text-[#58a6ff]">✓</span> <Editable k="basicneeds.offcampus.coach.feature3">Budget planning</Editable>
+                      <span className="text-[#58a6ff]">-</span> <Editable k="basicneeds.offcampus.coach.feature3">Budget planning</Editable>
                     </li>
                     <li className="flex items-center gap-2 text-sm text-[#8b949e]">
-                      <span className="text-[#58a6ff]">✓</span> <Editable k="basicneeds.offcampus.coach.feature4">Financial aid questions</Editable>
+                      <span className="text-[#58a6ff]">-</span> <Editable k="basicneeds.offcampus.coach.feature4">Financial aid questions</Editable>
                     </li>
                   </ul>
                   <button className="bg-[#58a6ff] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#79b8ff] transition-colors">
@@ -851,7 +851,7 @@ export default function BasicNeedsPage() {
                   <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
                     <div className="flex items-center gap-4 mb-4">
                       <div className="w-12 h-12 bg-[#d29922]/10 border border-[#d29922]/30 rounded-full flex items-center justify-center">
-                        <span className="text-xl">👤</span>
+                        <span className="text-xl"></span>
                       </div>
                       <div>
                         <p className="font-semibold text-[#f0f6fc]">{contact.lead.name}</p>
@@ -860,19 +860,19 @@ export default function BasicNeedsPage() {
                     </div>
                     <div className="space-y-3 text-sm">
                       <div className="flex items-center gap-3">
-                        <span className="text-[#8b949e]">📍</span>
+                        <span className="text-[#8b949e]"></span>
                         <span className="text-[#f0f6fc]">{contact.office}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-[#8b949e]">🕐</span>
+                        <span className="text-[#8b949e]"></span>
                         <span className="text-[#f0f6fc]">{contact.hours}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-[#8b949e]">📧</span>
+                        <span className="text-[#8b949e]"></span>
                         <a href={`mailto:${contact.lead.email}`} className="text-[#58a6ff] hover:underline">{contact.lead.email}</a>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-[#8b949e]">📱</span>
+                        <span className="text-[#8b949e]"></span>
                         <span className="text-[#f0f6fc]">{contact.socialMedia}</span>
                       </div>
                     </div>
@@ -884,7 +884,7 @@ export default function BasicNeedsPage() {
                     {feedbackSubmitted ? (
                       <div className="text-center py-4">
                         <div className="w-12 h-12 bg-[#d29922]/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                          <span className="text-2xl">✓</span>
+                          <span className="text-2xl"></span>
                         </div>
                         <p className="text-[#d29922] font-medium"><Editable k="basicneeds.faq.feedbackthanks">Thanks for your feedback!</Editable></p>
                         <button onClick={() => setFeedbackSubmitted(false)} className="text-[#58a6ff] text-sm mt-2 hover:underline"><Editable k="basicneeds.faq.sendanother">Send another</Editable></button>

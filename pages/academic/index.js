@@ -253,7 +253,7 @@ export default function AcademicPage() {
               <div className="grid md:grid-cols-2 gap-6 mb-10">
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
                   <div className="w-12 h-12 bg-[#388bfd]/20 border border-[#388bfd]/40 rounded-lg flex items-center justify-center mb-4">
-                    <span className="text-2xl">👥</span>
+                    <span className="text-2xl"></span>
                   </div>
                   <h3 className="font-semibold text-[#f0f6fc] text-lg mb-2"><Editable k="academic.mentorship.findMentor.title">Find a Mentor</Editable></h3>
                   <p className="text-sm text-[#8b949e] mb-4"><Editable k="academic.mentorship.findMentor.description" multiline>Connect with trained peer mentors across all subjects. Get personalized guidance and support for your academic journey.</Editable></p>
@@ -267,7 +267,7 @@ export default function AcademicPage() {
 
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
                   <div className="w-12 h-12 bg-[#3fb950]/20 border border-[#3fb950]/40 rounded-lg flex items-center justify-center mb-4">
-                    <span className="text-2xl">📚</span>
+                    <span className="text-2xl"></span>
                   </div>
                   <h3 className="font-semibold text-[#f0f6fc] text-lg mb-2"><Editable k="academic.mentorship.becomeMentor.title">Become a Mentor</Editable></h3>
                   <p className="text-sm text-[#8b949e] mb-4"><Editable k="academic.mentorship.becomeMentor.description" multiline>Share your expertise and help fellow students succeed. Gain leadership experience and make a difference.</Editable></p>
@@ -340,9 +340,9 @@ export default function AcademicPage() {
                   <h4 className="font-semibold text-[#f0f6fc] mb-3"><Editable k="academic.checkins.portal.title">Progress Portal</Editable></h4>
                   <p className="text-sm text-[#8b949e] mb-4"><Editable k="academic.checkins.portal.description" multiline>View your midterm progress reports, grade projections, and instructor feedback in one central location.</Editable></p>
                   <ul className="space-y-2 text-sm text-[#8b949e]">
-                    <li className="flex items-center gap-2"><span className="text-[#388bfd]">→</span> <Editable k="academic.checkins.portal.item1">Course-by-course breakdown</Editable></li>
-                    <li className="flex items-center gap-2"><span className="text-[#388bfd]">→</span> <Editable k="academic.checkins.portal.item2">Grade trend analysis</Editable></li>
-                    <li className="flex items-center gap-2"><span className="text-[#388bfd]">→</span> <Editable k="academic.checkins.portal.item3">Instructor comments</Editable></li>
+                    <li className="flex items-center gap-2"><span className="text-[#388bfd]">&gt;</span> <Editable k="academic.checkins.portal.item1">Course-by-course breakdown</Editable></li>
+                    <li className="flex items-center gap-2"><span className="text-[#388bfd]">&gt;</span> <Editable k="academic.checkins.portal.item2">Grade trend analysis</Editable></li>
+                    <li className="flex items-center gap-2"><span className="text-[#388bfd]">&gt;</span> <Editable k="academic.checkins.portal.item3">Instructor comments</Editable></li>
                   </ul>
                 </div>
 
@@ -350,9 +350,9 @@ export default function AcademicPage() {
                   <h4 className="font-semibold text-[#f0f6fc] mb-3"><Editable k="academic.checkins.intervention.title">Early Intervention</Editable></h4>
                   <p className="text-sm text-[#8b949e] mb-4"><Editable k="academic.checkins.intervention.description" multiline>If your progress indicates concerns, you'll receive personalized resource recommendations and advisor alerts.</Editable></p>
                   <ul className="space-y-2 text-sm text-[#8b949e]">
-                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">→</span> <Editable k="academic.checkins.intervention.item1">Automatic advisor notification</Editable></li>
-                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">→</span> <Editable k="academic.checkins.intervention.item2">Tutoring recommendations</Editable></li>
-                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">→</span> <Editable k="academic.checkins.intervention.item3">Study strategy resources</Editable></li>
+                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">&gt;</span> <Editable k="academic.checkins.intervention.item1">Automatic advisor notification</Editable></li>
+                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">&gt;</span> <Editable k="academic.checkins.intervention.item2">Tutoring recommendations</Editable></li>
+                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">&gt;</span> <Editable k="academic.checkins.intervention.item3">Study strategy resources</Editable></li>
                   </ul>
                 </div>
               </div>
@@ -438,25 +438,25 @@ export default function AcademicPage() {
                   <div>
                     <h4 className="font-semibold text-[#f0f6fc] mb-3"><Editable k="academic.stemCenters.services.tutoring.title">Peer Tutoring</Editable></h4>
                     <ul className="space-y-2 text-sm text-[#8b949e]">
-                      <li><Editable k="academic.stemCenters.services.tutoring.item1">• Drop-in tutoring hours</Editable></li>
-                      <li><Editable k="academic.stemCenters.services.tutoring.item2">• One-on-one appointments</Editable></li>
-                      <li><Editable k="academic.stemCenters.services.tutoring.item3">• Exam review sessions</Editable></li>
+                      <li><Editable k="academic.stemCenters.services.tutoring.item1">- Drop-in tutoring hours</Editable></li>
+                      <li><Editable k="academic.stemCenters.services.tutoring.item2">- One-on-one appointments</Editable></li>
+                      <li><Editable k="academic.stemCenters.services.tutoring.item3">- Exam review sessions</Editable></li>
                     </ul>
                   </div>
                   <div>
                     <h4 className="font-semibold text-[#f0f6fc] mb-3"><Editable k="academic.stemCenters.services.spaces.title">Study Spaces</Editable></h4>
                     <ul className="space-y-2 text-sm text-[#8b949e]">
-                      <li><Editable k="academic.stemCenters.services.spaces.item1">• Group study rooms</Editable></li>
-                      <li><Editable k="academic.stemCenters.services.spaces.item2">• Quiet individual desks</Editable></li>
-                      <li><Editable k="academic.stemCenters.services.spaces.item3">• Whiteboards & supplies</Editable></li>
+                      <li><Editable k="academic.stemCenters.services.spaces.item1">- Group study rooms</Editable></li>
+                      <li><Editable k="academic.stemCenters.services.spaces.item2">- Quiet individual desks</Editable></li>
+                      <li><Editable k="academic.stemCenters.services.spaces.item3">- Whiteboards & supplies</Editable></li>
                     </ul>
                   </div>
                   <div>
                     <h4 className="font-semibold text-[#f0f6fc] mb-3"><Editable k="academic.stemCenters.services.resources.title">Resources</Editable></h4>
                     <ul className="space-y-2 text-sm text-[#8b949e]">
-                      <li><Editable k="academic.stemCenters.services.resources.item1">• Practice problems</Editable></li>
-                      <li><Editable k="academic.stemCenters.services.resources.item2">• Past exam files</Editable></li>
-                      <li><Editable k="academic.stemCenters.services.resources.item3">• Online resources</Editable></li>
+                      <li><Editable k="academic.stemCenters.services.resources.item1">- Practice problems</Editable></li>
+                      <li><Editable k="academic.stemCenters.services.resources.item2">- Past exam files</Editable></li>
+                      <li><Editable k="academic.stemCenters.services.resources.item3">- Online resources</Editable></li>
                     </ul>
                   </div>
                 </div>
@@ -476,19 +476,19 @@ export default function AcademicPage() {
                   <h3 className="font-semibold text-[#f85149] text-lg mb-4"><Editable k="academic.deansList.current.title">Current Process</Editable></h3>
                   <ul className="space-y-3 text-sm text-[#8b949e]">
                     <li className="flex items-start gap-3">
-                      <span className="text-[#f85149]">✗</span>
+                      <span className="text-[#f85149]">No</span>
                       <span><Editable k="academic.deansList.current.item1">Notifications sent 4-6 weeks after grades post</Editable></span>
                     </li>
                     <li className="flex items-start gap-3">
-                      <span className="text-[#f85149]">✗</span>
+                      <span className="text-[#f85149]">No</span>
                       <span><Editable k="academic.deansList.current.item2">No official digital certificate</Editable></span>
                     </li>
                     <li className="flex items-start gap-3">
-                      <span className="text-[#f85149]">✗</span>
+                      <span className="text-[#f85149]">No</span>
                       <span><Editable k="academic.deansList.current.item3">Limited recognition options</Editable></span>
                     </li>
                     <li className="flex items-start gap-3">
-                      <span className="text-[#f85149]">✗</span>
+                      <span className="text-[#f85149]">No</span>
                       <span><Editable k="academic.deansList.current.item4">Hard to share achievement professionally</Editable></span>
                     </li>
                   </ul>
@@ -498,19 +498,19 @@ export default function AcademicPage() {
                   <h3 className="font-semibold text-[#3fb950] text-lg mb-4"><Editable k="academic.deansList.proposed.title">Proposed Improvements</Editable></h3>
                   <ul className="space-y-3 text-sm text-[#8b949e]">
                     <li className="flex items-start gap-3">
-                      <span className="text-[#3fb950]">✓</span>
+                      <span className="text-[#3fb950]">Yes</span>
                       <span><Editable k="academic.deansList.proposed.item1">Notifications within 2 weeks of grades</Editable></span>
                     </li>
                     <li className="flex items-start gap-3">
-                      <span className="text-[#3fb950]">✓</span>
+                      <span className="text-[#3fb950]">Yes</span>
                       <span><Editable k="academic.deansList.proposed.item2">Official digital certificates</Editable></span>
                     </li>
                     <li className="flex items-start gap-3">
-                      <span className="text-[#3fb950]">✓</span>
+                      <span className="text-[#3fb950]">Yes</span>
                       <span><Editable k="academic.deansList.proposed.item3">LinkedIn badge integration</Editable></span>
                     </li>
                     <li className="flex items-start gap-3">
-                      <span className="text-[#3fb950]">✓</span>
+                      <span className="text-[#3fb950]">Yes</span>
                       <span><Editable k="academic.deansList.proposed.item4">Recognition portal & ceremony</Editable></span>
                     </li>
                   </ul>
@@ -542,7 +542,7 @@ export default function AcademicPage() {
                 {(getPolicy('deans-list')?.digitalFeatures || []).map((feature, i) => (
                   <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 flex items-center gap-3">
                     <div className="w-10 h-10 bg-[#388bfd]/20 border border-[#388bfd]/40 rounded-lg flex items-center justify-center">
-                      <span className="text-[#388bfd]">◆</span>
+                      <span className="text-[#388bfd]"></span>
                     </div>
                     <span className="text-[#f0f6fc] capitalize">{feature.replace(/-/g, ' ')}</span>
                   </div>
@@ -579,7 +579,7 @@ export default function AcademicPage() {
               <div className="grid md:grid-cols-3 gap-6 mb-10">
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
                   <div className="w-12 h-12 bg-[#388bfd]/20 border border-[#388bfd]/40 rounded-lg flex items-center justify-center mb-4">
-                    <span className="text-2xl">🎯</span>
+                    <span className="text-2xl"></span>
                   </div>
                   <h4 className="font-semibold text-[#f0f6fc] mb-2"><Editable k="academic.strengths.benefits.discovery.title">Self-Discovery</Editable></h4>
                   <p className="text-sm text-[#8b949e]"><Editable k="academic.strengths.benefits.discovery.description" multiline>Identify your natural talents and understand how they can be developed into strengths.</Editable></p>
@@ -587,7 +587,7 @@ export default function AcademicPage() {
 
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
                   <div className="w-12 h-12 bg-[#3fb950]/20 border border-[#3fb950]/40 rounded-lg flex items-center justify-center mb-4">
-                    <span className="text-2xl">🧭</span>
+                    <span className="text-2xl"></span>
                   </div>
                   <h4 className="font-semibold text-[#f0f6fc] mb-2"><Editable k="academic.strengths.benefits.career.title">Career Pathways</Editable></h4>
                   <p className="text-sm text-[#8b949e]"><Editable k="academic.strengths.benefits.career.description" multiline>Get personalized recommendations for majors and careers that align with your strengths.</Editable></p>
@@ -595,7 +595,7 @@ export default function AcademicPage() {
 
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
                   <div className="w-12 h-12 bg-[#a371f7]/20 border border-[#a371f7]/40 rounded-lg flex items-center justify-center mb-4">
-                    <span className="text-2xl">👥</span>
+                    <span className="text-2xl"></span>
                   </div>
                   <h4 className="font-semibold text-[#f0f6fc] mb-2"><Editable k="academic.strengths.benefits.team.title">Team Building</Editable></h4>
                   <p className="text-sm text-[#8b949e]"><Editable k="academic.strengths.benefits.team.description" multiline>Understand how to work effectively with others by recognizing complementary strengths.</Editable></p>
@@ -661,7 +661,7 @@ export default function AcademicPage() {
                   <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
                     <div className="flex items-center gap-4 mb-4">
                       <div className="w-12 h-12 bg-[#388bfd]/20 border border-[#388bfd]/40 rounded-full flex items-center justify-center">
-                        <span className="text-xl">👤</span>
+                        <span className="text-xl"></span>
                       </div>
                       <div>
                         <p className="font-semibold text-[#f0f6fc]">{contact.lead.name}</p>
@@ -670,19 +670,19 @@ export default function AcademicPage() {
                     </div>
                     <div className="space-y-3 text-sm">
                       <div className="flex items-center gap-3">
-                        <span className="text-[#8b949e]">📍</span>
+                        <span className="text-[#8b949e]"></span>
                         <span className="text-[#f0f6fc]">{contact.office}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-[#8b949e]">🕐</span>
+                        <span className="text-[#8b949e]"></span>
                         <span className="text-[#f0f6fc]">{contact.hours}</span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-[#8b949e]">📧</span>
+                        <span className="text-[#8b949e]"></span>
                         <a href={`mailto:${contact.lead.email}`} className="text-[#388bfd] hover:underline">{contact.lead.email}</a>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-[#8b949e]">📱</span>
+                        <span className="text-[#8b949e]"></span>
                         <span className="text-[#f0f6fc]">{contact.socialMedia}</span>
                       </div>
                     </div>
@@ -694,7 +694,7 @@ export default function AcademicPage() {
                     {feedbackSubmitted ? (
                       <div className="text-center py-4">
                         <div className="w-12 h-12 bg-[#388bfd]/20 rounded-full flex items-center justify-center mx-auto mb-3">
-                          <span className="text-2xl">✓</span>
+                          <span className="text-2xl"></span>
                         </div>
                         <p className="text-[#388bfd] font-medium"><Editable k="academic.faq.feedback.thanks">Thanks for your feedback!</Editable></p>
                         <button onClick={() => setFeedbackSubmitted(false)} className="text-[#58a6ff] text-sm mt-2 hover:underline"><Editable k="academic.faq.feedback.sendAnother">Send another</Editable></button>
