@@ -8,9 +8,8 @@ const navigation = [
   { name: 'Wellness', href: '/wellness', icon: '♥' },
   { name: 'Basic Needs', href: '/basic-needs', icon: '◈' },
   { name: 'Academic', href: '/academic', icon: '◎' },
-  { name: 'Civic', href: '/civic', icon: '⬡' },
   { name: 'Comms', href: '/communications', icon: '◇' },
-  { name: 'Environ', href: '/environmental', icon: '◆' },
+  { name: 'Environment', href: '/environmental', icon: '◆' },
 ]
 
 export default function Layout({ children }) {
