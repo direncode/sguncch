@@ -17,6 +17,20 @@ const formatTime = (dateString) => {
   return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 }
 
+// Live clock component
+const LiveClock = () => {
+  const [time, setTime] = useState(new Date())
+  useEffect(() => {
+    const interval = setInterval(() => setTime(new Date()), 1000)
+    return () => clearInterval(interval)
+  }, [])
+  return (
+    <div className="font-mono text-xs text-[#6e7681]">
+      {time.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} {time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+    </div>
+  )
+}
+
 export default function AdminDashboard() {
   const router = useRouter()
   const {
@@ -42,7 +56,18 @@ export default function AdminDashboard() {
   const [trainingForm, setTrainingForm] = useState({ type: 'mentalHealthFirstAid', title: '', date: '', location: '', capacity: 0 })
   const [transactionForm, setTransactionForm] = useState({ type: 'expense', amount: 0, description: '', category: '' })
   const [progressLogForm, setProgressLogForm] = useState({ policyId: null, progress: 0, note: '' })
+  const [quickEditPolicy, setQuickEditPolicy] = useState(null)
+  const [quickEditProgress, setQuickEditProgress] = useState(0)
   const [toast, setToast] = useState(null)
+
+  // Quick edit progress handler
+  const handleQuickProgressUpdate = (policyId, newProgress) => {
+    const policy = policies.find(p => p.id === policyId)
+    if (!policy) return
+    const clampedProgress = Math.max(0, Math.min(100, newProgress))
+    logPolicyProgress(policyId, clampedProgress, `Progress updated to ${clampedProgress}%`)
+    notify(`${policy.title}: ${clampedProgress}%`)
+  }
 
   useEffect(() => {
     if (isLoaded && !isAdmin) {
@@ -184,23 +209,28 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Header */}
-      <header className="bg-[#0d1117]/90 backdrop-blur-xl border-b border-[#30363d] sticky top-0 z-40">
+      {/* Command Center Header */}
+      <header className="bg-[#0d1117]/95 backdrop-blur-xl border-b border-[#30363d] sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-8">
-              <Link href="/" className="text-[#00d4ff] text-sm font-medium hover:text-[#00d4ff]/80 transition-colors flex items-center gap-2">
-                <span className="text-[#6e7681]">&larr;</span>
-                Back to Site
+          <div className="flex items-center justify-between h-14">
+            <div className="flex items-center gap-6">
+              <Link href="/" className="text-[#8b949e] text-xs font-medium hover:text-[#00d4ff] transition-colors flex items-center gap-1.5">
+                <span>&larr;</span>
+                <span>EXIT</span>
               </Link>
-              <div className="flex items-center gap-3">
-                <div className="w-2 h-2 bg-[#3fb950] rounded-full animate-pulse" />
-                <h1 className="text-[#f0f6fc] font-semibold tracking-wide">ADMIN CONSOLE</h1>
+              <div className="h-4 w-px bg-[#30363d]" />
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 bg-[#3fb950] rounded-full animate-pulse" />
+                <h1 className="text-[#f0f6fc] text-sm font-semibold tracking-widest uppercase">Command Center</h1>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Project Bold</span>
-              <div className="px-3 py-1 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded text-[#3fb950] text-xs font-mono">LIVE</div>
+            <div className="flex items-center gap-5">
+              <LiveClock />
+              <div className="h-4 w-px bg-[#30363d]" />
+              <div className="flex items-center gap-2">
+                <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.2em]">Project Bold</span>
+                <div className="px-2 py-0.5 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded text-[#3fb950] text-[9px] font-mono tracking-wider">ONLINE</div>
+              </div>
             </div>
           </div>
         </div>
@@ -228,72 +258,122 @@ export default function AdminDashboard() {
       </nav>
 
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* OVERVIEW */}
+        {/* OVERVIEW - Command Center */}
         {activeTab === 'overview' && (
-          <div className="space-y-8">
-            {/* Hero Section with Grid Background */}
-            <div className="relative overflow-hidden bg-[#161b22] border border-[#30363d] rounded-lg p-8">
-              <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'linear-gradient(#30363d 1px, transparent 1px), linear-gradient(90deg, #30363d 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
-              <div className="relative">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-2 h-2 bg-[#00d4ff] rounded-full animate-pulse" />
-                  <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">System Overview</span>
+          <div className="space-y-6">
+            {/* System Status Bar */}
+            <div className="grid grid-cols-4 gap-3">
+              <div className="bg-[#161b22] border border-[#00d4ff]/30 rounded-lg p-4 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#00d4ff] to-[#00d4ff]/0" />
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Overall</span>
+                  <div className="w-1.5 h-1.5 bg-[#00d4ff] rounded-full animate-pulse" />
                 </div>
-                <h2 className="text-3xl font-semibold text-[#f0f6fc] tracking-tight">Platform Performance</h2>
-                <p className="text-[#8b949e] mt-1">Real-time metrics and analytics</p>
+                <p className="text-3xl font-mono font-bold text-[#00d4ff] mt-2 tracking-tight">{overallProgress}%</p>
+              </div>
+              <div className="bg-[#161b22] border border-[#3fb950]/30 rounded-lg p-4 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#3fb950] to-[#3fb950]/0" />
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Completed</span>
+                  <div className="w-1.5 h-1.5 bg-[#3fb950] rounded-full" />
+                </div>
+                <p className="text-3xl font-mono font-bold text-[#3fb950] mt-2 tracking-tight">{statusCounts.completed}</p>
+              </div>
+              <div className="bg-[#161b22] border border-[#d29922]/30 rounded-lg p-4 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#d29922] to-[#d29922]/0" />
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Active</span>
+                  <div className="w-1.5 h-1.5 bg-[#d29922] rounded-full animate-pulse" />
+                </div>
+                <p className="text-3xl font-mono font-bold text-[#d29922] mt-2 tracking-tight">{statusCounts.in_progress}</p>
+              </div>
+              <div className="bg-[#161b22] border border-[#a371f7]/30 rounded-lg p-4 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#a371f7] to-[#a371f7]/0" />
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Feedback</span>
+                  {feedback.filter(f => f.status === 'new').length > 0 && <div className="w-1.5 h-1.5 bg-[#a371f7] rounded-full animate-pulse" />}
+                </div>
+                <p className="text-3xl font-mono font-bold text-[#a371f7] mt-2 tracking-tight">{feedback.filter(f => f.status === 'new').length}</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <StatCard value={`${overallProgress}%`} label="Overall Progress" color="cyan" />
-              <StatCard value={statusCounts.completed} label="Completed" color="green" />
-              <StatCard value={statusCounts.in_progress} label="In Progress" color="yellow" />
-              <StatCard value={feedback.filter(f => f.status === 'new').length} label="New Feedback" color="purple" />
-            </div>
-
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#30363d]">
-                <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Platform Metrics</span>
+            {/* Quick Stats - Editable */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-lg">
+              <div className="px-5 py-3 border-b border-[#30363d] flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-1 bg-[#00d4ff] rounded-full" />
+                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Platform Metrics</span>
+                </div>
+                <span className="text-[9px] font-mono text-[#6e7681]">Click to edit</span>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className="grid grid-cols-4 divide-x divide-[#30363d]">
                 {[
-                  { key: 'totalStudentsReached', label: 'Students Reached' },
-                  { key: 'activeInitiatives', label: 'Active Initiatives' },
-                  { key: 'eventsThisMonth', label: 'Events This Month' },
-                  { key: 'feedbackReceived', label: 'Feedback Received' },
+                  { key: 'totalStudentsReached', label: 'Students Reached', color: '#00d4ff' },
+                  { key: 'activeInitiatives', label: 'Active Initiatives', color: '#3fb950' },
+                  { key: 'eventsThisMonth', label: 'Events This Month', color: '#d29922' },
+                  { key: 'feedbackReceived', label: 'Total Feedback', color: '#a371f7' },
                 ].map(item => (
-                  <div key={item.key} className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
-                    <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest block mb-3">{item.label}</label>
+                  <div key={item.key} className="p-4 hover:bg-[#21262d]/50 transition-colors">
+                    <label className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.1em] block mb-2">{item.label}</label>
                     <input
                       type="number"
                       value={quickStats[item.key]}
                       onChange={(e) => updateQuickStats({ [item.key]: parseInt(e.target.value) || 0 })}
-                      className="w-full px-0 py-0 bg-transparent text-2xl font-mono font-semibold text-[#00d4ff] border-0 focus:ring-0"
+                      className="w-full bg-transparent text-2xl font-mono font-bold border-0 p-0 focus:ring-0 focus:outline-none"
+                      style={{ color: item.color }}
                     />
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#30363d]">
-                <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Department Progress</span>
+            {/* Department Command Panels */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-lg">
+              <div className="px-5 py-3 border-b border-[#30363d] flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-1 bg-[#3fb950] rounded-full animate-pulse" />
+                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Department Control</span>
+                </div>
+                <span className="text-[9px] font-mono text-[#6e7681]">Real-time progress editing</span>
               </div>
-              <div className="space-y-5">
+              <div className="p-5 space-y-4">
                 {departments.map(dept => {
                   const deptPolicies = policies.filter(p => p.department === dept.id)
                   const deptProgress = getOverallProgress(deptPolicies)
                   return (
-                    <div key={dept.id} className="flex items-center gap-4">
-                      <span className="text-2xl w-10">{dept.icon}</span>
-                      <div className="flex-1">
-                        <div className="flex justify-between mb-2">
-                          <span className="font-medium text-[#f0f6fc] text-sm">{dept.name}</span>
-                          <span className="text-sm font-mono text-[#00d4ff]">{deptProgress}%</span>
-                        </div>
-                        <div className="h-1 bg-[#21262d] rounded-full overflow-hidden">
-                          <div className="h-full bg-gradient-to-r from-[#00d4ff] to-[#3fb950] rounded-full transition-all" style={{ width: `${deptProgress}%` }} />
-                        </div>
+                    <div key={dept.id} className="group">
+                      <div className="flex items-center gap-4 mb-3">
+                        <span className="text-xl">{dept.icon}</span>
+                        <span className="font-medium text-[#f0f6fc] text-sm flex-1">{dept.name}</span>
+                        <span className="text-xl font-mono font-bold text-[#00d4ff] tabular-nums">{deptProgress}%</span>
+                      </div>
+                      {/* Individual policy progress controls */}
+                      <div className="ml-9 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                        {deptPolicies.map(policy => (
+                          <div key={policy.id} className="bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 hover:border-[#00d4ff]/50 transition-colors group/policy">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs text-[#8b949e] truncate flex-1" title={policy.title}>{policy.title}</span>
+                              <div className="flex items-center gap-1">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="100"
+                                  value={policy.progress}
+                                  onChange={(e) => handleQuickProgressUpdate(policy.id, parseInt(e.target.value) || 0)}
+                                  className="w-12 text-right bg-transparent text-sm font-mono font-semibold text-[#00d4ff] border-0 p-0 focus:ring-0 focus:outline-none"
+                                />
+                                <span className="text-[#6e7681] text-xs">%</span>
+                              </div>
+                            </div>
+                            <div className="h-1 bg-[#21262d] rounded-full overflow-hidden mt-1.5">
+                              <div className={`h-full rounded-full transition-all ${
+                                policy.progress >= 100 ? 'bg-[#3fb950]' :
+                                policy.progress >= 50 ? 'bg-[#00d4ff]' :
+                                policy.progress > 0 ? 'bg-[#d29922]' : 'bg-[#6e7681]'
+                              }`} style={{ width: `${policy.progress}%` }} />
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )
@@ -301,36 +381,36 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#30363d]">
-                <div className="w-2 h-2 bg-[#3fb950] rounded-full animate-pulse" />
-                <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Recent Activity</span>
+            {/* Activity Feed */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-lg">
+              <div className="px-5 py-3 border-b border-[#30363d] flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-1 bg-[#3fb950] rounded-full animate-pulse" />
+                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Activity Feed</span>
+                </div>
+                <span className="text-[9px] font-mono text-[#6e7681]">{activityLog.length} entries</span>
               </div>
-              <div className="space-y-1">
-                {activityLog.slice(0, 8).map(entry => {
+              <div className="max-h-[300px] overflow-y-auto">
+                {activityLog.slice(0, 15).map(entry => {
                   const dept = departments.find(d => d.id === entry.category)
                   const hasProgress = entry.metadata?.progress !== undefined
                   return (
-                    <div key={entry.id} className="flex items-center gap-4 py-3 px-3 rounded-lg hover:bg-[#21262d] transition-colors">
-                      <div className={`w-1.5 h-1.5 rounded-full ${hasProgress ? 'bg-[#3fb950]' : 'bg-[#00d4ff]'}`} />
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          {dept && <span className="text-sm">{dept.icon}</span>}
-                          <p className="text-sm text-[#f0f6fc]">{entry.details}</p>
-                          {hasProgress && (
-                            <span className="px-2 py-0.5 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded text-[10px] font-mono text-[#3fb950]">
-                              {entry.metadata.progress}%
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs font-mono text-[#6e7681]">
-                          {dept ? dept.name : entry.category} &middot; {formatDate(entry.timestamp)} at {formatTime(entry.timestamp)}
-                        </p>
+                    <div key={entry.id} className="flex items-center gap-3 px-5 py-3 border-b border-[#21262d] last:border-0 hover:bg-[#21262d]/50 transition-colors">
+                      <div className={`w-1 h-1 rounded-full ${hasProgress ? 'bg-[#3fb950]' : 'bg-[#00d4ff]'}`} />
+                      {dept && <span className="text-sm">{dept.icon}</span>}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-[#f0f6fc] truncate">{entry.details}</p>
+                        <p className="text-[10px] font-mono text-[#6e7681]">{formatTime(entry.timestamp)}</p>
                       </div>
+                      {hasProgress && (
+                        <span className="px-2 py-0.5 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded text-[10px] font-mono font-bold text-[#3fb950]">
+                          {entry.metadata.progress}%
+                        </span>
+                      )}
                     </div>
                   )
                 })}
-                {activityLog.length === 0 && <p className="text-[#6e7681] text-sm py-4">No activity yet</p>}
+                {activityLog.length === 0 && <p className="text-[#6e7681] text-xs py-6 text-center">No activity recorded</p>}
               </div>
             </div>
           </div>
@@ -456,16 +536,27 @@ export default function AdminDashboard() {
                       </select>
                     </div>
                     <div>
-                      <div className="flex items-center justify-between">
-                        <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Progress <span className="text-[#00d4ff] font-mono">{policy.progress}%</span></label>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Progress</label>
                         <button
                           onClick={() => { setProgressLogForm({ policyId: policy.id, progress: policy.progress, note: '' }); setShowModal('progressLog') }}
                           className="text-[10px] font-semibold text-[#00d4ff] uppercase tracking-widest hover:text-[#00d4ff]/80 transition flex items-center gap-1"
                         >
-                          <span>+</span> Log
+                          <span>+</span> Log Update
                         </button>
                       </div>
-                      <input type="range" min="0" max="100" value={policy.progress} onChange={(e) => updatePolicy(policy.id, { progress: parseInt(e.target.value) })} className="w-full mt-4 accent-[#00d4ff]" />
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={policy.progress}
+                          onChange={(e) => handleQuickProgressUpdate(policy.id, parseInt(e.target.value) || 0)}
+                          className="w-20 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-center text-lg font-mono font-bold text-[#00d4ff] focus:ring-1 focus:ring-[#00d4ff] focus:border-[#00d4ff]"
+                        />
+                        <span className="text-[#6e7681] text-sm">%</span>
+                        <input type="range" min="0" max="100" value={policy.progress} onChange={(e) => handleQuickProgressUpdate(policy.id, parseInt(e.target.value))} className="flex-1 accent-[#00d4ff]" />
+                      </div>
                     </div>
                     <div>
                       <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Priority</label>
@@ -931,60 +1022,91 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ACTIVITY */}
+        {/* ACTIVITY - Enhanced Audit Log */}
         {activeTab === 'activity' && (
-          <div className="space-y-8">
+          <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Audit Log</span>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-1 h-1 bg-[#00d4ff] rounded-full" />
+                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Audit Log</span>
                 </div>
-                <h2 className="text-3xl font-semibold text-[#f0f6fc] tracking-tight">Activity</h2>
-                <p className="text-[#8b949e] mt-1">Complete audit trail</p>
+                <h2 className="text-2xl font-semibold text-[#f0f6fc] tracking-tight">Activity Stream</h2>
               </div>
-              <button onClick={() => { if(confirm('Clear all activity?')) { clearActivityLog(); notify('Cleared') }}} className="text-sm text-[#f85149] hover:underline font-medium">Clear Log</button>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-mono text-[#6e7681]">{activityLog.length} entries</span>
+                <button onClick={() => { if(confirm('Clear all activity?')) { clearActivityLog(); notify('Cleared') }}} className="text-xs text-[#f85149] hover:underline font-medium">Clear</button>
+              </div>
             </div>
 
+            {/* Progress Updates Summary */}
+            {activityLog.filter(e => e.metadata?.progress !== undefined).length > 0 && (
+              <div className="bg-[#161b22] border border-[#3fb950]/30 rounded-lg p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-1.5 h-1.5 bg-[#3fb950] rounded-full" />
+                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Recent Progress Updates</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {activityLog.filter(e => e.metadata?.progress !== undefined).slice(0, 10).map(entry => (
+                    <div key={entry.id} className="bg-[#0d1117] border border-[#30363d] rounded px-3 py-1.5 flex items-center gap-2">
+                      <span className="text-xs text-[#8b949e] max-w-[150px] truncate">{entry.metadata.policyTitle || 'Policy'}</span>
+                      {entry.metadata.previousProgress !== undefined && (
+                        <span className="text-[10px] font-mono text-[#6e7681]">{entry.metadata.previousProgress}%</span>
+                      )}
+                      <span className="text-[#6e7681]">&rarr;</span>
+                      <span className="text-sm font-mono font-bold text-[#3fb950]">{entry.metadata.progress}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Full Activity Log */}
             <div className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
-              <div className="max-h-[600px] overflow-y-auto">
+              <div className="max-h-[550px] overflow-y-auto">
                 {activityLog.map(entry => {
                   const dept = departments.find(d => d.id === entry.category)
                   const hasProgress = entry.metadata?.progress !== undefined
+                  const progressDelta = hasProgress && entry.metadata?.previousProgress !== undefined
+                    ? entry.metadata.progress - entry.metadata.previousProgress
+                    : null
                   return (
-                    <div key={entry.id} className="flex items-center gap-4 px-6 py-4 border-b border-[#21262d] hover:bg-[#21262d]/50 transition-colors">
-                      <div className="flex items-center gap-3 min-w-[40px]">
-                        {dept && <span className="text-lg">{dept.icon}</span>}
+                    <div key={entry.id} className={`flex items-center gap-4 px-5 py-3 border-b border-[#21262d] hover:bg-[#21262d]/50 transition-colors ${hasProgress ? 'bg-[#3fb950]/5' : ''}`}>
+                      <div className="flex items-center gap-2 min-w-[32px]">
+                        {dept && <span className="text-base">{dept.icon}</span>}
                         {!dept && <div className={`w-1.5 h-1.5 rounded-full ${hasProgress ? 'bg-[#3fb950]' : 'bg-[#00d4ff]'}`} />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-sm text-[#f0f6fc]">{entry.details}</p>
                           {hasProgress && (
-                            <span className="px-2 py-0.5 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded text-[10px] font-mono font-semibold text-[#3fb950]">
-                              {entry.metadata.progress}%
-                            </span>
-                          )}
-                          {entry.metadata?.previousProgress !== undefined && hasProgress && (
-                            <span className="text-[10px] font-mono text-[#6e7681]">
-                              (was {entry.metadata.previousProgress}%)
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="px-2 py-0.5 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded text-[10px] font-mono font-bold text-[#3fb950]">
+                                {entry.metadata.progress}%
+                              </span>
+                              {progressDelta !== null && (
+                                <span className={`text-[10px] font-mono font-semibold ${progressDelta > 0 ? 'text-[#3fb950]' : progressDelta < 0 ? 'text-[#f85149]' : 'text-[#6e7681]'}`}>
+                                  {progressDelta > 0 ? '+' : ''}{progressDelta}%
+                                </span>
+                              )}
+                            </div>
                           )}
                         </div>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono uppercase ${
+                          <span className={`px-1.5 py-0.5 rounded text-[8px] font-mono uppercase tracking-wide ${
                             dept ? 'bg-[#00d4ff]/10 text-[#00d4ff]' : 'bg-[#21262d] text-[#6e7681]'
                           }`}>
                             {dept ? dept.name : entry.category}
                           </span>
-                          <span className="text-[10px] font-mono text-[#6e7681]">{entry.action}</span>
+                          <span className="text-[9px] font-mono text-[#6e7681] uppercase">{entry.action}</span>
                         </div>
                       </div>
-                      <span className="text-xs font-mono text-[#6e7681] whitespace-nowrap">{formatDate(entry.timestamp)} {formatTime(entry.timestamp)}</span>
+                      <span className="text-[10px] font-mono text-[#6e7681] whitespace-nowrap">{formatTime(entry.timestamp)}</span>
                     </div>
                   )
                 })}
                 {activityLog.length === 0 && (
-                  <div className="p-12 text-center text-[#6e7681]">No activity yet</div>
+                  <div className="p-12 text-center text-[#6e7681] text-sm">No activity recorded yet</div>
                 )}
               </div>
             </div>
