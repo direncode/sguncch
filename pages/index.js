@@ -88,10 +88,10 @@ export default function Home() {
           <div className="max-w-[1600px] mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
               <LiveIndicator label="Admin" variant="success" />
-              <span className="text-xs text-[#8b949e]">Logged in as administrator</span>
+              <span className="text-xs text-[#8b949e]"><Editable k="home.admin.loggedIn">Logged in as administrator</Editable></span>
             </div>
             <Link href="/admin" className="text-xs text-[#00d4ff] hover:text-[#58a6ff] transition">
-              Open Admin Dashboard →
+              <Editable k="home.admin.dashboardLink">Open Admin Dashboard →</Editable>
             </Link>
           </div>
         </div>
@@ -126,9 +126,9 @@ export default function Home() {
             </div>
             <div className="hidden lg:flex items-start gap-3">
               <div className="inline-block bg-[#161b22]/80 backdrop-blur border border-[#30363d] rounded-xl p-5">
-                <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-2">Session</p>
-                <p className="text-2xl font-mono font-bold text-[#00d4ff] tracking-wide">SG-2026</p>
-                <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mt-2">Project Bold</p>
+                <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-2"><Editable k="home.session.label">Session</Editable></p>
+                <p className="text-2xl font-mono font-bold text-[#00d4ff] tracking-wide"><Editable k="home.session.code">SG-2026</Editable></p>
+                <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mt-2"><Editable k="home.session.project">Project Bold</Editable></p>
               </div>
             </div>
           </div>
@@ -137,7 +137,7 @@ export default function Home() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <div className="bg-[#161b22]/80 backdrop-blur border border-[#00d4ff]/30 rounded-xl p-5 relative overflow-hidden group hover:border-[#00d4ff]/60 transition-all">
               <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#00d4ff] to-transparent" />
-              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-3">Overall Progress</p>
+              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-3"><Editable k="home.stats.progressLabel">Overall Progress</Editable></p>
               <p className="text-4xl font-bold font-mono text-[#00d4ff]"><AnimatedCounter value={overallProgress} />%</p>
               <div className="mt-3 h-1.5 bg-[#21262d] rounded-full overflow-hidden">
                 <div className="h-full bg-gradient-to-r from-[#00d4ff] to-[#388bfd] rounded-full transition-all duration-1000" style={{ width: `${overallProgress}%` }} />
@@ -146,37 +146,37 @@ export default function Home() {
 
             <div className="bg-[#161b22]/80 backdrop-blur border border-[#3fb950]/30 rounded-xl p-5 relative overflow-hidden group hover:border-[#3fb950]/60 transition-all">
               <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#3fb950] to-transparent" />
-              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-3">Completed</p>
+              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-3"><Editable k="home.stats.completedLabel">Completed</Editable></p>
               <p className="text-4xl font-bold font-mono text-[#3fb950]"><AnimatedCounter value={statusCounts.completed} /></p>
-              <p className="text-xs text-[#6e7681] mt-1">initiatives done</p>
+              <p className="text-xs text-[#6e7681] mt-1"><Editable k="home.stats.completedDesc">initiatives done</Editable></p>
             </div>
 
             <div className="bg-[#161b22]/80 backdrop-blur border border-[#d29922]/30 rounded-xl p-5 relative overflow-hidden group hover:border-[#d29922]/60 transition-all">
               <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#d29922] to-transparent" />
-              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-3">In Progress</p>
+              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-3"><Editable k="home.stats.inProgressLabel">In Progress</Editable></p>
               <p className="text-4xl font-bold font-mono text-[#d29922]"><AnimatedCounter value={statusCounts.in_progress} /></p>
-              <p className="text-xs text-[#6e7681] mt-1">active now</p>
+              <p className="text-xs text-[#6e7681] mt-1"><Editable k="home.stats.inProgressDesc">active now</Editable></p>
             </div>
 
             <div className="bg-[#161b22]/80 backdrop-blur border border-[#a371f7]/30 rounded-xl p-5 relative overflow-hidden group hover:border-[#a371f7]/60 transition-all">
               <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#a371f7] to-transparent" />
-              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-3">Students Reached</p>
+              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-3"><Editable k="home.stats.studentsLabel">Students Reached</Editable></p>
               <p className="text-4xl font-bold font-mono text-[#a371f7]"><AnimatedCounter value={quickStats?.totalStudentsReached || 0} /></p>
-              <p className="text-xs text-[#6e7681] mt-1">this semester</p>
+              <p className="text-xs text-[#6e7681] mt-1"><Editable k="home.stats.studentsDesc">this semester</Editable></p>
             </div>
 
             <div className="bg-[#161b22]/80 backdrop-blur border border-[#f85149]/30 rounded-xl p-5 relative overflow-hidden group hover:border-[#f85149]/60 transition-all">
               <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#f85149] to-transparent" />
-              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-3">Events</p>
+              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-3"><Editable k="home.stats.eventsLabel">Events</Editable></p>
               <p className="text-4xl font-bold font-mono text-[#f85149]"><AnimatedCounter value={quickStats?.eventsThisMonth || 0} /></p>
-              <p className="text-xs text-[#6e7681] mt-1">this month</p>
+              <p className="text-xs text-[#6e7681] mt-1"><Editable k="home.stats.eventsDesc">this month</Editable></p>
             </div>
 
             <div className="bg-[#161b22]/80 backdrop-blur border border-[#388bfd]/30 rounded-xl p-5 relative overflow-hidden group hover:border-[#388bfd]/60 transition-all">
               <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#388bfd] to-transparent" />
-              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-3">Feedback</p>
+              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-3"><Editable k="home.stats.feedbackLabel">Feedback</Editable></p>
               <p className="text-4xl font-bold font-mono text-[#388bfd]"><AnimatedCounter value={feedback?.length || 0} /></p>
-              <p className="text-xs text-[#6e7681] mt-1">responses</p>
+              <p className="text-xs text-[#6e7681] mt-1"><Editable k="home.stats.feedbackDesc">responses</Editable></p>
             </div>
           </div>
         </div>
@@ -189,11 +189,11 @@ export default function Home() {
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-3">
                 <span className="text-[#d29922] text-lg">★</span>
-                <h2 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-widest">Important Announcements</h2>
+                <h2 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-widest"><Editable k="home.announcements.heading">Important Announcements</Editable></h2>
               </div>
               {isAdmin && (
                 <Link href="/admin?tab=announcements" className="text-xs text-[#00d4ff] hover:underline">
-                  Manage Announcements →
+                  <Editable k="home.announcements.adminLink">Manage Announcements →</Editable>
                 </Link>
               )}
             </div>
@@ -223,8 +223,8 @@ export default function Home() {
             <div>
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-3">
-                  <h2 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-widest">Department Matrix</h2>
-                  <span className="text-[10px] text-[#6e7681] font-mono">{departments.length} departments</span>
+                  <h2 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-widest"><Editable k="home.deptMatrix.heading">Department Matrix</Editable></h2>
+                  <span className="text-[10px] text-[#6e7681] font-mono">{departments.length} <Editable k="home.deptMatrix.count">departments</Editable></span>
                 </div>
               </div>
 
@@ -279,8 +279,8 @@ export default function Home() {
             <div>
               <div className="flex items-center justify-between pb-4 border-b border-[#21262d] mb-5">
                 <div className="flex items-center gap-3">
-                  <h2 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-widest">Policy Registry</h2>
-                  <span className="text-[10px] font-mono px-2 py-0.5 bg-[#00d4ff]/10 border border-[#00d4ff]/30 rounded text-[#00d4ff]">{filteredPolicies.length} policies</span>
+                  <h2 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-widest"><Editable k="home.policyRegistry.heading">Policy Registry</Editable></h2>
+                  <span className="text-[10px] font-mono px-2 py-0.5 bg-[#00d4ff]/10 border border-[#00d4ff]/30 rounded text-[#00d4ff]">{filteredPolicies.length} <Editable k="home.policyRegistry.count">policies</Editable></span>
                 </div>
                 <div className="flex gap-1.5">
                   <button
@@ -366,7 +366,7 @@ export default function Home() {
           <div className="space-y-8">
             {/* Status Distribution */}
             <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-6">
-              <h3 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-widest mb-5">Status Overview</h3>
+              <h3 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-widest mb-5"><Editable k="home.status.heading">Status Overview</Editable></h3>
               <div className="flex items-center justify-center mb-6">
                 <DonutChart
                   data={[
@@ -384,21 +384,21 @@ export default function Home() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded bg-[#3fb950]" />
-                    <span className="text-sm text-[#8b949e]">Completed</span>
+                    <span className="text-sm text-[#8b949e]"><Editable k="home.status.completed">Completed</Editable></span>
                   </div>
                   <span className="font-mono font-bold text-[#3fb950]">{statusCounts.completed}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded bg-[#d29922]" />
-                    <span className="text-sm text-[#8b949e]">In Progress</span>
+                    <span className="text-sm text-[#8b949e]"><Editable k="home.status.inProgress">In Progress</Editable></span>
                   </div>
                   <span className="font-mono font-bold text-[#d29922]">{statusCounts.in_progress}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded bg-[#6e7681]" />
-                    <span className="text-sm text-[#8b949e]">Planned</span>
+                    <span className="text-sm text-[#8b949e]"><Editable k="home.status.planned">Planned</Editable></span>
                   </div>
                   <span className="font-mono font-bold text-[#6e7681]">{statusCounts.planned}</span>
                 </div>
@@ -407,18 +407,18 @@ export default function Home() {
 
             {/* Budget Overview */}
             <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-6 group relative">
-              <h3 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-widest mb-5">Budget Allocation</h3>
+              <h3 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-widest mb-5"><Editable k="home.budget.heading">Budget Allocation</Editable></h3>
               <div className="grid grid-cols-3 gap-4 mb-5">
                 <div className="text-center">
-                  <p className="text-[10px] text-[#6e7681] uppercase tracking-wider mb-1">Total</p>
+                  <p className="text-[10px] text-[#6e7681] uppercase tracking-wider mb-1"><Editable k="home.budget.totalLabel">Total</Editable></p>
                   <p className="text-xl font-bold font-mono text-[#f0f6fc]">${(budgetData.total / 1000).toFixed(0)}K</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-[10px] text-[#6e7681] uppercase tracking-wider mb-1">Allocated</p>
+                  <p className="text-[10px] text-[#6e7681] uppercase tracking-wider mb-1"><Editable k="home.budget.allocatedLabel">Allocated</Editable></p>
                   <p className="text-xl font-bold font-mono text-[#00d4ff]">${(budgetData.allocated / 1000).toFixed(0)}K</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-[10px] text-[#6e7681] uppercase tracking-wider mb-1">Spent</p>
+                  <p className="text-[10px] text-[#6e7681] uppercase tracking-wider mb-1"><Editable k="home.budget.spentLabel">Spent</Editable></p>
                   <p className="text-xl font-bold font-mono text-[#3fb950]">${(budgetData.spent / 1000).toFixed(0)}K</p>
                 </div>
               </div>
@@ -431,14 +431,14 @@ export default function Home() {
                 <span>Available: {(((budgetData.total - budgetData.spent) / budgetData.total) * 100).toFixed(0)}%</span>
               </div>
               <Link href="/communications" className="flex items-center justify-center gap-2 mt-5 py-2.5 border border-[#30363d] rounded-lg text-xs text-[#8b949e] hover:text-[#00d4ff] hover:border-[#00d4ff] transition">
-                View Full Dashboard →
+                <Editable k="home.budget.viewDashboard">View Full Dashboard →</Editable>
               </Link>
             </div>
 
             {/* Activity Feed */}
             <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-6">
               <div className="flex items-center justify-between mb-5">
-                <h3 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-widest">Recent Activity</h3>
+                <h3 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-widest"><Editable k="home.activity.heading">Recent Activity</Editable></h3>
                 <LiveIndicator label="Live" variant="success" />
               </div>
               <div className="space-y-0">
@@ -459,34 +459,34 @@ export default function Home() {
                     </div>
                   )
                 }) : (
-                  <p className="text-sm text-[#6e7681] text-center py-6">No recent activity</p>
+                  <p className="text-sm text-[#6e7681] text-center py-6"><Editable k="home.activity.empty">No recent activity</Editable></p>
                 )}
               </div>
             </div>
 
             {/* Quick Access */}
             <div>
-              <h3 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-widest mb-4">Quick Access</h3>
+              <h3 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-widest mb-4"><Editable k="home.quickAccess.heading">Quick Access</Editable></h3>
               <div className="grid grid-cols-2 gap-3">
                 <Link href="/wellness" className="bg-gradient-to-br from-[#3fb950]/20 to-[#3fb950]/5 border border-[#3fb950]/30 rounded-xl p-4 hover:border-[#3fb950] transition-all group">
                   <span className="text-2xl">🆘</span>
-                  <p className="font-medium text-[#f0f6fc] text-sm mt-3 group-hover:text-[#3fb950] transition">Wellness</p>
-                  <p className="text-[10px] text-[#6e7681] mt-0.5">Crisis Support</p>
+                  <p className="font-medium text-[#f0f6fc] text-sm mt-3 group-hover:text-[#3fb950] transition"><Editable k="home.quickAccess.wellness">Wellness</Editable></p>
+                  <p className="text-[10px] text-[#6e7681] mt-0.5"><Editable k="home.quickAccess.wellnessDesc">Crisis Support</Editable></p>
                 </Link>
                 <Link href="/basic-needs" className="bg-gradient-to-br from-[#d29922]/20 to-[#d29922]/5 border border-[#d29922]/30 rounded-xl p-4 hover:border-[#d29922] transition-all group">
                   <span className="text-2xl">🍎</span>
-                  <p className="font-medium text-[#f0f6fc] text-sm mt-3 group-hover:text-[#d29922] transition">Basic Needs</p>
-                  <p className="text-[10px] text-[#6e7681] mt-0.5">Food & Housing</p>
+                  <p className="font-medium text-[#f0f6fc] text-sm mt-3 group-hover:text-[#d29922] transition"><Editable k="home.quickAccess.basicNeeds">Basic Needs</Editable></p>
+                  <p className="text-[10px] text-[#6e7681] mt-0.5"><Editable k="home.quickAccess.basicNeedsDesc">Food & Housing</Editable></p>
                 </Link>
                 <Link href="/academic" className="bg-gradient-to-br from-[#a371f7]/20 to-[#a371f7]/5 border border-[#a371f7]/30 rounded-xl p-4 hover:border-[#a371f7] transition-all group">
                   <span className="text-2xl">📚</span>
-                  <p className="font-medium text-[#f0f6fc] text-sm mt-3 group-hover:text-[#a371f7] transition">Academic</p>
-                  <p className="text-[10px] text-[#6e7681] mt-0.5">Student Success</p>
+                  <p className="font-medium text-[#f0f6fc] text-sm mt-3 group-hover:text-[#a371f7] transition"><Editable k="home.quickAccess.academic">Academic</Editable></p>
+                  <p className="text-[10px] text-[#6e7681] mt-0.5"><Editable k="home.quickAccess.academicDesc">Student Success</Editable></p>
                 </Link>
                 <Link href="/communications" className="bg-gradient-to-br from-[#00d4ff]/20 to-[#00d4ff]/5 border border-[#00d4ff]/30 rounded-xl p-4 hover:border-[#00d4ff] transition-all group">
                   <span className="text-2xl">📊</span>
-                  <p className="font-medium text-[#f0f6fc] text-sm mt-3 group-hover:text-[#00d4ff] transition">Transparency</p>
-                  <p className="text-[10px] text-[#6e7681] mt-0.5">Full Dashboard</p>
+                  <p className="font-medium text-[#f0f6fc] text-sm mt-3 group-hover:text-[#00d4ff] transition"><Editable k="home.quickAccess.transparency">Transparency</Editable></p>
+                  <p className="text-[10px] text-[#6e7681] mt-0.5"><Editable k="home.quickAccess.transparencyDesc">Full Dashboard</Editable></p>
                 </Link>
               </div>
             </div>
