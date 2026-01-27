@@ -282,18 +282,24 @@ export default function WellnessPage() {
 
                 {/* Virtual Counseling */}
                 <div>
-                  <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Virtual Counseling</h3>
+                  <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">
+                    <Editable k="wellness.caps.virtualTitle">Virtual Counseling</Editable>
+                  </h3>
                   <div className="bg-[#161b22] border border-[#58a6ff] rounded-lg p-6">
                     <div className="w-12 h-12 bg-[#58a6ff]/10 border border-[#58a6ff]/30 rounded-lg flex items-center justify-center mb-4">
                       <svg className="w-6 h-6 text-[#58a6ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                       </svg>
                     </div>
-                    <h4 className="font-semibold text-[#f0f6fc] mb-2">Telehealth Sessions Available</h4>
-                    <p className="text-sm text-[#8b949e] mb-4">Access counseling from anywhere with our expanded virtual options. Schedule through ConnectCarolina.</p>
+                    <h4 className="font-semibold text-[#f0f6fc] mb-2">
+                      <Editable k="wellness.caps.telehealthTitle">Telehealth Sessions Available</Editable>
+                    </h4>
+                    <p className="text-sm text-[#8b949e] mb-4">
+                      <Editable k="wellness.caps.telehealthDesc">Access counseling from anywhere with our expanded virtual options. Schedule through ConnectCarolina.</Editable>
+                    </p>
                     <a href="https://caps.unc.edu" target="_blank" rel="noopener noreferrer"
                       className="inline-block bg-[#58a6ff] text-[#0d1117] px-5 py-2.5 rounded font-semibold hover:bg-[#79b8ff] transition-colors text-sm">
-                      Schedule Appointment
+                      <Editable k="wellness.caps.scheduleBtn">Schedule Appointment</Editable>
                     </a>
                   </div>
 
@@ -351,7 +357,7 @@ export default function WellnessPage() {
                           onChange={(val) => updatePageContent('wellness', 'rideStats', { ...content.rideStats, ridesGiven: val })}
                         />
                       </p>
-                      <p className="text-xs text-[#6e7681] uppercase">Rides Given</p>
+                      <p className="text-xs text-[#6e7681] uppercase"><Editable k="wellness.rides.stat1Label">Rides Given</Editable></p>
                     </div>
                     <div className="text-center">
                       <p className="text-2xl font-mono font-bold text-[#58a6ff]">
@@ -360,7 +366,7 @@ export default function WellnessPage() {
                           onChange={(val) => updatePageContent('wellness', 'rideStats', { ...content.rideStats, volunteers: val })}
                         />
                       </p>
-                      <p className="text-xs text-[#6e7681] uppercase">Volunteers</p>
+                      <p className="text-xs text-[#6e7681] uppercase"><Editable k="wellness.rides.stat2Label">Volunteers</Editable></p>
                     </div>
                     <div className="text-center">
                       <p className="text-2xl font-mono font-bold text-[#a371f7]">
@@ -369,32 +375,43 @@ export default function WellnessPage() {
                           onChange={(val) => updatePageContent('wellness', 'rideStats', { ...content.rideStats, avgRating: val })}
                         />
                       </p>
-                      <p className="text-xs text-[#6e7681] uppercase">Avg Rating</p>
+                      <p className="text-xs text-[#6e7681] uppercase"><Editable k="wellness.rides.stat3Label">Avg Rating</Editable></p>
                     </div>
                   </div>
 
                   <button onClick={() => setShowRideForm(true)}
                     className="w-full bg-[#3fb950] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#46c356] transition-colors">
-                    Request a Ride
+                    <Editable k="wellness.rides.requestBtn">Request a Ride</Editable>
                   </button>
                 </div>
 
                 {/* Volunteer */}
                 <div className="bg-[#161b22] border border-[#58a6ff] rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-[#f0f6fc] mb-4">Become a Safe Ride Volunteer</h3>
-                  <p className="text-sm text-[#8b949e] mb-6">Help keep fellow Tar Heels safe. Volunteer drivers receive training, gas reimbursement, and service hours.</p>
+                  <h3 className="text-lg font-semibold text-[#f0f6fc] mb-4">
+                    <Editable k="wellness.rides.volunteerTitle">Become a Safe Ride Volunteer</Editable>
+                  </h3>
+                  <p className="text-sm text-[#8b949e] mb-6">
+                    <Editable k="wellness.rides.volunteerDesc">Help keep fellow Tar Heels safe. Volunteer drivers receive training, gas reimbursement, and service hours.</Editable>
+                  </p>
 
                   <ul className="space-y-2 mb-6">
-                    {['Background check & training provided', 'Flexible scheduling', 'Gas reimbursement included', 'Earn service hours'].map((item, i) => (
-                      <li key={i} className="flex items-center gap-2 text-sm text-[#8b949e]">
-                        <span className="text-[#3fb950]">✓</span> {item}
-                      </li>
-                    ))}
+                    <li className="flex items-center gap-2 text-sm text-[#8b949e]">
+                      <span className="text-[#3fb950]">✓</span> <Editable k="wellness.rides.benefit1">Background check & training provided</Editable>
+                    </li>
+                    <li className="flex items-center gap-2 text-sm text-[#8b949e]">
+                      <span className="text-[#3fb950]">✓</span> <Editable k="wellness.rides.benefit2">Flexible scheduling</Editable>
+                    </li>
+                    <li className="flex items-center gap-2 text-sm text-[#8b949e]">
+                      <span className="text-[#3fb950]">✓</span> <Editable k="wellness.rides.benefit3">Gas reimbursement included</Editable>
+                    </li>
+                    <li className="flex items-center gap-2 text-sm text-[#8b949e]">
+                      <span className="text-[#3fb950]">✓</span> <Editable k="wellness.rides.benefit4">Earn service hours</Editable>
+                    </li>
                   </ul>
 
                   <button onClick={() => setShowVolunteerForm(true)}
                     className="w-full bg-[#58a6ff] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#79b8ff] transition-colors">
-                    Apply to Volunteer
+                    <Editable k="wellness.rides.volunteerBtn">Apply to Volunteer</Editable>
                   </button>
                 </div>
               </div>
@@ -580,60 +597,86 @@ export default function WellnessPage() {
           {/* Event Safety Tab - Policy 4 */}
           {activeTab === 'event-safety' && (
             <div>
-              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">Off-Campus Event Safety Planning</h2>
-              <p className="text-[#8b949e] mb-6">Safety Plans for Registered Student Organization Events</p>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">
+                <Editable k="wellness.events.title">Off-Campus Event Safety Planning</Editable>
+              </h2>
+              <p className="text-[#8b949e] mb-6">
+                <Editable k="wellness.events.subtitle">Safety Plans for Registered Student Organization Events</Editable>
+              </p>
 
               <PolicyProgress policy={getPolicy('event-safety')} />
 
               <div className="grid lg:grid-cols-2 gap-8 mb-10">
                 {/* Submit Safety Plan */}
                 <div>
-                  <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Submit a Safety Plan</h3>
+                  <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">
+                    <Editable k="wellness.events.submitTitle">Submit a Safety Plan</Editable>
+                  </h3>
                   <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                    <p className="text-sm text-[#8b949e] mb-6">Registered student organizations hosting off-campus events with 50+ attendees must submit a safety plan at least 7 days in advance.</p>
+                    <p className="text-sm text-[#8b949e] mb-6">
+                      <Editable k="wellness.events.submitDesc">Registered student organizations hosting off-campus events with 50+ attendees must submit a safety plan at least 7 days in advance.</Editable>
+                    </p>
 
                     <div className="space-y-4 mb-6">
-                      {['Transportation plan', 'Crowd management strategy', 'Emergency contact list', 'Sober monitor assignments'].map((item, i) => (
-                        <div key={i} className="flex items-center gap-3">
-                          <div className="w-6 h-6 rounded bg-[#3fb950]/10 border border-[#3fb950]/30 flex items-center justify-center">
-                            <span className="text-[#3fb950] text-xs">✓</span>
-                          </div>
-                          <span className="text-sm text-[#f0f6fc]">{item}</span>
+                      <div className="flex items-center gap-3">
+                        <div className="w-6 h-6 rounded bg-[#3fb950]/10 border border-[#3fb950]/30 flex items-center justify-center">
+                          <span className="text-[#3fb950] text-xs">✓</span>
                         </div>
-                      ))}
+                        <span className="text-sm text-[#f0f6fc]"><Editable k="wellness.events.req1">Transportation plan</Editable></span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-6 h-6 rounded bg-[#3fb950]/10 border border-[#3fb950]/30 flex items-center justify-center">
+                          <span className="text-[#3fb950] text-xs">✓</span>
+                        </div>
+                        <span className="text-sm text-[#f0f6fc]"><Editable k="wellness.events.req2">Crowd management strategy</Editable></span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-6 h-6 rounded bg-[#3fb950]/10 border border-[#3fb950]/30 flex items-center justify-center">
+                          <span className="text-[#3fb950] text-xs">✓</span>
+                        </div>
+                        <span className="text-sm text-[#f0f6fc]"><Editable k="wellness.events.req3">Emergency contact list</Editable></span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="w-6 h-6 rounded bg-[#3fb950]/10 border border-[#3fb950]/30 flex items-center justify-center">
+                          <span className="text-[#3fb950] text-xs">✓</span>
+                        </div>
+                        <span className="text-sm text-[#f0f6fc]"><Editable k="wellness.events.req4">Sober monitor assignments</Editable></span>
+                      </div>
                     </div>
 
                     <button onClick={() => setShowSafetyPlanForm(true)}
                       className="w-full bg-[#3fb950] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#46c356] transition-colors">
-                      Start Safety Plan
+                      <Editable k="wellness.events.startBtn">Start Safety Plan</Editable>
                     </button>
                   </div>
                 </div>
 
                 {/* Resources & Workshops */}
                 <div>
-                  <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Workshops & Resources</h3>
+                  <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">
+                    <Editable k="wellness.events.resourcesTitle">Workshops & Resources</Editable>
+                  </h3>
 
                   <div className="space-y-4">
                     <div className="bg-[#161b22] border border-[#58a6ff] rounded-lg p-5">
                       <div className="flex items-center gap-3 mb-2">
                         <span className="px-2 py-0.5 rounded text-xs bg-[#58a6ff]/10 text-[#58a6ff] border border-[#58a6ff]">WORKSHOP</span>
-                        <span className="text-xs text-[#6e7681] font-mono">Feb 10, 2026</span>
+                        <span className="text-xs text-[#6e7681] font-mono"><Editable k="wellness.events.workshopDate">Feb 10, 2026</Editable></span>
                       </div>
-                      <h4 className="font-semibold text-[#f0f6fc]">Event Safety 101</h4>
-                      <p className="text-sm text-[#8b949e] mt-1">Learn the basics of creating effective safety plans. 5pm, Union 3201</p>
+                      <h4 className="font-semibold text-[#f0f6fc]"><Editable k="wellness.events.workshopTitle">Event Safety 101</Editable></h4>
+                      <p className="text-sm text-[#8b949e] mt-1"><Editable k="wellness.events.workshopDesc">Learn the basics of creating effective safety plans. 5pm, Union 3201</Editable></p>
                     </div>
 
                     <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                      <h4 className="font-semibold text-[#f0f6fc] mb-2">Safety Plan Template</h4>
-                      <p className="text-sm text-[#8b949e] mb-3">Download our template to get started on your event safety plan.</p>
-                      <button className="text-[#58a6ff] text-sm font-medium hover:underline">Download Template (PDF)</button>
+                      <h4 className="font-semibold text-[#f0f6fc] mb-2"><Editable k="wellness.events.templateTitle">Safety Plan Template</Editable></h4>
+                      <p className="text-sm text-[#8b949e] mb-3"><Editable k="wellness.events.templateDesc">Download our template to get started on your event safety plan.</Editable></p>
+                      <button className="text-[#58a6ff] text-sm font-medium hover:underline"><Editable k="wellness.events.templateBtn">Download Template (PDF)</Editable></button>
                     </div>
 
                     <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                      <h4 className="font-semibold text-[#f0f6fc] mb-2">Best Practices Guide</h4>
-                      <p className="text-sm text-[#8b949e] mb-3">Comprehensive guide to hosting safe off-campus events.</p>
-                      <button className="text-[#58a6ff] text-sm font-medium hover:underline">View Guide</button>
+                      <h4 className="font-semibold text-[#f0f6fc] mb-2"><Editable k="wellness.events.guideTitle">Best Practices Guide</Editable></h4>
+                      <p className="text-sm text-[#8b949e] mb-3"><Editable k="wellness.events.guideDesc">Comprehensive guide to hosting safe off-campus events.</Editable></p>
+                      <button className="text-[#58a6ff] text-sm font-medium hover:underline"><Editable k="wellness.events.guideBtn">View Guide</Editable></button>
                     </div>
                   </div>
                 </div>
@@ -671,14 +714,20 @@ export default function WellnessPage() {
           {/* Wellness Button Tab - Policy 5 */}
           {activeTab === 'wellness-button' && (
             <div>
-              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">Student Wellness Button in Canvas</h2>
-              <p className="text-[#8b949e] mb-6">One-Click Access to Mental Health, Medical, and Safety Resources</p>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">
+                <Editable k="wellness.button.title">Student Wellness Button in Canvas</Editable>
+              </h2>
+              <p className="text-[#8b949e] mb-6">
+                <Editable k="wellness.button.subtitle">One-Click Access to Mental Health, Medical, and Safety Resources</Editable>
+              </p>
 
               <PolicyProgress policy={getPolicy('wellness-button')} />
 
               {/* Preview */}
               <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-8 mb-10">
-                <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-6">Canvas Integration Preview</h3>
+                <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-6">
+                  <Editable k="wellness.button.previewTitle">Canvas Integration Preview</Editable>
+                </h3>
 
                 <div className="bg-[#21262d] rounded-lg p-6 max-w-2xl">
                   <div className="flex items-center gap-4 mb-6 pb-4 border-b border-[#30363d]">
@@ -686,8 +735,8 @@ export default function WellnessPage() {
                       <span className="text-white font-bold">♥</span>
                     </div>
                     <div>
-                      <p className="font-semibold text-[#f0f6fc]">Student Wellness</p>
-                      <p className="text-xs text-[#8b949e]">Click for instant access to resources</p>
+                      <p className="font-semibold text-[#f0f6fc]"><Editable k="wellness.button.widgetTitle">Student Wellness</Editable></p>
+                      <p className="text-xs text-[#8b949e]"><Editable k="wellness.button.widgetDesc">Click for instant access to resources</Editable></p>
                     </div>
                   </div>
 
@@ -708,7 +757,9 @@ export default function WellnessPage() {
               </div>
 
               {/* What It Links To */}
-              <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Quick Access Resources</h3>
+              <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">
+                <Editable k="wellness.button.resourcesTitle">Quick Access Resources</Editable>
+              </h3>
               <div className="grid md:grid-cols-2 gap-4">
                 {[
                   { title: 'CAPS Appointments', desc: 'Schedule counseling sessions directly', link: 'https://caps.unc.edu' },
@@ -730,13 +781,19 @@ export default function WellnessPage() {
           {/* Health Integration Tab - Policy 6 */}
           {activeTab === 'health-integration' && (
             <div>
-              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">Campus Health ConnectCarolina Integration</h2>
-              <p className="text-[#8b949e] mb-6">Unified Scheduling for Medical and Mental Health Appointments</p>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">
+                <Editable k="wellness.health.title">Campus Health ConnectCarolina Integration</Editable>
+              </h2>
+              <p className="text-[#8b949e] mb-6">
+                <Editable k="wellness.health.subtitle">Unified Scheduling for Medical and Mental Health Appointments</Editable>
+              </p>
 
               <PolicyProgress policy={getPolicy('health-integration')} />
 
               {/* Benefits */}
-              <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Integration Benefits</h3>
+              <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">
+                <Editable k="wellness.health.benefitsTitle">Integration Benefits</Editable>
+              </h3>
               <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
                 {[
                   { icon: '📅', title: 'Unified Scheduling', desc: 'One platform for all health appointments' },
@@ -755,30 +812,36 @@ export default function WellnessPage() {
               {/* Current Status */}
               <div className="bg-[#161b22] border border-[#d29922] rounded-lg p-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <span className="px-2.5 py-1 rounded text-xs font-mono bg-[#d29922]/10 text-[#d29922] border border-[#d29922]">IN DEVELOPMENT</span>
+                  <span className="px-2.5 py-1 rounded text-xs font-mono bg-[#d29922]/10 text-[#d29922] border border-[#d29922]">
+                    <Editable k="wellness.health.statusBadge">IN DEVELOPMENT</Editable>
+                  </span>
                 </div>
-                <h3 className="text-lg font-semibold text-[#f0f6fc] mb-2">Advocacy in Progress</h3>
-                <p className="text-sm text-[#8b949e] mb-4">We're working with Campus Health and ITS to integrate health services into ConnectCarolina. Current timeline: Fall 2026 pilot.</p>
+                <h3 className="text-lg font-semibold text-[#f0f6fc] mb-2">
+                  <Editable k="wellness.health.statusTitle">Advocacy in Progress</Editable>
+                </h3>
+                <p className="text-sm text-[#8b949e] mb-4">
+                  <Editable k="wellness.health.statusDesc">We're working with Campus Health and ITS to integrate health services into ConnectCarolina. Current timeline: Fall 2026 pilot.</Editable>
+                </p>
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
                     <div className="w-4 h-4 rounded-full bg-[#3fb950]" />
-                    <span className="text-sm text-[#f0f6fc]">Requirements gathering - Complete</span>
+                    <span className="text-sm text-[#f0f6fc]"><Editable k="wellness.health.step1">Requirements gathering - Complete</Editable></span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="w-4 h-4 rounded-full bg-[#3fb950]" />
-                    <span className="text-sm text-[#f0f6fc]">Stakeholder meetings - Complete</span>
+                    <span className="text-sm text-[#f0f6fc]"><Editable k="wellness.health.step2">Stakeholder meetings - Complete</Editable></span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="w-4 h-4 rounded-full bg-[#d29922]" />
-                    <span className="text-sm text-[#f0f6fc]">Technical planning - In Progress</span>
+                    <span className="text-sm text-[#f0f6fc]"><Editable k="wellness.health.step3">Technical planning - In Progress</Editable></span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="w-4 h-4 rounded-full bg-[#30363d]" />
-                    <span className="text-sm text-[#8b949e]">Development - Pending</span>
+                    <span className="text-sm text-[#8b949e]"><Editable k="wellness.health.step4">Development - Pending</Editable></span>
                   </div>
                   <div className="flex items-center gap-3">
                     <div className="w-4 h-4 rounded-full bg-[#30363d]" />
-                    <span className="text-sm text-[#8b949e]">Pilot launch - Fall 2026</span>
+                    <span className="text-sm text-[#8b949e]"><Editable k="wellness.health.step5">Pilot launch - Fall 2026</Editable></span>
                   </div>
                 </div>
               </div>
@@ -791,7 +854,9 @@ export default function WellnessPage() {
               <div className="grid lg:grid-cols-2 gap-8 mb-12">
                 {/* Contact Info */}
                 <div>
-                  <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-6">Contact Us</h2>
+                  <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-6">
+                    <Editable k="wellness.faq.contactTitle">Contact Us</Editable>
+                  </h2>
                   <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
                     <div className="flex items-center gap-4 mb-4">
                       <div className="w-12 h-12 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded-full flex items-center justify-center">
@@ -824,7 +889,9 @@ export default function WellnessPage() {
 
                   {/* Quick Feedback Form */}
                   <div className="mt-6 bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                    <h3 className="font-semibold text-[#f0f6fc] mb-4">Send Feedback</h3>
+                    <h3 className="font-semibold text-[#f0f6fc] mb-4">
+                      <Editable k="wellness.faq.feedbackTitle">Send Feedback</Editable>
+                    </h3>
                     {feedbackSubmitted ? (
                       <div className="text-center py-4">
                         <div className="w-12 h-12 bg-[#3fb950]/10 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -855,7 +922,9 @@ export default function WellnessPage() {
 
                 {/* FAQ Section */}
                 <div>
-                  <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-6">Frequently Asked Questions</h2>
+                  <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-6">
+                    <Editable k="wellness.faq.faqTitle">Frequently Asked Questions</Editable>
+                  </h2>
                   <div className="space-y-3">
                     {faqs.map((faq, i) => (
                       <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
@@ -879,7 +948,9 @@ export default function WellnessPage() {
 
               {/* Announcements */}
               <div>
-                <h3 className="text-lg font-semibold text-[#f0f6fc] tracking-tight mb-5">Recent Updates</h3>
+                <h3 className="text-lg font-semibold text-[#f0f6fc] tracking-tight mb-5">
+                  <Editable k="wellness.faq.updatesTitle">Recent Updates</Editable>
+                </h3>
                 <div className="space-y-3">
                   {announcements.map(ann => (
                     <div key={ann.id} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 flex items-start gap-4">
