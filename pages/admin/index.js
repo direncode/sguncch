@@ -5,34 +5,16 @@ import Link from 'next/link'
 import { useApp } from '../../lib/store'
 import { departments, getOverallProgress, getStatusCounts } from '../../lib/data'
 
-// Helper to format dates nicely
 const formatDate = (dateString) => {
-  if (!dateString) return 'N/A'
+  if (!dateString) return ''
   const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-const formatShortDate = (dateString) => {
-  if (!dateString) return 'N/A'
+const formatTime = (dateString) => {
+  if (!dateString) return ''
   const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-}
-
-// Activity category colors
-const categoryColors = {
-  auth: 'bg-purple-100 text-purple-800',
-  policy: 'bg-blue-100 text-blue-800',
-  communication: 'bg-green-100 text-green-800',
-  engagement: 'bg-yellow-100 text-yellow-800',
-  operations: 'bg-orange-100 text-orange-800',
-  'tech-loaner': 'bg-cyan-100 text-cyan-800',
-  'food-pantry': 'bg-pink-100 text-pink-800',
-  training: 'bg-indigo-100 text-indigo-800',
-  events: 'bg-rose-100 text-rose-800',
-  advocacy: 'bg-red-100 text-red-800',
-  budget: 'bg-emerald-100 text-emerald-800',
-  analytics: 'bg-violet-100 text-violet-800',
-  system: 'bg-gray-100 text-gray-800',
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 }
 
 export default function AdminDashboard() {
@@ -40,12 +22,12 @@ export default function AdminDashboard() {
   const {
     isAdmin, isLoaded, policies, operationalData, budgetData, announcements,
     activityLog, feedback, quickStats,
-    updatePolicy, updatePolicyMetrics, batchUpdatePolicies,
-    addAnnouncement, updateAnnouncement, deleteAnnouncement, pinAnnouncement,
+    updatePolicy, updatePolicyMetrics,
+    addAnnouncement, deleteAnnouncement, pinAnnouncement,
     updateFeedbackStatus,
     addTechDevice, updateTechDevice, deleteTechDevice, addTechLoan, updateTechLoan,
     updatePantryLocation, logPantryVisit, logPantryDonation,
-    addTrainingSession, logTrainingAttendance,
+    addTrainingSession,
     updateBudget, updateBudgetCategory, addBudgetTransaction,
     updateQuickStats,
     exportAllData, importData, resetAllData, clearActivityLog,
@@ -53,21 +35,14 @@ export default function AdminDashboard() {
 
   const [activeTab, setActiveTab] = useState('overview')
   const [selectedDept, setSelectedDept] = useState('all')
-  const [editingPolicy, setEditingPolicy] = useState(null)
   const [announcementForm, setAnnouncementForm] = useState({ title: '', content: '', category: 'general', pinned: false })
-  const [showAnnouncementForm, setShowAnnouncementForm] = useState(false)
+  const [showModal, setShowModal] = useState(null)
   const [deviceForm, setDeviceForm] = useState({ type: 'laptop-windows', name: '', total: 0, available: 0 })
-  const [showDeviceForm, setShowDeviceForm] = useState(false)
   const [loanForm, setLoanForm] = useState({ studentName: '', studentEmail: '', deviceType: '', dueDate: '' })
-  const [showLoanForm, setShowLoanForm] = useState(false)
   const [trainingForm, setTrainingForm] = useState({ type: 'mentalHealthFirstAid', title: '', date: '', location: '', capacity: 0 })
-  const [showTrainingForm, setShowTrainingForm] = useState(false)
   const [transactionForm, setTransactionForm] = useState({ type: 'expense', amount: 0, description: '', category: '' })
-  const [showTransactionForm, setShowTransactionForm] = useState(false)
-  const [importFile, setImportFile] = useState(null)
-  const [notification, setNotification] = useState(null)
+  const [toast, setToast] = useState(null)
 
-  // Redirect if not admin
   useEffect(() => {
     if (isLoaded && !isAdmin) {
       router.push('/admin/login')
@@ -76,67 +51,20 @@ export default function AdminDashboard() {
 
   if (!isLoaded || !isAdmin) {
     return (
-      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <div className="animate-pulse text-gray-500">Loading...</div>
+      <div className="min-h-screen bg-[#f5f5f7] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-[#0071e3] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
-  const showNotification = (message, type = 'success') => {
-    setNotification({ message, type })
-    setTimeout(() => setNotification(null), 3000)
+  const notify = (message) => {
+    setToast(message)
+    setTimeout(() => setToast(null), 2500)
   }
 
-  // Calculate stats
   const overallProgress = getOverallProgress(policies)
   const statusCounts = getStatusCounts(policies)
   const filteredPolicies = selectedDept === 'all' ? policies : policies.filter(p => p.department === selectedDept)
-
-  // Handlers
-  const handlePolicyUpdate = (policyId, field, value) => {
-    updatePolicy(policyId, { [field]: value })
-    showNotification('Policy updated successfully')
-  }
-
-  const handleAnnouncementSubmit = (e) => {
-    e.preventDefault()
-    addAnnouncement(announcementForm)
-    setAnnouncementForm({ title: '', content: '', category: 'general', pinned: false })
-    setShowAnnouncementForm(false)
-    showNotification('Announcement published successfully')
-  }
-
-  const handleDeviceSubmit = (e) => {
-    e.preventDefault()
-    addTechDevice({ ...deviceForm, onLoan: 0 })
-    setDeviceForm({ type: 'laptop-windows', name: '', total: 0, available: 0 })
-    setShowDeviceForm(false)
-    showNotification('Device added successfully')
-  }
-
-  const handleLoanSubmit = (e) => {
-    e.preventDefault()
-    addTechLoan(loanForm)
-    setLoanForm({ studentName: '', studentEmail: '', deviceType: '', dueDate: '' })
-    setShowLoanForm(false)
-    showNotification('Loan recorded successfully')
-  }
-
-  const handleTrainingSubmit = (e) => {
-    e.preventDefault()
-    addTrainingSession(trainingForm.type, trainingForm)
-    setTrainingForm({ type: 'mentalHealthFirstAid', title: '', date: '', location: '', capacity: 0 })
-    setShowTrainingForm(false)
-    showNotification('Training session added successfully')
-  }
-
-  const handleTransactionSubmit = (e) => {
-    e.preventDefault()
-    addBudgetTransaction(transactionForm)
-    setTransactionForm({ type: 'expense', amount: 0, description: '', category: '' })
-    setShowTransactionForm(false)
-    showNotification('Transaction recorded successfully')
-  }
 
   const handleExport = () => {
     const data = exportAllData()
@@ -144,10 +72,9 @@ export default function AdminDashboard() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `projectbold-export-${new Date().toISOString().split('T')[0]}.json`
+    a.download = `projectbold-${new Date().toISOString().split('T')[0]}.json`
     a.click()
-    URL.revokeObjectURL(url)
-    showNotification('Data exported successfully')
+    notify('Data exported')
   }
 
   const handleImport = (e) => {
@@ -157,14 +84,10 @@ export default function AdminDashboard() {
       reader.onload = (event) => {
         try {
           const data = JSON.parse(event.target.result)
-          const result = importData(data)
-          if (result.success) {
-            showNotification('Data imported successfully')
-          } else {
-            showNotification('Import failed: ' + result.error, 'error')
-          }
-        } catch (err) {
-          showNotification('Invalid JSON file', 'error')
+          importData(data)
+          notify('Data imported')
+        } catch {
+          notify('Import failed')
         }
       }
       reader.readAsText(file)
@@ -172,180 +95,180 @@ export default function AdminDashboard() {
   }
 
   const tabs = [
-    { id: 'overview', label: 'Overview', icon: '📊' },
-    { id: 'announcements', label: 'Announcements', icon: '📢' },
-    { id: 'policies', label: 'Policies', icon: '📋' },
-    { id: 'operations', label: 'Operations', icon: '⚙️' },
-    { id: 'budget', label: 'Budget', icon: '💰' },
-    { id: 'feedback', label: 'Feedback', icon: '💬' },
-    { id: 'activity', label: 'Activity Log', icon: '📝' },
-    { id: 'settings', label: 'Settings', icon: '🔧' },
+    { id: 'overview', label: 'Overview' },
+    { id: 'announcements', label: 'Announcements' },
+    { id: 'policies', label: 'Policies' },
+    { id: 'operations', label: 'Operations' },
+    { id: 'budget', label: 'Budget' },
+    { id: 'feedback', label: 'Feedback' },
+    { id: 'activity', label: 'Activity' },
+    { id: 'settings', label: 'Settings' },
   ]
 
+  // Modal Component
+  const Modal = ({ title, onClose, children }) => (
+    <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#e8e8ed]">
+          <h3 className="text-lg font-semibold text-[#1d1d1f]">{title}</h3>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-[#f5f5f7] flex items-center justify-center hover:bg-[#e8e8ed] transition">
+            <span className="text-[#86868b] text-xl leading-none">&times;</span>
+          </button>
+        </div>
+        <div className="p-6">{children}</div>
+      </div>
+    </div>
+  )
+
+  // Input Component
+  const Input = ({ label, ...props }) => (
+    <div>
+      {label && <label className="block text-sm font-medium text-[#1d1d1f] mb-2">{label}</label>}
+      <input {...props} className="w-full px-4 py-3 bg-[#f5f5f7] border-0 rounded-xl text-[#1d1d1f] placeholder-[#86868b] focus:ring-2 focus:ring-[#0071e3] focus:ring-offset-0" />
+    </div>
+  )
+
+  // Select Component
+  const Select = ({ label, options, ...props }) => (
+    <div>
+      {label && <label className="block text-sm font-medium text-[#1d1d1f] mb-2">{label}</label>}
+      <select {...props} className="w-full px-4 py-3 bg-[#f5f5f7] border-0 rounded-xl text-[#1d1d1f] focus:ring-2 focus:ring-[#0071e3]">
+        {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+      </select>
+    </div>
+  )
+
+  // Button Component
+  const Button = ({ variant = 'primary', children, ...props }) => {
+    const base = "px-5 py-2.5 rounded-full font-medium text-sm transition-all"
+    const variants = {
+      primary: "bg-[#0071e3] text-white hover:bg-[#0077ed] active:scale-[0.98]",
+      secondary: "bg-[#f5f5f7] text-[#1d1d1f] hover:bg-[#e8e8ed]",
+      danger: "bg-[#ff3b30] text-white hover:bg-[#ff453a]",
+    }
+    return <button {...props} className={`${base} ${variants[variant]}`}>{children}</button>
+  }
+
+  // Stat Card
+  const StatCard = ({ value, label, color = 'blue' }) => {
+    const colors = {
+      blue: 'text-[#0071e3]',
+      green: 'text-[#34c759]',
+      orange: 'text-[#ff9500]',
+      purple: 'text-[#af52de]',
+      red: 'text-[#ff3b30]',
+    }
+    return (
+      <div className="bg-white rounded-2xl p-6">
+        <p className={`text-4xl font-semibold ${colors[color]} tracking-tight`}>{value}</p>
+        <p className="text-[#86868b] text-sm mt-1">{label}</p>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-[#f5f5f7]">
       <Head>
-        <title>Admin Dashboard | Project Bold</title>
+        <title>Admin | Project Bold</title>
       </Head>
 
-      {/* Notification Toast */}
-      {notification && (
-        <div className={`fixed top-4 right-4 z-50 px-6 py-3 rounded-lg shadow-lg ${
-          notification.type === 'error' ? 'bg-red-500' : 'bg-green-500'
-        } text-white font-medium`}>
-          {notification.message}
+      {/* Toast */}
+      {toast && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-[#1d1d1f] text-white px-6 py-3 rounded-full shadow-lg text-sm font-medium animate-[fadeIn_0.2s]">
+          {toast}
         </div>
       )}
 
       {/* Header */}
-      <header className="bg-[#13294B] text-white">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link href="/" className="text-[#4B9CD3] hover:text-white">
+      <header className="bg-white/80 backdrop-blur-xl border-b border-[#e8e8ed] sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="flex items-center justify-between h-14">
+            <div className="flex items-center gap-6">
+              <Link href="/" className="text-[#0071e3] text-sm font-medium hover:text-[#0077ed]">
                 ← Back to Site
               </Link>
-              <h1 className="text-xl font-bold">Admin Dashboard</h1>
+              <h1 className="text-[#1d1d1f] font-semibold">Admin</h1>
             </div>
-            <div className="text-sm text-gray-300">
-              Project Bold Policy Platform
-            </div>
+            <div className="text-sm text-[#86868b]">Project Bold</div>
           </div>
         </div>
       </header>
 
       {/* Tab Navigation */}
-      <div className="bg-white border-b shadow-sm sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex gap-1 overflow-x-auto py-1">
+      <nav className="bg-white/60 backdrop-blur-xl border-b border-[#e8e8ed]">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="flex gap-1 overflow-x-auto py-2">
             {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-3 text-sm font-medium whitespace-nowrap rounded-t transition ${
+                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
                   activeTab === tab.id
-                    ? 'bg-[#13294B] text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
+                    ? 'bg-[#1d1d1f] text-white'
+                    : 'text-[#86868b] hover:text-[#1d1d1f] hover:bg-[#f5f5f7]'
                 }`}
               >
-                <span>{tab.icon}</span>
                 {tab.label}
               </button>
             ))}
           </div>
         </div>
-      </div>
+      </nav>
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        {/* ==================== OVERVIEW TAB ==================== */}
+      <main className="max-w-6xl mx-auto px-6 py-8">
+        {/* OVERVIEW */}
         {activeTab === 'overview' && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-[#13294B]">Dashboard Overview</h2>
+          <div className="space-y-8">
+            <div>
+              <h2 className="text-3xl font-semibold text-[#1d1d1f] tracking-tight">Overview</h2>
+              <p className="text-[#86868b] mt-1">Platform performance at a glance</p>
+            </div>
 
-            {/* Quick Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white rounded-lg p-6 shadow-sm border-l-4 border-blue-500">
-                <p className="text-3xl font-bold text-blue-600">{overallProgress}%</p>
-                <p className="text-sm text-gray-600">Overall Progress</p>
-              </div>
-              <div className="bg-white rounded-lg p-6 shadow-sm border-l-4 border-green-500">
-                <p className="text-3xl font-bold text-green-600">{statusCounts.completed}</p>
-                <p className="text-sm text-gray-600">Completed Policies</p>
-              </div>
-              <div className="bg-white rounded-lg p-6 shadow-sm border-l-4 border-yellow-500">
-                <p className="text-3xl font-bold text-yellow-600">{statusCounts.in_progress}</p>
-                <p className="text-sm text-gray-600">In Progress</p>
-              </div>
-              <div className="bg-white rounded-lg p-6 shadow-sm border-l-4 border-purple-500">
-                <p className="text-3xl font-bold text-purple-600">{feedback.filter(f => f.status === 'new').length}</p>
-                <p className="text-sm text-gray-600">New Feedback</p>
-              </div>
+              <StatCard value={`${overallProgress}%`} label="Overall Progress" color="blue" />
+              <StatCard value={statusCounts.completed} label="Completed" color="green" />
+              <StatCard value={statusCounts.in_progress} label="In Progress" color="orange" />
+              <StatCard value={feedback.filter(f => f.status === 'new').length} label="New Feedback" color="purple" />
             </div>
 
-            {/* Editable Quick Stats */}
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <h3 className="font-bold text-[#13294B] mb-4">Platform Metrics (Editable)</h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">Students Reached</label>
-                  <input
-                    type="number"
-                    value={quickStats.totalStudentsReached}
-                    onChange={(e) => updateQuickStats({ totalStudentsReached: parseInt(e.target.value) || 0 })}
-                    className="w-full border rounded px-3 py-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">Active Initiatives</label>
-                  <input
-                    type="number"
-                    value={quickStats.activeInitiatives}
-                    onChange={(e) => updateQuickStats({ activeInitiatives: parseInt(e.target.value) || 0 })}
-                    className="w-full border rounded px-3 py-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">Events This Month</label>
-                  <input
-                    type="number"
-                    value={quickStats.eventsThisMonth}
-                    onChange={(e) => updateQuickStats({ eventsThisMonth: parseInt(e.target.value) || 0 })}
-                    className="w-full border rounded px-3 py-2"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">Feedback Received</label>
-                  <input
-                    type="number"
-                    value={quickStats.feedbackReceived}
-                    onChange={(e) => updateQuickStats({ feedbackReceived: parseInt(e.target.value) || 0 })}
-                    className="w-full border rounded px-3 py-2"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Recent Activity */}
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <h3 className="font-bold text-[#13294B] mb-4">Recent Activity</h3>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {activityLog.slice(0, 10).map(entry => (
-                  <div key={entry.id} className="flex items-start gap-3 py-2 border-b border-gray-100">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${categoryColors[entry.category] || 'bg-gray-100'}`}>
-                      {entry.category}
-                    </span>
-                    <div className="flex-1">
-                      <p className="text-sm text-gray-800">{entry.details}</p>
-                      <p className="text-xs text-gray-400">{formatShortDate(entry.timestamp)}</p>
-                    </div>
+            <div className="bg-white rounded-2xl p-6">
+              <h3 className="text-xs font-semibold text-[#86868b] uppercase tracking-wider mb-4">Platform Metrics</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                {[
+                  { key: 'totalStudentsReached', label: 'Students Reached' },
+                  { key: 'activeInitiatives', label: 'Active Initiatives' },
+                  { key: 'eventsThisMonth', label: 'Events This Month' },
+                  { key: 'feedbackReceived', label: 'Feedback Received' },
+                ].map(item => (
+                  <div key={item.key}>
+                    <label className="text-sm text-[#86868b] block mb-2">{item.label}</label>
+                    <input
+                      type="number"
+                      value={quickStats[item.key]}
+                      onChange={(e) => updateQuickStats({ [item.key]: parseInt(e.target.value) || 0 })}
+                      className="w-full px-4 py-3 bg-[#f5f5f7] rounded-xl text-2xl font-semibold text-[#1d1d1f] border-0"
+                    />
                   </div>
                 ))}
-                {activityLog.length === 0 && (
-                  <p className="text-gray-500 text-sm">No recent activity</p>
-                )}
               </div>
             </div>
 
-            {/* Department Progress */}
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <h3 className="font-bold text-[#13294B] mb-4">Progress by Department</h3>
+            <div className="bg-white rounded-2xl p-6">
+              <h3 className="text-xs font-semibold text-[#86868b] uppercase tracking-wider mb-4">Department Progress</h3>
               <div className="space-y-4">
                 {departments.map(dept => {
                   const deptPolicies = policies.filter(p => p.department === dept.id)
                   const deptProgress = getOverallProgress(deptPolicies)
                   return (
                     <div key={dept.id} className="flex items-center gap-4">
-                      <span className="text-2xl w-8">{dept.icon}</span>
+                      <span className="text-2xl w-10">{dept.icon}</span>
                       <div className="flex-1">
                         <div className="flex justify-between mb-1">
-                          <span className="font-medium text-sm">{dept.name}</span>
-                          <span className="text-sm text-gray-500">{deptProgress}%</span>
+                          <span className="font-medium text-[#1d1d1f] text-sm">{dept.name}</span>
+                          <span className="text-sm text-[#86868b]">{deptProgress}%</span>
                         </div>
-                        <div className="h-2 bg-gray-200 rounded-full">
-                          <div
-                            className="h-full rounded-full bg-blue-500"
-                            style={{ width: `${deptProgress}%` }}
-                          />
+                        <div className="h-1.5 bg-[#f5f5f7] rounded-full overflow-hidden">
+                          <div className="h-full bg-[#0071e3] rounded-full transition-all" style={{ width: `${deptProgress}%` }} />
                         </div>
                       </div>
                     </div>
@@ -353,211 +276,145 @@ export default function AdminDashboard() {
                 })}
               </div>
             </div>
+
+            <div className="bg-white rounded-2xl p-6">
+              <h3 className="text-xs font-semibold text-[#86868b] uppercase tracking-wider mb-4">Recent Activity</h3>
+              <div className="space-y-3">
+                {activityLog.slice(0, 8).map(entry => (
+                  <div key={entry.id} className="flex items-center gap-4 py-2">
+                    <div className="w-2 h-2 rounded-full bg-[#0071e3]" />
+                    <div className="flex-1">
+                      <p className="text-sm text-[#1d1d1f]">{entry.details}</p>
+                      <p className="text-xs text-[#86868b]">{formatDate(entry.timestamp)} at {formatTime(entry.timestamp)}</p>
+                    </div>
+                  </div>
+                ))}
+                {activityLog.length === 0 && <p className="text-[#86868b] text-sm">No activity yet</p>}
+              </div>
+            </div>
           </div>
         )}
 
-        {/* ==================== ANNOUNCEMENTS TAB ==================== */}
+        {/* ANNOUNCEMENTS */}
         {activeTab === 'announcements' && (
-          <div className="space-y-6">
+          <div className="space-y-8">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-[#13294B]">SBP Announcements</h2>
-              <button
-                onClick={() => setShowAnnouncementForm(true)}
-                className="bg-[#13294B] text-white px-4 py-2 rounded hover:bg-[#0a1628] font-medium"
-              >
-                + New Announcement
-              </button>
+              <div>
+                <h2 className="text-3xl font-semibold text-[#1d1d1f] tracking-tight">Announcements</h2>
+                <p className="text-[#86868b] mt-1">Communicate directly with students</p>
+              </div>
+              <Button onClick={() => setShowModal('announcement')}>New Announcement</Button>
             </div>
 
-            <p className="text-gray-600">
-              Post updates directly to students. Announcements appear on the homepage and can be pinned for visibility.
-            </p>
-
-            {/* Announcement Form Modal */}
-            {showAnnouncementForm && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-lg max-w-lg w-full p-6">
-                  <h3 className="text-xl font-bold text-[#13294B] mb-4">Create Announcement</h3>
-                  <form onSubmit={handleAnnouncementSubmit} className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-                      <input
-                        type="text"
-                        value={announcementForm.title}
-                        onChange={(e) => setAnnouncementForm({ ...announcementForm, title: e.target.value })}
-                        className="w-full border rounded px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                      <select
-                        value={announcementForm.category}
-                        onChange={(e) => setAnnouncementForm({ ...announcementForm, category: e.target.value })}
-                        className="w-full border rounded px-3 py-2"
-                      >
-                        <option value="general">General Update</option>
-                        <option value="policy">Policy Update</option>
-                        <option value="event">Event</option>
-                        <option value="urgent">Urgent</option>
-                        <option value="milestone">Milestone</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
-                      <textarea
-                        value={announcementForm.content}
-                        onChange={(e) => setAnnouncementForm({ ...announcementForm, content: e.target.value })}
-                        className="w-full border rounded px-3 py-2"
-                        rows={4}
-                        required
-                      />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="pinned"
-                        checked={announcementForm.pinned}
-                        onChange={(e) => setAnnouncementForm({ ...announcementForm, pinned: e.target.checked })}
-                      />
-                      <label htmlFor="pinned" className="text-sm">Pin to top of announcements</label>
-                    </div>
-                    <div className="flex gap-3 pt-2">
-                      <button type="submit" className="bg-[#13294B] text-white px-4 py-2 rounded hover:bg-[#0a1628]">
-                        Publish
-                      </button>
-                      <button type="button" onClick={() => setShowAnnouncementForm(false)} className="border px-4 py-2 rounded hover:bg-gray-50">
-                        Cancel
-                      </button>
-                    </div>
-                  </form>
-                </div>
-              </div>
-            )}
-
-            {/* Announcements List */}
             <div className="space-y-4">
-              {[...announcements].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)).map(announcement => (
-                <div key={announcement.id} className={`bg-white rounded-lg p-6 shadow-sm ${announcement.pinned ? 'border-l-4 border-yellow-500' : ''}`}>
+              {[...announcements].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)).map(a => (
+                <div key={a.id} className={`bg-white rounded-2xl p-6 ${a.pinned ? 'ring-2 ring-[#ff9500]' : ''}`}>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2">
-                        {announcement.pinned && <span className="text-yellow-500">📌</span>}
-                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                          announcement.category === 'urgent' ? 'bg-red-100 text-red-800' :
-                          announcement.category === 'policy' ? 'bg-blue-100 text-blue-800' :
-                          announcement.category === 'event' ? 'bg-purple-100 text-purple-800' :
-                          announcement.category === 'milestone' ? 'bg-green-100 text-green-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {announcement.category}
-                        </span>
+                        {a.pinned && <span className="text-[#ff9500]">★</span>}
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          a.category === 'urgent' ? 'bg-[#ff3b30]/10 text-[#ff3b30]' :
+                          a.category === 'event' ? 'bg-[#af52de]/10 text-[#af52de]' :
+                          a.category === 'milestone' ? 'bg-[#34c759]/10 text-[#34c759]' :
+                          'bg-[#f5f5f7] text-[#86868b]'
+                        }`}>{a.category}</span>
                       </div>
-                      <h3 className="font-bold text-[#13294B] text-lg">{announcement.title}</h3>
-                      <p className="text-gray-600 mt-1">{announcement.content}</p>
-                      <p className="text-xs text-gray-400 mt-2">{formatDate(announcement.createdAt)}</p>
+                      <h3 className="text-lg font-semibold text-[#1d1d1f]">{a.title}</h3>
+                      <p className="text-[#6e6e73] mt-1">{a.content}</p>
+                      <p className="text-xs text-[#86868b] mt-3">{formatDate(a.createdAt)}</p>
                     </div>
                     <div className="flex gap-2 ml-4">
-                      <button
-                        onClick={() => pinAnnouncement(announcement.id, !announcement.pinned)}
-                        className="text-gray-400 hover:text-yellow-500 p-1"
-                        title={announcement.pinned ? 'Unpin' : 'Pin'}
-                      >
-                        📌
-                      </button>
-                      <button
-                        onClick={() => deleteAnnouncement(announcement.id)}
-                        className="text-gray-400 hover:text-red-500 p-1"
-                        title="Delete"
-                      >
-                        🗑️
-                      </button>
+                      <button onClick={() => pinAnnouncement(a.id, !a.pinned)} className="w-8 h-8 rounded-full bg-[#f5f5f7] flex items-center justify-center hover:bg-[#e8e8ed] text-[#86868b]">★</button>
+                      <button onClick={() => { deleteAnnouncement(a.id); notify('Deleted') }} className="w-8 h-8 rounded-full bg-[#f5f5f7] flex items-center justify-center hover:bg-[#ff3b30]/10 text-[#86868b] hover:text-[#ff3b30]">×</button>
                     </div>
                   </div>
                 </div>
               ))}
               {announcements.length === 0 && (
-                <div className="bg-white rounded-lg p-8 shadow-sm text-center">
-                  <p className="text-gray-500">No announcements yet. Create one to communicate directly with students.</p>
+                <div className="bg-white rounded-2xl p-12 text-center">
+                  <p className="text-[#86868b]">No announcements yet</p>
                 </div>
               )}
             </div>
+
+            {showModal === 'announcement' && (
+              <Modal title="New Announcement" onClose={() => setShowModal(null)}>
+                <form onSubmit={(e) => { e.preventDefault(); addAnnouncement(announcementForm); setAnnouncementForm({ title: '', content: '', category: 'general', pinned: false }); setShowModal(null); notify('Published') }} className="space-y-4">
+                  <Input label="Title" value={announcementForm.title} onChange={(e) => setAnnouncementForm({ ...announcementForm, title: e.target.value })} required />
+                  <Select label="Category" value={announcementForm.category} onChange={(e) => setAnnouncementForm({ ...announcementForm, category: e.target.value })} options={[
+                    { value: 'general', label: 'General' },
+                    { value: 'policy', label: 'Policy Update' },
+                    { value: 'event', label: 'Event' },
+                    { value: 'urgent', label: 'Urgent' },
+                    { value: 'milestone', label: 'Milestone' },
+                  ]} />
+                  <div>
+                    <label className="block text-sm font-medium text-[#1d1d1f] mb-2">Content</label>
+                    <textarea value={announcementForm.content} onChange={(e) => setAnnouncementForm({ ...announcementForm, content: e.target.value })} rows={4} required className="w-full px-4 py-3 bg-[#f5f5f7] border-0 rounded-xl text-[#1d1d1f] resize-none focus:ring-2 focus:ring-[#0071e3]" />
+                  </div>
+                  <label className="flex items-center gap-3">
+                    <input type="checkbox" checked={announcementForm.pinned} onChange={(e) => setAnnouncementForm({ ...announcementForm, pinned: e.target.checked })} />
+                    <span className="text-sm text-[#1d1d1f]">Pin announcement</span>
+                  </label>
+                  <div className="flex gap-3 pt-2">
+                    <Button type="submit">Publish</Button>
+                    <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
+                  </div>
+                </form>
+              </Modal>
+            )}
           </div>
         )}
 
-        {/* ==================== POLICIES TAB ==================== */}
+        {/* POLICIES */}
         {activeTab === 'policies' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between flex-wrap gap-4">
-              <h2 className="text-2xl font-bold text-[#13294B]">Policy Management</h2>
-              <select
-                value={selectedDept}
-                onChange={(e) => setSelectedDept(e.target.value)}
-                className="border rounded px-3 py-2"
-              >
+          <div className="space-y-8">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-3xl font-semibold text-[#1d1d1f] tracking-tight">Policies</h2>
+                <p className="text-[#86868b] mt-1">Manage all 40 policy initiatives</p>
+              </div>
+              <select value={selectedDept} onChange={(e) => setSelectedDept(e.target.value)} className="px-4 py-2 bg-white rounded-full text-sm text-[#1d1d1f] border-0 shadow-sm">
                 <option value="all">All Departments</option>
-                {departments.map(dept => (
-                  <option key={dept.id} value={dept.id}>{dept.icon} {dept.name}</option>
-                ))}
+                {departments.map(d => <option key={d.id} value={d.id}>{d.icon} {d.name}</option>)}
               </select>
             </div>
 
-            <p className="text-gray-600">
-              Update policy status, progress, and metrics. Changes are saved automatically and logged.
-            </p>
-
-            {/* Policies List */}
             <div className="space-y-4">
               {filteredPolicies.map(policy => (
-                <div key={policy.id} className="bg-white rounded-lg p-6 shadow-sm">
+                <div key={policy.id} className="bg-white rounded-2xl p-6">
                   <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span>{departments.find(d => d.id === policy.department)?.icon}</span>
-                        <h3 className="font-bold text-[#13294B]">{policy.title}</h3>
+                    <div className="flex items-start gap-3">
+                      <span className="text-2xl">{departments.find(d => d.id === policy.department)?.icon}</span>
+                      <div>
+                        <h3 className="font-semibold text-[#1d1d1f]">{policy.title}</h3>
+                        <p className="text-sm text-[#86868b] mt-0.5">{policy.description}</p>
                       </div>
-                      <p className="text-sm text-gray-600">{policy.description}</p>
                     </div>
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      policy.priority === 'high' ? 'bg-red-100 text-red-800' :
-                      policy.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {policy.priority} priority
-                    </span>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                      policy.priority === 'high' ? 'bg-[#ff3b30]/10 text-[#ff3b30]' :
+                      policy.priority === 'medium' ? 'bg-[#ff9500]/10 text-[#ff9500]' :
+                      'bg-[#f5f5f7] text-[#86868b]'
+                    }`}>{policy.priority}</span>
                   </div>
 
                   <div className="grid md:grid-cols-3 gap-4 mb-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                      <select
-                        value={policy.status}
-                        onChange={(e) => handlePolicyUpdate(policy.id, 'status', e.target.value)}
-                        className="w-full border rounded px-3 py-2"
-                      >
+                      <label className="text-xs text-[#86868b] uppercase tracking-wider">Status</label>
+                      <select value={policy.status} onChange={(e) => { updatePolicy(policy.id, { status: e.target.value }); notify('Updated') }} className="w-full mt-1 px-3 py-2 bg-[#f5f5f7] rounded-lg text-sm border-0">
                         <option value="planned">Planned</option>
                         <option value="in_progress">In Progress</option>
                         <option value="completed">Completed</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Progress: {policy.progress}%</label>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={policy.progress}
-                        onChange={(e) => handlePolicyUpdate(policy.id, 'progress', parseInt(e.target.value))}
-                        className="w-full"
-                      />
+                      <label className="text-xs text-[#86868b] uppercase tracking-wider">Progress — {policy.progress}%</label>
+                      <input type="range" min="0" max="100" value={policy.progress} onChange={(e) => updatePolicy(policy.id, { progress: parseInt(e.target.value) })} className="w-full mt-3" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
-                      <select
-                        value={policy.priority}
-                        onChange={(e) => handlePolicyUpdate(policy.id, 'priority', e.target.value)}
-                        className="w-full border rounded px-3 py-2"
-                      >
+                      <label className="text-xs text-[#86868b] uppercase tracking-wider">Priority</label>
+                      <select value={policy.priority} onChange={(e) => { updatePolicy(policy.id, { priority: e.target.value }); notify('Updated') }} className="w-full mt-1 px-3 py-2 bg-[#f5f5f7] rounded-lg text-sm border-0">
                         <option value="high">High</option>
                         <option value="medium">Medium</option>
                         <option value="low">Low</option>
@@ -565,40 +422,25 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  {/* Progress Bar */}
-                  <div className="h-2 bg-gray-200 rounded-full mb-4">
-                    <div
-                      className={`h-full rounded-full ${
-                        policy.status === 'completed' ? 'bg-green-500' :
-                        policy.status === 'in_progress' ? 'bg-blue-500' :
-                        'bg-gray-400'
-                      }`}
-                      style={{ width: `${policy.progress}%` }}
-                    />
+                  <div className="h-1.5 bg-[#f5f5f7] rounded-full overflow-hidden mb-4">
+                    <div className={`h-full rounded-full transition-all ${
+                      policy.status === 'completed' ? 'bg-[#34c759]' :
+                      policy.status === 'in_progress' ? 'bg-[#0071e3]' : 'bg-[#d2d2d7]'
+                    }`} style={{ width: `${policy.progress}%` }} />
                   </div>
 
-                  {/* Metrics */}
                   {policy.metrics && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Metrics</label>
-                      <div className="grid grid-cols-3 gap-3">
+                      <label className="text-xs text-[#86868b] uppercase tracking-wider">Metrics</label>
+                      <div className="grid grid-cols-3 gap-3 mt-2">
                         {Object.entries(policy.metrics).map(([key, value]) => (
-                          <div key={key}>
-                            <label className="block text-xs text-gray-500 capitalize">{key.replace(/([A-Z])/g, ' $1')}</label>
-                            <input
-                              type="number"
-                              value={value}
-                              onChange={(e) => updatePolicyMetrics(policy.id, { [key]: parseInt(e.target.value) || 0 })}
-                              className="w-full border rounded px-2 py-1 text-sm"
-                            />
+                          <div key={key} className="bg-[#f5f5f7] rounded-lg p-3">
+                            <label className="text-xs text-[#86868b] capitalize block mb-1">{key.replace(/([A-Z])/g, ' $1')}</label>
+                            <input type="number" value={value} onChange={(e) => updatePolicyMetrics(policy.id, { [key]: parseInt(e.target.value) || 0 })} className="w-full bg-transparent text-lg font-semibold text-[#1d1d1f] border-0 p-0" />
                           </div>
                         ))}
                       </div>
                     </div>
-                  )}
-
-                  {policy.lastUpdated && (
-                    <p className="text-xs text-gray-400 mt-3">Last updated: {formatShortDate(policy.lastUpdated)}</p>
                   )}
                 </div>
               ))}
@@ -606,171 +448,109 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ==================== OPERATIONS TAB ==================== */}
+        {/* OPERATIONS */}
         {activeTab === 'operations' && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-[#13294B]">Operations Management</h2>
+          <div className="space-y-8">
+            <div>
+              <h2 className="text-3xl font-semibold text-[#1d1d1f] tracking-tight">Operations</h2>
+              <p className="text-[#86868b] mt-1">Manage programs and services</p>
+            </div>
 
-            {/* Tech Loaner Section */}
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-[#13294B] text-lg">Tech Loaner Program</h3>
+            {/* Tech Loaner */}
+            <div className="bg-white rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-[#1d1d1f]">Tech Loaner Program</h3>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowDeviceForm(true)}
-                    className="bg-blue-500 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-600"
-                  >
-                    + Add Device
-                  </button>
-                  <button
-                    onClick={() => setShowLoanForm(true)}
-                    className="bg-green-500 text-white px-3 py-1.5 rounded text-sm hover:bg-green-600"
-                  >
-                    + Record Loan
-                  </button>
+                  <Button variant="secondary" onClick={() => setShowModal('device')}>Add Device</Button>
+                  <Button onClick={() => setShowModal('loan')}>Record Loan</Button>
                 </div>
               </div>
-
-              {/* Device Inventory */}
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-2 text-left">Device</th>
-                      <th className="px-4 py-2 text-left">Type</th>
-                      <th className="px-4 py-2 text-center">Total</th>
-                      <th className="px-4 py-2 text-center">Available</th>
-                      <th className="px-4 py-2 text-center">On Loan</th>
-                      <th className="px-4 py-2 text-center">Actions</th>
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-[#e8e8ed]">
+                      <th className="text-left py-3 text-xs text-[#86868b] uppercase tracking-wider font-semibold">Device</th>
+                      <th className="text-center py-3 text-xs text-[#86868b] uppercase tracking-wider font-semibold">Total</th>
+                      <th className="text-center py-3 text-xs text-[#86868b] uppercase tracking-wider font-semibold">Available</th>
+                      <th className="text-center py-3 text-xs text-[#86868b] uppercase tracking-wider font-semibold">On Loan</th>
+                      <th className="text-right py-3 text-xs text-[#86868b] uppercase tracking-wider font-semibold">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y">
+                  <tbody>
                     {operationalData.techLoaners.devices.map(device => (
-                      <tr key={device.id}>
-                        <td className="px-4 py-3 font-medium">{device.name}</td>
-                        <td className="px-4 py-3 text-gray-500">{device.type}</td>
-                        <td className="px-4 py-3 text-center">
-                          <input
-                            type="number"
-                            value={device.total}
-                            onChange={(e) => updateTechDevice(device.id, { total: parseInt(e.target.value) || 0 })}
-                            className="w-16 border rounded px-2 py-1 text-center"
-                          />
+                      <tr key={device.id} className="border-b border-[#e8e8ed]">
+                        <td className="py-4 font-medium text-[#1d1d1f]">{device.name}</td>
+                        <td className="py-4 text-center">
+                          <input type="number" value={device.total} onChange={(e) => updateTechDevice(device.id, { total: parseInt(e.target.value) || 0 })} className="w-16 text-center bg-[#f5f5f7] rounded-lg py-1 border-0" />
                         </td>
-                        <td className="px-4 py-3 text-center">
-                          <input
-                            type="number"
-                            value={device.available}
-                            onChange={(e) => updateTechDevice(device.id, { available: parseInt(e.target.value) || 0 })}
-                            className="w-16 border rounded px-2 py-1 text-center"
-                          />
+                        <td className="py-4 text-center">
+                          <input type="number" value={device.available} onChange={(e) => updateTechDevice(device.id, { available: parseInt(e.target.value) || 0 })} className="w-16 text-center bg-[#f5f5f7] rounded-lg py-1 border-0" />
                         </td>
-                        <td className="px-4 py-3 text-center">
-                          <input
-                            type="number"
-                            value={device.onLoan}
-                            onChange={(e) => updateTechDevice(device.id, { onLoan: parseInt(e.target.value) || 0 })}
-                            className="w-16 border rounded px-2 py-1 text-center"
-                          />
+                        <td className="py-4 text-center">
+                          <input type="number" value={device.onLoan} onChange={(e) => updateTechDevice(device.id, { onLoan: parseInt(e.target.value) || 0 })} className="w-16 text-center bg-[#f5f5f7] rounded-lg py-1 border-0" />
                         </td>
-                        <td className="px-4 py-3 text-center">
-                          <button
-                            onClick={() => deleteTechDevice(device.id)}
-                            className="text-red-500 hover:text-red-700"
-                          >
-                            Delete
-                          </button>
+                        <td className="py-4 text-right">
+                          <button onClick={() => { deleteTechDevice(device.id); notify('Deleted') }} className="text-[#ff3b30] text-sm hover:underline">Remove</button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-
-              {/* Active Loans */}
-              {operationalData.techLoaners.loans.length > 0 && (
-                <div className="mt-6">
-                  <h4 className="font-medium text-gray-700 mb-2">Active Loans</h4>
-                  <div className="space-y-2">
-                    {operationalData.techLoaners.loans.filter(l => l.status === 'active').map(loan => (
-                      <div key={loan.id} className="flex items-center justify-between bg-gray-50 p-3 rounded">
-                        <div>
-                          <p className="font-medium">{loan.studentName}</p>
-                          <p className="text-sm text-gray-500">{loan.deviceType} | Due: {loan.dueDate}</p>
-                        </div>
-                        <button
-                          onClick={() => updateTechLoan(loan.id, { status: 'returned', returnedAt: new Date().toISOString() })}
-                          className="text-green-600 hover:text-green-800 text-sm font-medium"
-                        >
-                          Mark Returned
-                        </button>
+              {operationalData.techLoaners.loans.filter(l => l.status === 'active').length > 0 && (
+                <div className="mt-6 pt-6 border-t border-[#e8e8ed]">
+                  <h4 className="text-xs text-[#86868b] uppercase tracking-wider font-semibold mb-3">Active Loans</h4>
+                  {operationalData.techLoaners.loans.filter(l => l.status === 'active').map(loan => (
+                    <div key={loan.id} className="flex items-center justify-between py-3 border-b border-[#f5f5f7]">
+                      <div>
+                        <p className="font-medium text-[#1d1d1f]">{loan.studentName}</p>
+                        <p className="text-sm text-[#86868b]">{loan.deviceType} · Due {loan.dueDate}</p>
                       </div>
-                    ))}
-                  </div>
+                      <button onClick={() => { updateTechLoan(loan.id, { status: 'returned' }); notify('Returned') }} className="text-[#0071e3] text-sm font-medium hover:underline">Mark Returned</button>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
 
-            {/* Food Pantry Section */}
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <h3 className="font-bold text-[#13294B] text-lg mb-4">Food Pantry (Carolina Cupboard)</h3>
-
-              <div className="grid md:grid-cols-3 gap-4 mb-6">
-                <div className="bg-orange-50 rounded p-4 text-center">
-                  <p className="text-2xl font-bold text-orange-600">{operationalData.foodPantry.totalVisits}</p>
-                  <p className="text-sm text-gray-600">Total Visits</p>
+            {/* Food Pantry */}
+            <div className="bg-white rounded-2xl p-6">
+              <h3 className="text-lg font-semibold text-[#1d1d1f] mb-6">Food Pantry</h3>
+              <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="bg-[#ff9500]/10 rounded-xl p-4 text-center">
+                  <p className="text-3xl font-semibold text-[#ff9500]">{operationalData.foodPantry.totalVisits}</p>
+                  <p className="text-sm text-[#86868b]">Total Visits</p>
                 </div>
-                <div className="bg-green-50 rounded p-4 text-center">
-                  <p className="text-2xl font-bold text-green-600">${operationalData.foodPantry.donations}</p>
-                  <p className="text-sm text-gray-600">Donations</p>
+                <div className="bg-[#34c759]/10 rounded-xl p-4 text-center">
+                  <p className="text-3xl font-semibold text-[#34c759]">${operationalData.foodPantry.donations}</p>
+                  <p className="text-sm text-[#86868b]">Donations</p>
                 </div>
-                <div className="bg-blue-50 rounded p-4 text-center">
-                  <p className="text-2xl font-bold text-blue-600">{operationalData.foodPantry.locations.length}</p>
-                  <p className="text-sm text-gray-600">Locations</p>
+                <div className="bg-[#0071e3]/10 rounded-xl p-4 text-center">
+                  <p className="text-3xl font-semibold text-[#0071e3]">{operationalData.foodPantry.locations.length}</p>
+                  <p className="text-sm text-[#86868b]">Locations</p>
                 </div>
               </div>
-
-              {/* Locations */}
               <div className="space-y-4">
-                {operationalData.foodPantry.locations.map(location => (
-                  <div key={location.id} className="border rounded p-4">
-                    <div className="flex items-start justify-between mb-2">
+                {operationalData.foodPantry.locations.map(loc => (
+                  <div key={loc.id} className="bg-[#f5f5f7] rounded-xl p-4">
+                    <div className="flex items-start justify-between mb-3">
                       <div>
-                        <h4 className="font-medium">{location.name}</h4>
-                        <p className="text-sm text-gray-500">{location.address} | {location.hours}</p>
+                        <h4 className="font-medium text-[#1d1d1f]">{loc.name}</h4>
+                        <p className="text-sm text-[#86868b]">{loc.hours}</p>
                       </div>
                       <div className="flex gap-2">
-                        <button
-                          onClick={() => logPantryVisit(location.id, 1)}
-                          className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
-                        >
-                          +1 Visit
-                        </button>
-                        <button
-                          onClick={() => logPantryVisit(location.id, 10)}
-                          className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200"
-                        >
-                          +10 Visits
-                        </button>
+                        <button onClick={() => { logPantryVisit(loc.id, 1); notify('+1 visit') }} className="px-3 py-1 bg-white rounded-full text-sm text-[#0071e3] font-medium">+1</button>
+                        <button onClick={() => { logPantryVisit(loc.id, 10); notify('+10 visits') }} className="px-3 py-1 bg-white rounded-full text-sm text-[#0071e3] font-medium">+10</button>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4 mt-3">
+                    <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs text-gray-500">Visits</label>
-                        <input
-                          type="number"
-                          value={location.visits || 0}
-                          onChange={(e) => updatePantryLocation(location.id, { visits: parseInt(e.target.value) || 0 })}
-                          className="w-full border rounded px-2 py-1"
-                        />
+                        <label className="text-xs text-[#86868b]">Visits</label>
+                        <input type="number" value={loc.visits || 0} onChange={(e) => updatePantryLocation(loc.id, { visits: parseInt(e.target.value) || 0 })} className="w-full mt-1 px-3 py-2 bg-white rounded-lg border-0 text-[#1d1d1f]" />
                       </div>
                       <div>
-                        <label className="text-xs text-gray-500">Inventory Status</label>
-                        <select
-                          value={location.inventory || 'unknown'}
-                          onChange={(e) => updatePantryLocation(location.id, { inventory: e.target.value })}
-                          className="w-full border rounded px-2 py-1"
-                        >
+                        <label className="text-xs text-[#86868b]">Inventory</label>
+                        <select value={loc.inventory || 'unknown'} onChange={(e) => updatePantryLocation(loc.id, { inventory: e.target.value })} className="w-full mt-1 px-3 py-2 bg-white rounded-lg border-0 text-[#1d1d1f]">
                           <option value="well-stocked">Well Stocked</option>
                           <option value="moderate">Moderate</option>
                           <option value="low">Low</option>
@@ -782,331 +562,138 @@ export default function AdminDashboard() {
                   </div>
                 ))}
               </div>
-
-              {/* Log Donation */}
-              <div className="mt-4 p-4 bg-green-50 rounded">
-                <h4 className="font-medium text-green-800 mb-2">Log Donation</h4>
-                <div className="flex gap-3">
-                  <input
-                    type="number"
-                    placeholder="Amount ($)"
-                    className="flex-1 border rounded px-3 py-2"
-                    id="donationAmount"
-                  />
-                  <input
-                    type="text"
-                    placeholder="Donor name (optional)"
-                    className="flex-1 border rounded px-3 py-2"
-                    id="donorName"
-                  />
-                  <button
-                    onClick={() => {
-                      const amount = parseFloat(document.getElementById('donationAmount').value) || 0
-                      const donor = document.getElementById('donorName').value || 'Anonymous'
-                      if (amount > 0) {
-                        logPantryDonation(amount, donor)
-                        document.getElementById('donationAmount').value = ''
-                        document.getElementById('donorName').value = ''
-                        showNotification('Donation logged')
-                      }
-                    }}
-                    className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-                  >
-                    Log
-                  </button>
-                </div>
-              </div>
             </div>
 
-            {/* Training Programs */}
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-[#13294B] text-lg">Training Programs</h3>
-                <button
-                  onClick={() => setShowTrainingForm(true)}
-                  className="bg-indigo-500 text-white px-3 py-1.5 rounded text-sm hover:bg-indigo-600"
-                >
-                  + Add Session
-                </button>
+            {/* Training */}
+            <div className="bg-white rounded-2xl p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-[#1d1d1f]">Training Programs</h3>
+                <Button variant="secondary" onClick={() => setShowModal('training')}>Add Session</Button>
               </div>
-
               <div className="grid md:grid-cols-2 gap-4">
-                <div className="border rounded p-4">
-                  <h4 className="font-medium mb-2">Mental Health First Aid</h4>
-                  <p className="text-2xl font-bold text-indigo-600">{operationalData.trainings.mentalHealthFirstAid.totalTrained}</p>
-                  <p className="text-sm text-gray-500">Total Trained</p>
-                  <p className="text-sm text-gray-400 mt-2">{operationalData.trainings.mentalHealthFirstAid.sessions.length} sessions</p>
+                <div className="bg-[#af52de]/10 rounded-xl p-6">
+                  <h4 className="font-medium text-[#1d1d1f]">Mental Health First Aid</h4>
+                  <p className="text-3xl font-semibold text-[#af52de] mt-2">{operationalData.trainings.mentalHealthFirstAid.totalTrained}</p>
+                  <p className="text-sm text-[#86868b]">trained · {operationalData.trainings.mentalHealthFirstAid.sessions.length} sessions</p>
                 </div>
-                <div className="border rounded p-4">
-                  <h4 className="font-medium mb-2">Bias Response Training</h4>
-                  <p className="text-2xl font-bold text-pink-600">{operationalData.trainings.biasResponse.totalTrained}</p>
-                  <p className="text-sm text-gray-500">Total Trained</p>
-                  <p className="text-sm text-gray-400 mt-2">{operationalData.trainings.biasResponse.sessions.length} sessions</p>
+                <div className="bg-[#ff9500]/10 rounded-xl p-6">
+                  <h4 className="font-medium text-[#1d1d1f]">Bias Response</h4>
+                  <p className="text-3xl font-semibold text-[#ff9500] mt-2">{operationalData.trainings.biasResponse.totalTrained}</p>
+                  <p className="text-sm text-[#86868b]">trained · {operationalData.trainings.biasResponse.sessions.length} sessions</p>
                 </div>
               </div>
             </div>
 
             {/* Modals */}
-            {showDeviceForm && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-lg max-w-md w-full p-6">
-                  <h3 className="text-xl font-bold text-[#13294B] mb-4">Add Device</h3>
-                  <form onSubmit={handleDeviceSubmit} className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Device Type</label>
-                      <select
-                        value={deviceForm.type}
-                        onChange={(e) => setDeviceForm({ ...deviceForm, type: e.target.value })}
-                        className="w-full border rounded px-3 py-2"
-                      >
-                        <option value="laptop-windows">Windows Laptop</option>
-                        <option value="laptop-mac">MacBook</option>
-                        <option value="chromebook">Chromebook</option>
-                        <option value="tablet">Tablet</option>
-                        <option value="hotspot">Wi-Fi Hotspot</option>
-                        <option value="charger">Charger</option>
-                        <option value="other">Other</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Device Name</label>
-                      <input
-                        type="text"
-                        value={deviceForm.name}
-                        onChange={(e) => setDeviceForm({ ...deviceForm, name: e.target.value })}
-                        className="w-full border rounded px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Total Quantity</label>
-                        <input
-                          type="number"
-                          value={deviceForm.total}
-                          onChange={(e) => setDeviceForm({ ...deviceForm, total: parseInt(e.target.value) || 0 })}
-                          className="w-full border rounded px-3 py-2"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Available</label>
-                        <input
-                          type="number"
-                          value={deviceForm.available}
-                          onChange={(e) => setDeviceForm({ ...deviceForm, available: parseInt(e.target.value) || 0 })}
-                          className="w-full border rounded px-3 py-2"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex gap-3 pt-2">
-                      <button type="submit" className="bg-[#13294B] text-white px-4 py-2 rounded hover:bg-[#0a1628]">Add Device</button>
-                      <button type="button" onClick={() => setShowDeviceForm(false)} className="border px-4 py-2 rounded hover:bg-gray-50">Cancel</button>
-                    </div>
-                  </form>
-                </div>
-              </div>
+            {showModal === 'device' && (
+              <Modal title="Add Device" onClose={() => setShowModal(null)}>
+                <form onSubmit={(e) => { e.preventDefault(); addTechDevice({ ...deviceForm, onLoan: 0 }); setDeviceForm({ type: 'laptop-windows', name: '', total: 0, available: 0 }); setShowModal(null); notify('Device added') }} className="space-y-4">
+                  <Select label="Type" value={deviceForm.type} onChange={(e) => setDeviceForm({ ...deviceForm, type: e.target.value })} options={[
+                    { value: 'laptop-windows', label: 'Windows Laptop' },
+                    { value: 'laptop-mac', label: 'MacBook' },
+                    { value: 'hotspot', label: 'Wi-Fi Hotspot' },
+                    { value: 'tablet', label: 'Tablet' },
+                    { value: 'charger', label: 'Charger' },
+                  ]} />
+                  <Input label="Name" value={deviceForm.name} onChange={(e) => setDeviceForm({ ...deviceForm, name: e.target.value })} required />
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input label="Total" type="number" value={deviceForm.total} onChange={(e) => setDeviceForm({ ...deviceForm, total: parseInt(e.target.value) || 0 })} />
+                    <Input label="Available" type="number" value={deviceForm.available} onChange={(e) => setDeviceForm({ ...deviceForm, available: parseInt(e.target.value) || 0 })} />
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <Button type="submit">Add</Button>
+                    <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
+                  </div>
+                </form>
+              </Modal>
             )}
-
-            {showLoanForm && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-lg max-w-md w-full p-6">
-                  <h3 className="text-xl font-bold text-[#13294B] mb-4">Record Loan</h3>
-                  <form onSubmit={handleLoanSubmit} className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Student Name</label>
-                      <input
-                        type="text"
-                        value={loanForm.studentName}
-                        onChange={(e) => setLoanForm({ ...loanForm, studentName: e.target.value })}
-                        className="w-full border rounded px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Student Email</label>
-                      <input
-                        type="email"
-                        value={loanForm.studentEmail}
-                        onChange={(e) => setLoanForm({ ...loanForm, studentEmail: e.target.value })}
-                        className="w-full border rounded px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Device Type</label>
-                      <input
-                        type="text"
-                        value={loanForm.deviceType}
-                        onChange={(e) => setLoanForm({ ...loanForm, deviceType: e.target.value })}
-                        className="w-full border rounded px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Due Date</label>
-                      <input
-                        type="date"
-                        value={loanForm.dueDate}
-                        onChange={(e) => setLoanForm({ ...loanForm, dueDate: e.target.value })}
-                        className="w-full border rounded px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div className="flex gap-3 pt-2">
-                      <button type="submit" className="bg-[#13294B] text-white px-4 py-2 rounded hover:bg-[#0a1628]">Record Loan</button>
-                      <button type="button" onClick={() => setShowLoanForm(false)} className="border px-4 py-2 rounded hover:bg-gray-50">Cancel</button>
-                    </div>
-                  </form>
-                </div>
-              </div>
+            {showModal === 'loan' && (
+              <Modal title="Record Loan" onClose={() => setShowModal(null)}>
+                <form onSubmit={(e) => { e.preventDefault(); addTechLoan(loanForm); setLoanForm({ studentName: '', studentEmail: '', deviceType: '', dueDate: '' }); setShowModal(null); notify('Loan recorded') }} className="space-y-4">
+                  <Input label="Student Name" value={loanForm.studentName} onChange={(e) => setLoanForm({ ...loanForm, studentName: e.target.value })} required />
+                  <Input label="Email" type="email" value={loanForm.studentEmail} onChange={(e) => setLoanForm({ ...loanForm, studentEmail: e.target.value })} required />
+                  <Input label="Device Type" value={loanForm.deviceType} onChange={(e) => setLoanForm({ ...loanForm, deviceType: e.target.value })} required />
+                  <Input label="Due Date" type="date" value={loanForm.dueDate} onChange={(e) => setLoanForm({ ...loanForm, dueDate: e.target.value })} required />
+                  <div className="flex gap-3 pt-2">
+                    <Button type="submit">Record</Button>
+                    <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
+                  </div>
+                </form>
+              </Modal>
             )}
-
-            {showTrainingForm && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-lg max-w-md w-full p-6">
-                  <h3 className="text-xl font-bold text-[#13294B] mb-4">Add Training Session</h3>
-                  <form onSubmit={handleTrainingSubmit} className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Training Type</label>
-                      <select
-                        value={trainingForm.type}
-                        onChange={(e) => setTrainingForm({ ...trainingForm, type: e.target.value })}
-                        className="w-full border rounded px-3 py-2"
-                      >
-                        <option value="mentalHealthFirstAid">Mental Health First Aid</option>
-                        <option value="biasResponse">Bias Response</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Session Title</label>
-                      <input
-                        type="text"
-                        value={trainingForm.title}
-                        onChange={(e) => setTrainingForm({ ...trainingForm, title: e.target.value })}
-                        className="w-full border rounded px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                      <input
-                        type="date"
-                        value={trainingForm.date}
-                        onChange={(e) => setTrainingForm({ ...trainingForm, date: e.target.value })}
-                        className="w-full border rounded px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
-                      <input
-                        type="text"
-                        value={trainingForm.location}
-                        onChange={(e) => setTrainingForm({ ...trainingForm, location: e.target.value })}
-                        className="w-full border rounded px-3 py-2"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Capacity</label>
-                      <input
-                        type="number"
-                        value={trainingForm.capacity}
-                        onChange={(e) => setTrainingForm({ ...trainingForm, capacity: parseInt(e.target.value) || 0 })}
-                        className="w-full border rounded px-3 py-2"
-                      />
-                    </div>
-                    <div className="flex gap-3 pt-2">
-                      <button type="submit" className="bg-[#13294B] text-white px-4 py-2 rounded hover:bg-[#0a1628]">Add Session</button>
-                      <button type="button" onClick={() => setShowTrainingForm(false)} className="border px-4 py-2 rounded hover:bg-gray-50">Cancel</button>
-                    </div>
-                  </form>
-                </div>
-              </div>
+            {showModal === 'training' && (
+              <Modal title="Add Training Session" onClose={() => setShowModal(null)}>
+                <form onSubmit={(e) => { e.preventDefault(); addTrainingSession(trainingForm.type, trainingForm); setTrainingForm({ type: 'mentalHealthFirstAid', title: '', date: '', location: '', capacity: 0 }); setShowModal(null); notify('Session added') }} className="space-y-4">
+                  <Select label="Type" value={trainingForm.type} onChange={(e) => setTrainingForm({ ...trainingForm, type: e.target.value })} options={[
+                    { value: 'mentalHealthFirstAid', label: 'Mental Health First Aid' },
+                    { value: 'biasResponse', label: 'Bias Response' },
+                  ]} />
+                  <Input label="Title" value={trainingForm.title} onChange={(e) => setTrainingForm({ ...trainingForm, title: e.target.value })} required />
+                  <Input label="Date" type="date" value={trainingForm.date} onChange={(e) => setTrainingForm({ ...trainingForm, date: e.target.value })} required />
+                  <Input label="Location" value={trainingForm.location} onChange={(e) => setTrainingForm({ ...trainingForm, location: e.target.value })} />
+                  <Input label="Capacity" type="number" value={trainingForm.capacity} onChange={(e) => setTrainingForm({ ...trainingForm, capacity: parseInt(e.target.value) || 0 })} />
+                  <div className="flex gap-3 pt-2">
+                    <Button type="submit">Add</Button>
+                    <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
+                  </div>
+                </form>
+              </Modal>
             )}
           </div>
         )}
 
-        {/* ==================== BUDGET TAB ==================== */}
+        {/* BUDGET */}
         {activeTab === 'budget' && (
-          <div className="space-y-6">
+          <div className="space-y-8">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-[#13294B]">Budget Management</h2>
-              <button
-                onClick={() => setShowTransactionForm(true)}
-                className="bg-emerald-500 text-white px-4 py-2 rounded hover:bg-emerald-600"
-              >
-                + Add Transaction
-              </button>
+              <div>
+                <h2 className="text-3xl font-semibold text-[#1d1d1f] tracking-tight">Budget</h2>
+                <p className="text-[#86868b] mt-1">Track spending and allocations</p>
+              </div>
+              <Button onClick={() => setShowModal('transaction')}>Add Transaction</Button>
             </div>
 
-            {/* Budget Overview */}
             <div className="grid md:grid-cols-3 gap-4">
-              <div className="bg-white rounded-lg p-6 shadow-sm">
-                <label className="block text-sm text-gray-600 mb-1">Total Budget</label>
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">$</span>
-                  <input
-                    type="number"
-                    value={budgetData.total}
-                    onChange={(e) => updateBudget({ total: parseFloat(e.target.value) || 0 })}
-                    className="text-3xl font-bold text-emerald-600 w-full bg-transparent"
-                  />
+              <div className="bg-white rounded-2xl p-6">
+                <label className="text-xs text-[#86868b] uppercase tracking-wider">Total Budget</label>
+                <div className="flex items-baseline gap-1 mt-2">
+                  <span className="text-[#86868b]">$</span>
+                  <input type="number" value={budgetData.total} onChange={(e) => updateBudget({ total: parseFloat(e.target.value) || 0 })} className="text-4xl font-semibold text-[#34c759] bg-transparent border-0 w-full" />
                 </div>
               </div>
-              <div className="bg-white rounded-lg p-6 shadow-sm">
-                <label className="block text-sm text-gray-600 mb-1">Allocated</label>
-                <div className="flex items-center gap-2">
-                  <span className="text-xl">$</span>
-                  <input
-                    type="number"
-                    value={budgetData.allocated}
-                    onChange={(e) => updateBudget({ allocated: parseFloat(e.target.value) || 0 })}
-                    className="text-3xl font-bold text-blue-600 w-full bg-transparent"
-                  />
+              <div className="bg-white rounded-2xl p-6">
+                <label className="text-xs text-[#86868b] uppercase tracking-wider">Allocated</label>
+                <div className="flex items-baseline gap-1 mt-2">
+                  <span className="text-[#86868b]">$</span>
+                  <input type="number" value={budgetData.allocated} onChange={(e) => updateBudget({ allocated: parseFloat(e.target.value) || 0 })} className="text-4xl font-semibold text-[#0071e3] bg-transparent border-0 w-full" />
                 </div>
               </div>
-              <div className="bg-white rounded-lg p-6 shadow-sm">
-                <label className="block text-sm text-gray-600 mb-1">Spent</label>
-                <p className="text-3xl font-bold text-orange-600">${budgetData.spent.toLocaleString()}</p>
+              <div className="bg-white rounded-2xl p-6">
+                <label className="text-xs text-[#86868b] uppercase tracking-wider">Spent</label>
+                <p className="text-4xl font-semibold text-[#ff9500] mt-2">${budgetData.spent.toLocaleString()}</p>
               </div>
             </div>
 
-            {/* Budget Categories */}
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <h3 className="font-bold text-[#13294B] mb-4">Budget Categories</h3>
-              <div className="space-y-4">
-                {budgetData.categories.map(category => (
-                  <div key={category.name} className="border rounded p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium">{category.name}</h4>
-                      <span className="text-sm text-gray-500">
-                        ${category.spent.toLocaleString()} / ${category.allocated.toLocaleString()}
-                      </span>
+            <div className="bg-white rounded-2xl p-6">
+              <h3 className="text-xs text-[#86868b] uppercase tracking-wider font-semibold mb-4">Categories</h3>
+              <div className="space-y-6">
+                {budgetData.categories.map(cat => (
+                  <div key={cat.name}>
+                    <div className="flex justify-between mb-2">
+                      <span className="font-medium text-[#1d1d1f]">{cat.name}</span>
+                      <span className="text-sm text-[#86868b]">${cat.spent} / ${cat.allocated}</span>
                     </div>
-                    <div className="h-2 bg-gray-200 rounded-full mb-3">
-                      <div
-                        className="h-full bg-emerald-500 rounded-full"
-                        style={{ width: `${category.allocated > 0 ? (category.spent / category.allocated) * 100 : 0}%` }}
-                      />
+                    <div className="h-1.5 bg-[#f5f5f7] rounded-full overflow-hidden mb-3">
+                      <div className="h-full bg-[#34c759] rounded-full" style={{ width: `${cat.allocated > 0 ? (cat.spent / cat.allocated) * 100 : 0}%` }} />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="text-xs text-gray-500">Allocated</label>
-                        <input
-                          type="number"
-                          value={category.allocated}
-                          onChange={(e) => updateBudgetCategory(category.name, { allocated: parseFloat(e.target.value) || 0 })}
-                          className="w-full border rounded px-2 py-1"
-                        />
+                        <label className="text-xs text-[#86868b]">Allocated</label>
+                        <input type="number" value={cat.allocated} onChange={(e) => updateBudgetCategory(cat.name, { allocated: parseFloat(e.target.value) || 0 })} className="w-full mt-1 px-3 py-2 bg-[#f5f5f7] rounded-lg border-0" />
                       </div>
                       <div>
-                        <label className="text-xs text-gray-500">Spent</label>
-                        <input
-                          type="number"
-                          value={category.spent}
-                          onChange={(e) => updateBudgetCategory(category.name, { spent: parseFloat(e.target.value) || 0 })}
-                          className="w-full border rounded px-2 py-1"
-                        />
+                        <label className="text-xs text-[#86868b]">Spent</label>
+                        <input type="number" value={cat.spent} onChange={(e) => updateBudgetCategory(cat.name, { spent: parseFloat(e.target.value) || 0 })} className="w-full mt-1 px-3 py-2 bg-[#f5f5f7] rounded-lg border-0" />
                       </div>
                     </div>
                   </div>
@@ -1114,19 +701,18 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Recent Transactions */}
-            {budgetData.transactions && budgetData.transactions.length > 0 && (
-              <div className="bg-white rounded-lg p-6 shadow-sm">
-                <h3 className="font-bold text-[#13294B] mb-4">Recent Transactions</h3>
-                <div className="space-y-2">
-                  {budgetData.transactions.slice(-10).reverse().map(tx => (
-                    <div key={tx.id} className="flex items-center justify-between py-2 border-b border-gray-100">
+            {budgetData.transactions?.length > 0 && (
+              <div className="bg-white rounded-2xl p-6">
+                <h3 className="text-xs text-[#86868b] uppercase tracking-wider font-semibold mb-4">Recent Transactions</h3>
+                <div className="space-y-3">
+                  {budgetData.transactions.slice(-8).reverse().map(tx => (
+                    <div key={tx.id} className="flex items-center justify-between py-2 border-b border-[#f5f5f7]">
                       <div>
-                        <p className="font-medium">{tx.description}</p>
-                        <p className="text-sm text-gray-500">{formatShortDate(tx.date)} | {tx.category}</p>
+                        <p className="font-medium text-[#1d1d1f]">{tx.description}</p>
+                        <p className="text-sm text-[#86868b]">{formatDate(tx.date)}</p>
                       </div>
-                      <span className={`font-bold ${tx.type === 'expense' ? 'text-red-600' : 'text-green-600'}`}>
-                        {tx.type === 'expense' ? '-' : '+'}${tx.amount.toLocaleString()}
+                      <span className={`font-semibold ${tx.type === 'expense' ? 'text-[#ff3b30]' : 'text-[#34c759]'}`}>
+                        {tx.type === 'expense' ? '-' : '+'}${tx.amount}
                       </span>
                     </div>
                   ))}
@@ -1134,275 +720,159 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {/* Transaction Form Modal */}
-            {showTransactionForm && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-lg max-w-md w-full p-6">
-                  <h3 className="text-xl font-bold text-[#13294B] mb-4">Add Transaction</h3>
-                  <form onSubmit={handleTransactionSubmit} className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
-                      <select
-                        value={transactionForm.type}
-                        onChange={(e) => setTransactionForm({ ...transactionForm, type: e.target.value })}
-                        className="w-full border rounded px-3 py-2"
-                      >
-                        <option value="expense">Expense</option>
-                        <option value="income">Income</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
-                      <input
-                        type="number"
-                        value={transactionForm.amount}
-                        onChange={(e) => setTransactionForm({ ...transactionForm, amount: parseFloat(e.target.value) || 0 })}
-                        className="w-full border rounded px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                      <input
-                        type="text"
-                        value={transactionForm.description}
-                        onChange={(e) => setTransactionForm({ ...transactionForm, description: e.target.value })}
-                        className="w-full border rounded px-3 py-2"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                      <select
-                        value={transactionForm.category}
-                        onChange={(e) => setTransactionForm({ ...transactionForm, category: e.target.value })}
-                        className="w-full border rounded px-3 py-2"
-                      >
-                        <option value="">Select category...</option>
-                        {budgetData.categories.map(c => (
-                          <option key={c.name} value={c.name}>{c.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex gap-3 pt-2">
-                      <button type="submit" className="bg-[#13294B] text-white px-4 py-2 rounded hover:bg-[#0a1628]">Add</button>
-                      <button type="button" onClick={() => setShowTransactionForm(false)} className="border px-4 py-2 rounded hover:bg-gray-50">Cancel</button>
-                    </div>
-                  </form>
-                </div>
-              </div>
+            {showModal === 'transaction' && (
+              <Modal title="Add Transaction" onClose={() => setShowModal(null)}>
+                <form onSubmit={(e) => { e.preventDefault(); addBudgetTransaction(transactionForm); setTransactionForm({ type: 'expense', amount: 0, description: '', category: '' }); setShowModal(null); notify('Transaction added') }} className="space-y-4">
+                  <Select label="Type" value={transactionForm.type} onChange={(e) => setTransactionForm({ ...transactionForm, type: e.target.value })} options={[
+                    { value: 'expense', label: 'Expense' },
+                    { value: 'income', label: 'Income' },
+                  ]} />
+                  <Input label="Amount" type="number" value={transactionForm.amount} onChange={(e) => setTransactionForm({ ...transactionForm, amount: parseFloat(e.target.value) || 0 })} required />
+                  <Input label="Description" value={transactionForm.description} onChange={(e) => setTransactionForm({ ...transactionForm, description: e.target.value })} required />
+                  <Select label="Category" value={transactionForm.category} onChange={(e) => setTransactionForm({ ...transactionForm, category: e.target.value })} options={[
+                    { value: '', label: 'Select...' },
+                    ...budgetData.categories.map(c => ({ value: c.name, label: c.name }))
+                  ]} />
+                  <div className="flex gap-3 pt-2">
+                    <Button type="submit">Add</Button>
+                    <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
+                  </div>
+                </form>
+              </Modal>
             )}
           </div>
         )}
 
-        {/* ==================== FEEDBACK TAB ==================== */}
+        {/* FEEDBACK */}
         {activeTab === 'feedback' && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-[#13294B]">Student Feedback</h2>
+          <div className="space-y-8">
+            <div>
+              <h2 className="text-3xl font-semibold text-[#1d1d1f] tracking-tight">Feedback</h2>
+              <p className="text-[#86868b] mt-1">Student submissions and responses</p>
+            </div>
 
             <div className="grid grid-cols-4 gap-4">
-              <div className="bg-white rounded-lg p-4 shadow-sm text-center">
-                <p className="text-2xl font-bold text-blue-600">{feedback.length}</p>
-                <p className="text-sm text-gray-600">Total</p>
-              </div>
-              <div className="bg-white rounded-lg p-4 shadow-sm text-center">
-                <p className="text-2xl font-bold text-yellow-600">{feedback.filter(f => f.status === 'new').length}</p>
-                <p className="text-sm text-gray-600">New</p>
-              </div>
-              <div className="bg-white rounded-lg p-4 shadow-sm text-center">
-                <p className="text-2xl font-bold text-purple-600">{feedback.filter(f => f.status === 'reviewed').length}</p>
-                <p className="text-sm text-gray-600">Reviewed</p>
-              </div>
-              <div className="bg-white rounded-lg p-4 shadow-sm text-center">
-                <p className="text-2xl font-bold text-green-600">{feedback.filter(f => f.status === 'resolved').length}</p>
-                <p className="text-sm text-gray-600">Resolved</p>
-              </div>
+              <StatCard value={feedback.length} label="Total" color="blue" />
+              <StatCard value={feedback.filter(f => f.status === 'new').length} label="New" color="orange" />
+              <StatCard value={feedback.filter(f => f.status === 'reviewed').length} label="Reviewed" color="purple" />
+              <StatCard value={feedback.filter(f => f.status === 'resolved').length} label="Resolved" color="green" />
             </div>
 
             <div className="space-y-4">
               {feedback.map(item => (
-                <div key={item.id} className={`bg-white rounded-lg p-6 shadow-sm border-l-4 ${
-                  item.status === 'new' ? 'border-yellow-500' :
-                  item.status === 'reviewed' ? 'border-purple-500' :
-                  item.status === 'resolved' ? 'border-green-500' :
-                  'border-gray-300'
+                <div key={item.id} className={`bg-white rounded-2xl p-6 border-l-4 ${
+                  item.status === 'new' ? 'border-[#ff9500]' :
+                  item.status === 'reviewed' ? 'border-[#af52de]' :
+                  item.status === 'resolved' ? 'border-[#34c759]' : 'border-[#e8e8ed]'
                 }`}>
-                  <div className="flex items-start justify-between mb-2">
-                    <div>
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                        item.status === 'new' ? 'bg-yellow-100 text-yellow-800' :
-                        item.status === 'reviewed' ? 'bg-purple-100 text-purple-800' :
-                        item.status === 'resolved' ? 'bg-green-100 text-green-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {item.status}
-                      </span>
-                      <span className="ml-2 text-sm text-gray-500">{item.category}</span>
-                    </div>
-                    <p className="text-xs text-gray-400">{formatShortDate(item.submittedAt)}</p>
+                  <div className="flex items-start justify-between mb-3">
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      item.status === 'new' ? 'bg-[#ff9500]/10 text-[#ff9500]' :
+                      item.status === 'reviewed' ? 'bg-[#af52de]/10 text-[#af52de]' :
+                      item.status === 'resolved' ? 'bg-[#34c759]/10 text-[#34c759]' :
+                      'bg-[#f5f5f7] text-[#86868b]'
+                    }`}>{item.status}</span>
+                    <span className="text-sm text-[#86868b]">{formatDate(item.submittedAt)}</span>
                   </div>
-                  <p className="text-gray-800 mb-3">{item.message}</p>
-                  {item.email && <p className="text-sm text-gray-500 mb-3">From: {item.email}</p>}
+                  <p className="text-[#1d1d1f] mb-3">{item.message}</p>
+                  {item.email && <p className="text-sm text-[#86868b] mb-3">From: {item.email}</p>}
                   {item.adminNote && (
-                    <div className="bg-gray-50 rounded p-2 mb-3">
-                      <p className="text-sm text-gray-600"><strong>Admin Note:</strong> {item.adminNote}</p>
+                    <div className="bg-[#f5f5f7] rounded-lg p-3 mb-3">
+                      <p className="text-sm text-[#6e6e73]"><strong>Note:</strong> {item.adminNote}</p>
                     </div>
                   )}
-                  <div className="flex gap-2">
-                    <select
-                      value={item.status}
-                      onChange={(e) => updateFeedbackStatus(item.id, e.target.value)}
-                      className="border rounded px-2 py-1 text-sm"
-                    >
+                  <div className="flex gap-3">
+                    <select value={item.status} onChange={(e) => { updateFeedbackStatus(item.id, e.target.value); notify('Updated') }} className="px-3 py-2 bg-[#f5f5f7] rounded-lg text-sm border-0">
                       <option value="new">New</option>
                       <option value="reviewed">Reviewed</option>
                       <option value="resolved">Resolved</option>
                       <option value="archived">Archived</option>
                     </select>
-                    <input
-                      type="text"
-                      placeholder="Add note..."
-                      className="flex-1 border rounded px-2 py-1 text-sm"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && e.target.value) {
-                          updateFeedbackStatus(item.id, item.status, e.target.value)
-                          e.target.value = ''
-                        }
-                      }}
-                    />
+                    <input type="text" placeholder="Add note..." className="flex-1 px-3 py-2 bg-[#f5f5f7] rounded-lg text-sm border-0" onKeyDown={(e) => { if (e.key === 'Enter' && e.target.value) { updateFeedbackStatus(item.id, item.status, e.target.value); e.target.value = ''; notify('Note added') }}} />
                   </div>
                 </div>
               ))}
               {feedback.length === 0 && (
-                <div className="bg-white rounded-lg p-8 shadow-sm text-center">
-                  <p className="text-gray-500">No feedback received yet.</p>
+                <div className="bg-white rounded-2xl p-12 text-center">
+                  <p className="text-[#86868b]">No feedback yet</p>
                 </div>
               )}
             </div>
           </div>
         )}
 
-        {/* ==================== ACTIVITY LOG TAB ==================== */}
+        {/* ACTIVITY */}
         {activeTab === 'activity' && (
-          <div className="space-y-6">
+          <div className="space-y-8">
             <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-[#13294B]">Activity Log</h2>
-              <button
-                onClick={() => {
-                  if (confirm('Are you sure you want to clear the activity log?')) {
-                    clearActivityLog()
-                    showNotification('Activity log cleared')
-                  }
-                }}
-                className="text-red-600 hover:text-red-800 text-sm"
-              >
-                Clear Log
-              </button>
+              <div>
+                <h2 className="text-3xl font-semibold text-[#1d1d1f] tracking-tight">Activity</h2>
+                <p className="text-[#86868b] mt-1">Complete audit trail</p>
+              </div>
+              <button onClick={() => { if(confirm('Clear all activity?')) { clearActivityLog(); notify('Cleared') }}} className="text-sm text-[#ff3b30] hover:underline">Clear Log</button>
             </div>
 
-            <p className="text-gray-600">
-              Complete audit trail of all admin actions. Logs are automatically generated and stored locally.
-            </p>
-
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div className="bg-white rounded-2xl overflow-hidden">
               <div className="max-h-[600px] overflow-y-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 sticky top-0">
-                    <tr>
-                      <th className="px-4 py-3 text-left">Timestamp</th>
-                      <th className="px-4 py-3 text-left">Category</th>
-                      <th className="px-4 py-3 text-left">Action</th>
-                      <th className="px-4 py-3 text-left">Details</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {activityLog.map(entry => (
-                      <tr key={entry.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{formatShortDate(entry.timestamp)}</td>
-                        <td className="px-4 py-3">
-                          <span className={`px-2 py-0.5 rounded text-xs font-medium ${categoryColors[entry.category] || 'bg-gray-100'}`}>
-                            {entry.category}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 font-mono text-xs">{entry.action}</td>
-                        <td className="px-4 py-3 text-gray-700">{entry.details}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                {activityLog.map(entry => (
+                  <div key={entry.id} className="flex items-center gap-4 px-6 py-4 border-b border-[#f5f5f7] hover:bg-[#f5f5f7]/50">
+                    <div className="w-2 h-2 rounded-full bg-[#0071e3]" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-[#1d1d1f] truncate">{entry.details}</p>
+                      <p className="text-xs text-[#86868b]">{entry.category} · {entry.action}</p>
+                    </div>
+                    <span className="text-sm text-[#86868b] whitespace-nowrap">{formatDate(entry.timestamp)} {formatTime(entry.timestamp)}</span>
+                  </div>
+                ))}
                 {activityLog.length === 0 && (
-                  <div className="p-8 text-center text-gray-500">No activity logged yet.</div>
+                  <div className="p-12 text-center text-[#86868b]">No activity yet</div>
                 )}
               </div>
             </div>
           </div>
         )}
 
-        {/* ==================== SETTINGS TAB ==================== */}
+        {/* SETTINGS */}
         {activeTab === 'settings' && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-[#13294B]">Settings & Data Management</h2>
+          <div className="space-y-8">
+            <div>
+              <h2 className="text-3xl font-semibold text-[#1d1d1f] tracking-tight">Settings</h2>
+              <p className="text-[#86868b] mt-1">Data management and backup</p>
+            </div>
 
-            {/* Export/Import */}
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <h3 className="font-bold text-[#13294B] mb-4">Data Backup & Restore</h3>
-              <p className="text-gray-600 mb-4">Export all platform data as JSON for backup, or import a previous backup.</p>
-              <div className="flex gap-4">
-                <button
-                  onClick={handleExport}
-                  className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                >
-                  Export All Data
-                </button>
-                <label className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 cursor-pointer">
+            <div className="bg-white rounded-2xl p-6">
+              <h3 className="text-lg font-semibold text-[#1d1d1f] mb-2">Backup & Restore</h3>
+              <p className="text-[#86868b] mb-4">Export your data for backup or import a previous backup.</p>
+              <div className="flex gap-3">
+                <Button onClick={handleExport}>Export Data</Button>
+                <label className="px-5 py-2.5 rounded-full font-medium text-sm bg-[#f5f5f7] text-[#1d1d1f] hover:bg-[#e8e8ed] cursor-pointer transition-all">
                   Import Data
                   <input type="file" accept=".json" onChange={handleImport} className="hidden" />
                 </label>
               </div>
             </div>
 
-            {/* Storage Info */}
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <h3 className="font-bold text-[#13294B] mb-4">Storage Information</h3>
-              <div className="grid md:grid-cols-2 gap-4 text-sm">
-                <div className="bg-gray-50 rounded p-3">
-                  <p className="text-gray-600">Policies</p>
-                  <p className="font-medium">{policies.length} items</p>
-                </div>
-                <div className="bg-gray-50 rounded p-3">
-                  <p className="text-gray-600">Announcements</p>
-                  <p className="font-medium">{announcements.length} items</p>
-                </div>
-                <div className="bg-gray-50 rounded p-3">
-                  <p className="text-gray-600">Feedback</p>
-                  <p className="font-medium">{feedback.length} items</p>
-                </div>
-                <div className="bg-gray-50 rounded p-3">
-                  <p className="text-gray-600">Activity Log</p>
-                  <p className="font-medium">{activityLog.length} entries</p>
-                </div>
+            <div className="bg-white rounded-2xl p-6">
+              <h3 className="text-lg font-semibold text-[#1d1d1f] mb-4">Storage</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                  { label: 'Policies', value: policies.length },
+                  { label: 'Announcements', value: announcements.length },
+                  { label: 'Feedback', value: feedback.length },
+                  { label: 'Activity Log', value: activityLog.length },
+                ].map(item => (
+                  <div key={item.label} className="bg-[#f5f5f7] rounded-xl p-4">
+                    <p className="text-2xl font-semibold text-[#1d1d1f]">{item.value}</p>
+                    <p className="text-sm text-[#86868b]">{item.label}</p>
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* Danger Zone */}
-            <div className="bg-red-50 rounded-lg p-6 border border-red-200">
-              <h3 className="font-bold text-red-800 mb-4">Danger Zone</h3>
-              <p className="text-red-700 mb-4">These actions cannot be undone. Make sure to export your data first.</p>
-              <div className="flex gap-4">
-                <button
-                  onClick={() => {
-                    if (confirm('Are you sure you want to reset ALL data? This cannot be undone.')) {
-                      if (confirm('This will delete all policies, announcements, feedback, and operational data. Continue?')) {
-                        resetAllData()
-                        showNotification('All data has been reset')
-                      }
-                    }
-                  }}
-                  className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-                >
-                  Reset All Data
-                </button>
-              </div>
+            <div className="bg-[#ff3b30]/5 border border-[#ff3b30]/20 rounded-2xl p-6">
+              <h3 className="text-lg font-semibold text-[#ff3b30] mb-2">Danger Zone</h3>
+              <p className="text-[#6e6e73] mb-4">This action cannot be undone. All data will be reset to initial state.</p>
+              <Button variant="danger" onClick={() => { if(confirm('Reset ALL data?')) { if(confirm('Are you sure?')) { resetAllData(); notify('Data reset') }}}}>Reset All Data</Button>
             </div>
           </div>
         )}
