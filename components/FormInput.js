@@ -2,8 +2,8 @@ export function Input({ label, type = 'text', name, value, onChange, placeholder
   return (
     <div className={className}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {label} {required && <span className="text-red-500">*</span>}
+        <label className="block text-sm font-medium text-[#1d1d1f] mb-2">
+          {label} {required && <span className="text-[#ff3b30]">*</span>}
         </label>
       )}
       <input
@@ -13,7 +13,7 @@ export function Input({ label, type = 'text', name, value, onChange, placeholder
         onChange={onChange}
         placeholder={placeholder}
         required={required}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4B9CD3] focus:border-transparent outline-none transition"
+        className="w-full px-4 py-3 bg-[#f5f5f7] border-0 rounded-xl text-[#1d1d1f] placeholder-[#86868b] focus:ring-2 focus:ring-[#0071e3] focus:ring-offset-0 outline-none transition"
       />
     </div>
   )
@@ -23,8 +23,8 @@ export function Select({ label, name, value, onChange, options, required, classN
   return (
     <div className={className}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {label} {required && <span className="text-red-500">*</span>}
+        <label className="block text-sm font-medium text-[#1d1d1f] mb-2">
+          {label} {required && <span className="text-[#ff3b30]">*</span>}
         </label>
       )}
       <select
@@ -32,7 +32,8 @@ export function Select({ label, name, value, onChange, options, required, classN
         value={value}
         onChange={onChange}
         required={required}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4B9CD3] focus:border-transparent outline-none transition bg-white"
+        className="w-full px-4 py-3 bg-[#f5f5f7] border-0 rounded-xl text-[#1d1d1f] focus:ring-2 focus:ring-[#0071e3] outline-none transition appearance-none"
+        style={{ backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2386868b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`, backgroundPosition: 'right 12px center', backgroundRepeat: 'no-repeat', backgroundSize: '20px' }}
       >
         <option value="">Select...</option>
         {options.map(opt => (
@@ -47,8 +48,8 @@ export function Textarea({ label, name, value, onChange, placeholder, required, 
   return (
     <div className={className}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {label} {required && <span className="text-red-500">*</span>}
+        <label className="block text-sm font-medium text-[#1d1d1f] mb-2">
+          {label} {required && <span className="text-[#ff3b30]">*</span>}
         </label>
       )}
       <textarea
@@ -58,7 +59,7 @@ export function Textarea({ label, name, value, onChange, placeholder, required, 
         placeholder={placeholder}
         required={required}
         rows={rows}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#4B9CD3] focus:border-transparent outline-none transition resize-none"
+        className="w-full px-4 py-3 bg-[#f5f5f7] border-0 rounded-xl text-[#1d1d1f] placeholder-[#86868b] focus:ring-2 focus:ring-[#0071e3] outline-none transition resize-none"
       />
     </div>
   )
@@ -66,10 +67,10 @@ export function Textarea({ label, name, value, onChange, placeholder, required, 
 
 export function Button({ children, type = 'button', onClick, variant = 'primary', disabled, className = '' }) {
   const variants = {
-    primary: 'bg-[#4B9CD3] hover:bg-[#3d8bc2] text-white',
-    secondary: 'bg-gray-100 hover:bg-gray-200 text-gray-800',
-    danger: 'bg-red-500 hover:bg-red-600 text-white',
-    success: 'bg-green-500 hover:bg-green-600 text-white',
+    primary: 'bg-[#0071e3] hover:bg-[#0077ed] text-white active:scale-[0.98]',
+    secondary: 'bg-[#f5f5f7] hover:bg-[#e8e8ed] text-[#1d1d1f]',
+    danger: 'bg-[#ff3b30] hover:bg-[#ff453a] text-white',
+    success: 'bg-[#34c759] hover:bg-[#30d158] text-white',
   }
 
   return (
@@ -77,7 +78,7 @@ export function Button({ children, type = 'button', onClick, variant = 'primary'
       type={type}
       onClick={onClick}
       disabled={disabled}
-      className={`px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${className}`}
+      className={`px-5 py-2.5 rounded-full font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${className}`}
     >
       {children}
     </button>
@@ -86,15 +87,15 @@ export function Button({ children, type = 'button', onClick, variant = 'primary'
 
 export function Checkbox({ label, name, checked, onChange, className = '' }) {
   return (
-    <label className={`flex items-center gap-2 cursor-pointer ${className}`}>
+    <label className={`flex items-center gap-3 cursor-pointer ${className}`}>
       <input
         type="checkbox"
         name={name}
         checked={checked}
         onChange={onChange}
-        className="w-4 h-4 rounded border-gray-300 text-[#4B9CD3] focus:ring-[#4B9CD3]"
+        className="w-5 h-5 rounded-md border-[#d2d2d7] text-[#0071e3] focus:ring-[#0071e3] focus:ring-offset-0"
       />
-      <span className="text-sm text-gray-700">{label}</span>
+      <span className="text-sm text-[#1d1d1f]">{label}</span>
     </label>
   )
 }

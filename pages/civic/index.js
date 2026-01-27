@@ -21,33 +21,30 @@ export default function CivicPage() {
       </Head>
 
       {/* Hero */}
-      <div className="bg-gradient-to-br from-purple-600 to-purple-800 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="text-4xl">🗳️</span>
-            <h1 className="text-3xl md:text-4xl font-bold">Civic Engagement</h1>
-          </div>
-          <p className="text-purple-100 max-w-2xl">
-            Voting, service, and community participation. Your voice matters—make it count
-            in elections and in our community.
+      <div className="bg-gradient-to-b from-[#af52de] to-[#a347d1] text-white py-16">
+        <div className="max-w-6xl mx-auto px-6">
+          <p className="text-white/80 text-sm font-medium mb-3">Civic Engagement</p>
+          <h1 className="text-4xl md:text-5xl font-semibold tracking-tight mb-4">Your Voice Matters</h1>
+          <p className="text-white/90 text-lg max-w-2xl">
+            Voting, service, and community participation. Make it count in elections and in our community.
           </p>
         </div>
       </div>
 
       {/* Election Alert Banner */}
-      <div className="bg-purple-100 border-b border-purple-200 py-3">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-2">
-          <p className="text-purple-800 font-medium">🗳️ NC Primary Election: March 3, 2026</p>
-          <div className="flex gap-3 text-sm">
-            <span className="bg-purple-600 text-white px-3 py-1 rounded">Registration Deadline: Feb 7</span>
-          </div>
+      <div className="bg-[#af52de]/10 border-b border-[#af52de]/20 py-4">
+        <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-3">
+          <p className="text-[#1d1d1f] font-medium">NC Primary Election: March 3, 2026</p>
+          <span className="bg-[#af52de] text-white px-4 py-1.5 rounded-full text-sm font-medium">
+            Registration Deadline: Feb 7
+          </span>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="bg-white border-b sticky top-16 z-40">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex gap-1 overflow-x-auto">
+      <div className="bg-white border-b border-[#d2d2d7] sticky top-16 z-40">
+        <div className="max-w-6xl mx-auto px-6 py-3">
+          <div className="flex gap-2 overflow-x-auto">
             {[
               { id: 'voter', label: 'Voter Registration' },
               { id: 'fellows', label: 'Civic Fellows' },
@@ -59,10 +56,10 @@ export default function CivicPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition ${
+                className={`px-4 py-2 text-sm font-medium whitespace-nowrap rounded-full transition-all ${
                   activeTab === tab.id
-                    ? 'border-purple-600 text-purple-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                    ? 'bg-[#af52de] text-white'
+                    : 'text-[#6e6e73] hover:bg-[#f5f5f7]'
                 }`}
               >
                 {tab.label}
@@ -72,80 +69,85 @@ export default function CivicPage() {
         </div>
       </div>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-6 py-10">
         {submitted && (
-          <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
-            <p className="text-green-800 font-medium">
+          <div className="mb-8 bg-[#34c759]/10 rounded-2xl p-5">
+            <p className="text-[#1d1d1f] font-medium">
               {submitted === 'voter' && 'Thank you! Check your email for next steps to complete your voter registration.'}
               {submitted === 'fellows' && 'Your Civic Fellows application has been submitted! We will review and contact you within 2 weeks.'}
             </p>
-            <button onClick={() => setSubmitted(null)} className="text-green-600 text-sm mt-2 hover:underline">Dismiss</button>
+            <button onClick={() => setSubmitted(null)} className="text-[#34c759] text-sm font-medium mt-2 hover:underline">Dismiss</button>
           </div>
         )}
 
         {/* Voter Registration Tab */}
         {activeTab === 'voter' && (
           <div>
-            <h2 className="text-2xl font-bold text-[#13294B] mb-6">Voter Registration</h2>
+            <h2 className="text-2xl font-semibold text-[#1d1d1f] tracking-tight mb-8">Voter Registration</h2>
 
             {/* Stats */}
-            <div className="grid md:grid-cols-4 gap-4 mb-8">
-              <div className="bg-purple-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-purple-600">4,560</p>
-                <p className="text-sm text-gray-600">Students Registered</p>
+            <div className="grid md:grid-cols-4 gap-4 mb-10">
+              <div className="bg-[#af52de]/10 rounded-2xl p-5 text-center">
+                <p className="text-3xl font-semibold text-[#af52de] tracking-tight">4,560</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Students Registered</p>
               </div>
-              <div className="bg-blue-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-blue-600">23</p>
-                <p className="text-sm text-gray-600">Registration Events</p>
+              <div className="bg-[#0071e3]/10 rounded-2xl p-5 text-center">
+                <p className="text-3xl font-semibold text-[#0071e3] tracking-tight">23</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Registration Events</p>
               </div>
-              <div className="bg-green-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-green-600">89</p>
-                <p className="text-sm text-gray-600">Volunteers</p>
+              <div className="bg-[#34c759]/10 rounded-2xl p-5 text-center">
+                <p className="text-3xl font-semibold text-[#34c759] tracking-tight">89</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Volunteers</p>
               </div>
-              <div className="bg-orange-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-orange-600">78%</p>
-                <p className="text-sm text-gray-600">Campus Turnout Goal</p>
+              <div className="bg-[#ff9500]/10 rounded-2xl p-5 text-center">
+                <p className="text-3xl font-semibold text-[#ff9500] tracking-tight">78%</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Campus Turnout Goal</p>
               </div>
             </div>
 
             {/* Action Cards */}
-            <div className="grid md:grid-cols-2 gap-6 mb-8">
-              <div className="bg-purple-600 text-white rounded-lg p-6">
-                <h3 className="text-xl font-bold mb-2">Register to Vote</h3>
-                <p className="text-purple-100 mb-4">Takes only 5 minutes. Register or update your registration.</p>
-                <Button onClick={() => setShowRegistrationForm(true)} className="bg-white text-purple-600 hover:bg-purple-50">
+            <div className="grid md:grid-cols-2 gap-5 mb-10">
+              <div className="bg-gradient-to-br from-[#af52de] to-[#9b3dc9] text-white rounded-2xl p-6">
+                <h3 className="text-xl font-semibold mb-2">Register to Vote</h3>
+                <p className="text-white/80 mb-5">Takes only 5 minutes. Register or update your registration.</p>
+                <button
+                  onClick={() => setShowRegistrationForm(true)}
+                  className="bg-white text-[#af52de] px-5 py-2.5 rounded-full font-medium hover:bg-white/90 transition-colors"
+                >
                   Start Registration
-                </Button>
+                </button>
               </div>
-              <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-                <h3 className="text-xl font-bold text-[#13294B] mb-2">Check Your Status</h3>
-                <p className="text-gray-600 mb-4">Verify your voter registration and find your polling place.</p>
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#d2d2d7]/50">
+                <h3 className="text-xl font-semibold text-[#1d1d1f] mb-2">Check Your Status</h3>
+                <p className="text-[#6e6e73] mb-5">Verify your voter registration and find your polling place.</p>
                 <a href="https://vt.ncsbe.gov/RegLkup/" target="_blank" rel="noopener noreferrer">
-                  <Button variant="secondary">Check Status</Button>
+                  <button className="bg-[#f5f5f7] text-[#1d1d1f] px-5 py-2.5 rounded-full font-medium hover:bg-[#e8e8ed] transition-colors">
+                    Check Status
+                  </button>
                 </a>
               </div>
             </div>
 
             {/* Polling Locations */}
-            <h3 className="text-xl font-bold text-[#13294B] mb-4">Campus Polling Locations</h3>
-            <div className="grid md:grid-cols-2 gap-4 mb-8">
+            <h3 className="text-xl font-semibold text-[#1d1d1f] tracking-tight mb-4">Campus Polling Locations</h3>
+            <div className="grid md:grid-cols-2 gap-4 mb-10">
               {[
                 { name: 'Student Union', address: 'Frank Porter Graham Student Union', precinct: 'Chapel Hill 2' },
                 { name: 'Rams Head Recreation', address: '101 Student Recreation Center Way', precinct: 'Chapel Hill 3' },
               ].map((loc, i) => (
-                <div key={i} className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                  <h4 className="font-bold text-[#13294B]">{loc.name}</h4>
-                  <p className="text-sm text-gray-600">{loc.address}</p>
-                  <p className="text-sm text-purple-600 mt-1">Precinct: {loc.precinct}</p>
+                <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-[#d2d2d7]/50">
+                  <h4 className="font-semibold text-[#1d1d1f]">{loc.name}</h4>
+                  <p className="text-sm text-[#6e6e73] mt-1">{loc.address}</p>
+                  <p className="text-sm text-[#af52de] font-medium mt-2">Precinct: {loc.precinct}</p>
                 </div>
               ))}
             </div>
 
             {/* Important Dates */}
-            <h3 className="text-xl font-bold text-[#13294B] mb-4">Important Dates</h3>
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            <h3 className="text-xl font-semibold text-[#1d1d1f] tracking-tight mb-4">Important Dates</h3>
+            <div className="bg-white rounded-2xl shadow-sm border border-[#d2d2d7]/50 overflow-hidden">
               <table className="w-full">
-                <tbody className="divide-y">
+                <tbody className="divide-y divide-[#d2d2d7]/50">
                   {[
                     { date: 'Feb 7, 2026', event: 'Voter Registration Deadline' },
                     { date: 'Feb 13-29, 2026', event: 'Early Voting Period' },
@@ -153,9 +155,9 @@ export default function CivicPage() {
                     { date: 'Oct 9, 2026', event: 'General Election Registration Deadline' },
                     { date: 'Nov 3, 2026', event: 'General Election Day' },
                   ].map((item, i) => (
-                    <tr key={i}>
-                      <td className="px-4 py-3 font-medium text-[#13294B]">{item.date}</td>
-                      <td className="px-4 py-3 text-gray-600">{item.event}</td>
+                    <tr key={i} className="hover:bg-[#f5f5f7]/50">
+                      <td className="px-5 py-4 font-medium text-[#1d1d1f]">{item.date}</td>
+                      <td className="px-5 py-4 text-[#6e6e73]">{item.event}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -164,10 +166,10 @@ export default function CivicPage() {
 
             {/* Registration Form Modal */}
             {showRegistrationForm && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
-                  <h3 className="text-xl font-bold text-[#13294B] mb-4">Voter Registration Assistance</h3>
-                  <p className="text-sm text-gray-600 mb-4">We'll help you complete your NC voter registration form.</p>
+              <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+                  <h3 className="text-xl font-semibold text-[#1d1d1f] mb-2">Voter Registration Assistance</h3>
+                  <p className="text-sm text-[#6e6e73] mb-6">We'll help you complete your NC voter registration form.</p>
                   <form onSubmit={(e) => { e.preventDefault(); setSubmitted('voter'); setShowRegistrationForm(false); }} className="space-y-4">
                     <Input label="Full Legal Name" name="name" value={registrationForm.name} onChange={e => setRegistrationForm({...registrationForm, name: e.target.value})} required />
                     <Input label="Email" type="email" name="email" value={registrationForm.email} onChange={e => setRegistrationForm({...registrationForm, email: e.target.value})} required />
@@ -182,9 +184,13 @@ export default function CivicPage() {
                       ]}
                     />
                     <Checkbox label="I am a US citizen and will be 18 by election day" />
-                    <div className="flex gap-3">
-                      <Button type="submit">Submit</Button>
-                      <Button variant="secondary" onClick={() => setShowRegistrationForm(false)}>Cancel</Button>
+                    <div className="flex gap-3 pt-2">
+                      <button type="submit" className="bg-[#af52de] text-white px-5 py-2.5 rounded-full font-medium hover:bg-[#9b3dc9] transition-colors">
+                        Submit
+                      </button>
+                      <button type="button" onClick={() => setShowRegistrationForm(false)} className="bg-[#f5f5f7] text-[#1d1d1f] px-5 py-2.5 rounded-full font-medium hover:bg-[#e8e8ed] transition-colors">
+                        Cancel
+                      </button>
                     </div>
                   </form>
                 </div>
@@ -196,32 +202,37 @@ export default function CivicPage() {
         {/* Civic Fellows Tab */}
         {activeTab === 'fellows' && (
           <div>
-            <div className="flex items-start justify-between mb-6">
+            <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-8">
               <div>
-                <h2 className="text-2xl font-bold text-[#13294B]">Civic Fellows Program</h2>
-                <p className="text-gray-600 mt-1">Fellowship connecting students with local government internships</p>
+                <h2 className="text-2xl font-semibold text-[#1d1d1f] tracking-tight">Civic Fellows Program</h2>
+                <p className="text-[#6e6e73] mt-1">Fellowship connecting students with local government internships</p>
               </div>
-              <Button onClick={() => setShowFellowsForm(true)}>Apply Now</Button>
+              <button
+                onClick={() => setShowFellowsForm(true)}
+                className="bg-[#af52de] text-white px-5 py-2.5 rounded-full font-medium hover:bg-[#9b3dc9] transition-colors"
+              >
+                Apply Now
+              </button>
             </div>
 
             {/* Stats */}
-            <div className="grid md:grid-cols-3 gap-4 mb-8">
-              <div className="bg-purple-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-purple-600">24</p>
-                <p className="text-sm text-gray-600">Current Fellows</p>
+            <div className="grid md:grid-cols-3 gap-4 mb-10">
+              <div className="bg-[#af52de]/10 rounded-2xl p-5 text-center">
+                <p className="text-3xl font-semibold text-[#af52de] tracking-tight">24</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Current Fellows</p>
               </div>
-              <div className="bg-blue-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-blue-600">18</p>
-                <p className="text-sm text-gray-600">Active Placements</p>
+              <div className="bg-[#0071e3]/10 rounded-2xl p-5 text-center">
+                <p className="text-3xl font-semibold text-[#0071e3] tracking-tight">18</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Active Placements</p>
               </div>
-              <div className="bg-green-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-green-600">12</p>
-                <p className="text-sm text-gray-600">Government Partners</p>
+              <div className="bg-[#34c759]/10 rounded-2xl p-5 text-center">
+                <p className="text-3xl font-semibold text-[#34c759] tracking-tight">12</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Government Partners</p>
               </div>
             </div>
 
             {/* Partner Organizations */}
-            <h3 className="text-xl font-bold text-[#13294B] mb-4">Placement Partners</h3>
+            <h3 className="text-xl font-semibold text-[#1d1d1f] tracking-tight mb-4">Placement Partners</h3>
             <div className="grid md:grid-cols-3 gap-4 mb-8">
               {[
                 'Chapel Hill Town Council',
@@ -231,17 +242,17 @@ export default function CivicPage() {
                 'Governor\'s Office',
                 'Secretary of State',
               ].map((org, i) => (
-                <div key={i} className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 text-center">
-                  <p className="font-medium text-[#13294B]">{org}</p>
+                <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-[#d2d2d7]/50 text-center">
+                  <p className="font-medium text-[#1d1d1f]">{org}</p>
                 </div>
               ))}
             </div>
 
             {/* Fellows Form Modal */}
             {showFellowsForm && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
-                  <h3 className="text-xl font-bold text-[#13294B] mb-4">Civic Fellows Application</h3>
+              <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+                  <h3 className="text-xl font-semibold text-[#1d1d1f] mb-6">Civic Fellows Application</h3>
                   <form onSubmit={(e) => { e.preventDefault(); setSubmitted('fellows'); setShowFellowsForm(false); }} className="space-y-4">
                     <Input label="Full Name" required />
                     <Input label="Email" type="email" required />
@@ -254,9 +265,13 @@ export default function CivicPage() {
                     <Input label="Major" required />
                     <Textarea label="Why are you interested in civic engagement?" required rows={3} />
                     <Textarea label="Relevant experience" rows={3} />
-                    <div className="flex gap-3">
-                      <Button type="submit">Submit Application</Button>
-                      <Button variant="secondary" onClick={() => setShowFellowsForm(false)}>Cancel</Button>
+                    <div className="flex gap-3 pt-2">
+                      <button type="submit" className="bg-[#af52de] text-white px-5 py-2.5 rounded-full font-medium hover:bg-[#9b3dc9] transition-colors">
+                        Submit Application
+                      </button>
+                      <button type="button" onClick={() => setShowFellowsForm(false)} className="bg-[#f5f5f7] text-[#1d1d1f] px-5 py-2.5 rounded-full font-medium hover:bg-[#e8e8ed] transition-colors">
+                        Cancel
+                      </button>
                     </div>
                   </form>
                 </div>
@@ -268,47 +283,49 @@ export default function CivicPage() {
         {/* Election Transit Tab */}
         {activeTab === 'transit' && (
           <div>
-            <h2 className="text-2xl font-bold text-[#13294B] mb-6">Election Day Transit</h2>
+            <h2 className="text-2xl font-semibold text-[#1d1d1f] tracking-tight mb-8">Election Day Transit</h2>
 
             {/* Stats */}
-            <div className="grid md:grid-cols-3 gap-4 mb-8">
-              <div className="bg-purple-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-purple-600">5</p>
-                <p className="text-sm text-gray-600">Transit Routes</p>
+            <div className="grid md:grid-cols-3 gap-4 mb-10">
+              <div className="bg-[#af52de]/10 rounded-2xl p-5 text-center">
+                <p className="text-3xl font-semibold text-[#af52de] tracking-tight">5</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Transit Routes</p>
               </div>
-              <div className="bg-blue-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-blue-600">1,200</p>
-                <p className="text-sm text-gray-600">Rides Last Election</p>
+              <div className="bg-[#0071e3]/10 rounded-2xl p-5 text-center">
+                <p className="text-3xl font-semibold text-[#0071e3] tracking-tight">1,200</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Rides Last Election</p>
               </div>
-              <div className="bg-green-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-green-600">8</p>
-                <p className="text-sm text-gray-600">Polling Locations Served</p>
+              <div className="bg-[#34c759]/10 rounded-2xl p-5 text-center">
+                <p className="text-3xl font-semibold text-[#34c759] tracking-tight">8</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Polling Locations Served</p>
               </div>
             </div>
 
             {/* Routes */}
-            <h3 className="text-xl font-bold text-[#13294B] mb-4">Free Shuttle Routes (Election Day)</h3>
-            <div className="space-y-4 mb-8">
+            <h3 className="text-xl font-semibold text-[#1d1d1f] tracking-tight mb-4">Free Shuttle Routes (Election Day)</h3>
+            <div className="space-y-4 mb-10">
               {[
-                { name: 'Route A: South Campus Loop', stops: 'Rams Head → Student Union → Polling Location', frequency: 'Every 15 min' },
-                { name: 'Route B: North Campus Loop', stops: 'Friday Center → Morrison → Polling Location', frequency: 'Every 15 min' },
-                { name: 'Route C: Off-Campus', stops: 'Granville → The Warehouse → Polling Location', frequency: 'Every 20 min' },
+                { name: 'Route A: South Campus Loop', stops: 'Rams Head - Student Union - Polling Location', frequency: 'Every 15 min' },
+                { name: 'Route B: North Campus Loop', stops: 'Friday Center - Morrison - Polling Location', frequency: 'Every 15 min' },
+                { name: 'Route C: Off-Campus', stops: 'Granville - The Warehouse - Polling Location', frequency: 'Every 20 min' },
               ].map((route, i) => (
-                <div key={i} className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                  <h4 className="font-bold text-[#13294B]">{route.name}</h4>
-                  <p className="text-sm text-gray-600">{route.stops}</p>
-                  <p className="text-sm text-purple-600 mt-1">{route.frequency}</p>
+                <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-[#d2d2d7]/50">
+                  <h4 className="font-semibold text-[#1d1d1f]">{route.name}</h4>
+                  <p className="text-sm text-[#6e6e73] mt-1">{route.stops}</p>
+                  <p className="text-sm text-[#af52de] font-medium mt-2">{route.frequency}</p>
                 </div>
               ))}
             </div>
 
             {/* Reminder Signup */}
-            <div className="bg-purple-50 rounded-lg p-6 border border-purple-200">
-              <h3 className="font-bold text-purple-800 mb-2">Get Election Day Reminders</h3>
-              <p className="text-sm text-purple-700 mb-4">Sign up for text reminders about shuttle times and polling locations.</p>
+            <div className="bg-[#af52de]/10 rounded-2xl p-6">
+              <h3 className="font-semibold text-[#1d1d1f] mb-2">Get Election Day Reminders</h3>
+              <p className="text-sm text-[#6e6e73] mb-4">Sign up for text reminders about shuttle times and polling locations.</p>
               <div className="flex gap-3">
                 <Input placeholder="Phone number" className="flex-1" />
-                <Button>Sign Up</Button>
+                <button className="bg-[#af52de] text-white px-5 py-2.5 rounded-full font-medium hover:bg-[#9b3dc9] transition-colors whitespace-nowrap">
+                  Sign Up
+                </button>
               </div>
             </div>
           </div>
@@ -317,18 +334,36 @@ export default function CivicPage() {
         {/* Service Tab */}
         {activeTab === 'service' && (
           <div>
-            <h2 className="text-2xl font-bold text-[#13294B] mb-6">Carolina Day of Service</h2>
-            <div className="bg-white rounded-lg p-6 shadow-sm mb-8">
-              <p className="text-gray-600">Our annual Day of Service brings together hundreds of Tar Heels to give back to the Chapel Hill-Carrboro community.</p>
-              <div className="mt-4 grid md:grid-cols-2 gap-4">
+            <h2 className="text-2xl font-semibold text-[#1d1d1f] tracking-tight mb-8">Carolina Day of Service</h2>
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-[#d2d2d7]/50 mb-8">
+              <p className="text-[#6e6e73]">Our annual Day of Service brings together hundreds of Tar Heels to give back to the Chapel Hill-Carrboro community.</p>
+              <div className="mt-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <p className="text-2xl font-bold text-[#13294B]">March 28, 2026</p>
-                  <p className="text-gray-500">Save the Date</p>
+                  <p className="text-2xl font-semibold text-[#1d1d1f] tracking-tight">March 28, 2026</p>
+                  <p className="text-[#86868b] text-sm mt-1">Save the Date</p>
                 </div>
-                <div>
-                  <Button>Register to Volunteer</Button>
-                </div>
+                <button className="bg-[#af52de] text-white px-5 py-2.5 rounded-full font-medium hover:bg-[#9b3dc9] transition-colors">
+                  Register to Volunteer
+                </button>
               </div>
+            </div>
+
+            {/* Service Areas */}
+            <h3 className="text-xl font-semibold text-[#1d1d1f] tracking-tight mb-4">Service Areas</h3>
+            <div className="grid md:grid-cols-3 gap-4">
+              {[
+                { area: 'Environmental', desc: 'Park cleanups and tree planting', color: '#34c759' },
+                { area: 'Education', desc: 'Tutoring and mentoring programs', color: '#0071e3' },
+                { area: 'Community', desc: 'Food banks and shelters', color: '#ff9500' },
+              ].map((item, i) => (
+                <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-[#d2d2d7]/50">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center mb-3" style={{ backgroundColor: `${item.color}15` }}>
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                  </div>
+                  <h4 className="font-semibold text-[#1d1d1f]">{item.area}</h4>
+                  <p className="text-sm text-[#6e6e73] mt-1">{item.desc}</p>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -336,10 +371,10 @@ export default function CivicPage() {
         {/* Democracy Week Tab */}
         {activeTab === 'democracy' && (
           <div>
-            <h2 className="text-2xl font-bold text-[#13294B] mb-6">Democracy Week</h2>
-            <p className="text-gray-600 mb-6">A week of civic education, voter engagement, and democratic participation.</p>
+            <h2 className="text-2xl font-semibold text-[#1d1d1f] tracking-tight mb-2">Democracy Week</h2>
+            <p className="text-[#6e6e73] mb-8">A week of civic education, voter engagement, and democratic participation.</p>
 
-            <h3 className="text-xl font-bold text-[#13294B] mb-4">Upcoming Events</h3>
+            <h3 className="text-xl font-semibold text-[#1d1d1f] tracking-tight mb-4">Upcoming Events</h3>
             <div className="space-y-4">
               {[
                 { title: 'Voter Registration Drive', date: 'Oct 15, 2026', time: '10am-4pm', location: 'The Pit' },
@@ -347,12 +382,14 @@ export default function CivicPage() {
                 { title: 'Democracy & Dialogue Workshop', date: 'Oct 17, 2026', time: '3pm', location: 'Student Union' },
                 { title: 'Mock Election', date: 'Oct 18, 2026', time: 'All Day', location: 'Online' },
               ].map((event, i) => (
-                <div key={i} className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 flex items-center justify-between">
+                <div key={i} className="bg-white rounded-2xl p-5 shadow-sm border border-[#d2d2d7]/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
-                    <h4 className="font-bold text-[#13294B]">{event.title}</h4>
-                    <p className="text-sm text-gray-600">{event.date} at {event.time} | {event.location}</p>
+                    <h4 className="font-semibold text-[#1d1d1f]">{event.title}</h4>
+                    <p className="text-sm text-[#6e6e73] mt-1">{event.date} at {event.time} | {event.location}</p>
                   </div>
-                  <Button variant="secondary">RSVP</Button>
+                  <button className="bg-[#f5f5f7] text-[#1d1d1f] px-5 py-2.5 rounded-full font-medium hover:bg-[#e8e8ed] transition-colors">
+                    RSVP
+                  </button>
                 </div>
               ))}
             </div>
@@ -362,22 +399,25 @@ export default function CivicPage() {
         {/* All Policies Tab */}
         {activeTab === 'policies' && (
           <div>
-            <h2 className="text-2xl font-bold text-[#13294B] mb-6">Civic Engagement Policies</h2>
+            <h2 className="text-2xl font-semibold text-[#1d1d1f] tracking-tight mb-8">Civic Engagement Policies</h2>
             <div className="space-y-4">
               {deptPolicies.map(policy => (
-                <div key={policy.id} className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-bold text-[#13294B]">{policy.title}</h3>
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      policy.status === 'in_progress' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+                <div key={policy.id} className="bg-white rounded-2xl p-5 shadow-sm border border-[#d2d2d7]/50">
+                  <div className="flex items-start justify-between mb-3">
+                    <h3 className="font-semibold text-[#1d1d1f]">{policy.title}</h3>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                      policy.status === 'in_progress'
+                        ? 'bg-[#0071e3]/10 text-[#0071e3]'
+                        : 'bg-[#f5f5f7] text-[#86868b]'
                     }`}>
                       {policy.status === 'in_progress' ? 'In Progress' : 'Planned'}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-600 mb-3">{policy.description}</p>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-purple-500 rounded-full" style={{ width: `${policy.progress}%` }} />
+                  <p className="text-sm text-[#6e6e73] mb-4">{policy.description}</p>
+                  <div className="h-1.5 bg-[#f5f5f7] rounded-full overflow-hidden">
+                    <div className="h-full bg-[#af52de] rounded-full transition-all" style={{ width: `${policy.progress}%` }} />
                   </div>
+                  <p className="text-xs text-[#86868b] mt-2">{policy.progress}% complete</p>
                 </div>
               ))}
             </div>

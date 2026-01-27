@@ -20,13 +20,15 @@ export default function EnvironmentalPage() {
       </Head>
 
       {/* Hero */}
-      <div className="bg-gradient-to-br from-emerald-500 to-emerald-700 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex items-center gap-3 mb-4">
-            <span className="text-4xl">🌱</span>
-            <h1 className="text-3xl md:text-4xl font-bold">Environmental Affairs</h1>
+      <div className="bg-gradient-to-b from-[#34c759] to-[#30d158] text-white py-16">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+              <span className="text-3xl">🌱</span>
+            </div>
+            <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">Environmental Affairs</h1>
           </div>
-          <p className="text-emerald-100 max-w-2xl">
+          <p className="text-white/80 text-lg max-w-2xl">
             Sustainability, climate action, and green initiatives. Building a more
             sustainable Carolina for future generations.
           </p>
@@ -34,9 +36,9 @@ export default function EnvironmentalPage() {
       </div>
 
       {/* Tabs */}
-      <div className="bg-white border-b sticky top-16 z-40">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex gap-1 overflow-x-auto">
+      <div className="bg-[#f5f5f7] sticky top-16 z-40">
+        <div className="max-w-6xl mx-auto px-6 py-3">
+          <div className="flex gap-2 overflow-x-auto">
             {[
               { id: 'carbon', label: 'Carbon Neutrality' },
               { id: 'dining', label: 'Sustainable Dining' },
@@ -48,10 +50,10 @@ export default function EnvironmentalPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition ${
+                className={`px-4 py-2 text-sm font-medium whitespace-nowrap rounded-full transition-all ${
                   activeTab === tab.id
-                    ? 'border-emerald-500 text-emerald-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                    ? 'bg-[#34c759] text-white'
+                    : 'text-[#6e6e73] hover:text-[#1d1d1f] hover:bg-white'
                 }`}
               >
                 {tab.label}
@@ -61,73 +63,79 @@ export default function EnvironmentalPage() {
         </div>
       </div>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="max-w-6xl mx-auto px-6 py-10">
         {submitted && (
-          <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4">
-            <p className="text-green-800 font-medium">
+          <div className="mb-8 bg-[#34c759]/10 rounded-2xl p-5">
+            <p className="text-[#1d1d1f] font-medium">
               {submitted === 'project' && 'Your Green Fund application has been submitted! We will review and contact you within 2 weeks.'}
               {submitted === 'committee' && 'Thank you for your interest in the Climate Action Committee! We will reach out about next steps.'}
             </p>
-            <button onClick={() => setSubmitted(null)} className="text-green-600 text-sm mt-2 hover:underline">Dismiss</button>
+            <button onClick={() => setSubmitted(null)} className="text-[#34c759] text-sm mt-2 font-medium hover:underline">Dismiss</button>
           </div>
         )}
 
         {/* Carbon Neutrality Tab */}
         {activeTab === 'carbon' && (
           <div>
-            <h2 className="text-2xl font-bold text-[#13294B] mb-6">Carbon Neutrality Push</h2>
+            <h2 className="text-3xl font-semibold text-[#1d1d1f] tracking-tight mb-8">Carbon Neutrality Push</h2>
 
             {/* Progress */}
-            <div className="bg-white rounded-lg p-6 shadow-sm mb-8">
-              <h3 className="font-bold text-[#13294B] mb-4">UNC Carbon Reduction Progress</h3>
-              <div className="flex items-center gap-4 mb-4">
-                <div className="text-4xl font-bold text-emerald-600">12%</div>
+            <div className="bg-white rounded-2xl p-6 mb-8 shadow-sm">
+              <h3 className="font-semibold text-[#1d1d1f] mb-4">UNC Carbon Reduction Progress</h3>
+              <div className="flex items-center gap-6 mb-4">
+                <div className="text-5xl font-semibold text-[#34c759] tracking-tight">12%</div>
                 <div className="flex-1">
-                  <p className="text-sm text-gray-500 mb-1">Reduction from 2007 baseline</p>
-                  <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500 rounded-full" style={{ width: '12%' }} />
+                  <p className="text-sm text-[#86868b] mb-2">Reduction from 2007 baseline</p>
+                  <div className="h-2 bg-[#f5f5f7] rounded-full overflow-hidden">
+                    <div className="h-full bg-[#34c759] rounded-full" style={{ width: '12%' }} />
                   </div>
                 </div>
               </div>
-              <p className="text-sm text-gray-600">Goal: Carbon neutrality by 2040</p>
+              <p className="text-sm text-[#6e6e73]">Goal: Carbon neutrality by 2040</p>
             </div>
 
             {/* Stats */}
             <div className="grid md:grid-cols-3 gap-4 mb-8">
-              <div className="bg-emerald-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-emerald-600">890</p>
-                <p className="text-sm text-gray-600">Petition Signatures</p>
+              <div className="bg-[#34c759]/10 rounded-2xl p-5 text-center">
+                <p className="text-4xl font-semibold text-[#34c759] tracking-tight">890</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Petition Signatures</p>
               </div>
-              <div className="bg-blue-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-blue-600">45</p>
-                <p className="text-sm text-gray-600">Actions Taken</p>
+              <div className="bg-[#0071e3]/10 rounded-2xl p-5 text-center">
+                <p className="text-4xl font-semibold text-[#0071e3] tracking-tight">45</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Actions Taken</p>
               </div>
-              <div className="bg-purple-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-purple-600">5</p>
-                <p className="text-sm text-gray-600">Admin Meetings</p>
+              <div className="bg-[#af52de]/10 rounded-2xl p-5 text-center">
+                <p className="text-4xl font-semibold text-[#af52de] tracking-tight">5</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Admin Meetings</p>
               </div>
             </div>
 
             {/* Take Action */}
-            <h3 className="text-xl font-bold text-[#13294B] mb-4">Take Action</h3>
+            <h3 className="text-xl font-semibold text-[#1d1d1f] mb-4">Take Action</h3>
             <div className="grid md:grid-cols-2 gap-4">
-              <div className="bg-emerald-600 text-white rounded-lg p-6">
-                <h4 className="font-bold text-lg mb-2">Sign the Petition</h4>
-                <p className="text-emerald-100 mb-4">Demand accelerated carbon neutrality timeline from university leadership.</p>
-                <Button className="bg-white text-emerald-600 hover:bg-emerald-50">Sign Now</Button>
+              <div className="bg-gradient-to-br from-[#34c759] to-[#30d158] text-white rounded-2xl p-6">
+                <h4 className="font-semibold text-lg mb-2">Sign the Petition</h4>
+                <p className="text-white/80 mb-4">Demand accelerated carbon neutrality timeline from university leadership.</p>
+                <button className="bg-white text-[#34c759] px-5 py-2.5 rounded-full font-medium hover:bg-white/90 transition-colors">
+                  Sign Now
+                </button>
               </div>
-              <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-                <h4 className="font-bold text-lg text-[#13294B] mb-2">Contact Administration</h4>
-                <p className="text-gray-600 mb-4">Send a pre-written email to the Chancellor's office.</p>
-                <Button variant="secondary">Send Email</Button>
+              <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <h4 className="font-semibold text-lg text-[#1d1d1f] mb-2">Contact Administration</h4>
+                <p className="text-[#6e6e73] mb-4">Send a pre-written email to the Chancellor's office.</p>
+                <button className="bg-[#f5f5f7] text-[#1d1d1f] px-5 py-2.5 rounded-full font-medium hover:bg-[#e8e8ed] transition-colors">
+                  Send Email
+                </button>
               </div>
             </div>
 
             {/* Impact Calculator */}
-            <div className="mt-8 bg-emerald-50 rounded-lg p-6 border border-emerald-200">
-              <h3 className="font-bold text-emerald-800 mb-4">Calculate Your Impact</h3>
-              <p className="text-sm text-emerald-700 mb-4">See how your daily choices affect carbon emissions.</p>
-              <Button>Open Calculator</Button>
+            <div className="mt-8 bg-[#34c759]/10 rounded-2xl p-6">
+              <h3 className="font-semibold text-[#1d1d1f] mb-2">Calculate Your Impact</h3>
+              <p className="text-sm text-[#6e6e73] mb-4">See how your daily choices affect carbon emissions.</p>
+              <button className="bg-[#34c759] text-white px-5 py-2.5 rounded-full font-medium hover:bg-[#30d158] transition-colors">
+                Open Calculator
+              </button>
             </div>
           </div>
         )}
@@ -135,53 +143,55 @@ export default function EnvironmentalPage() {
         {/* Sustainable Dining Tab */}
         {activeTab === 'dining' && (
           <div>
-            <h2 className="text-2xl font-bold text-[#13294B] mb-6">Sustainable Dining Initiative</h2>
+            <h2 className="text-3xl font-semibold text-[#1d1d1f] tracking-tight mb-8">Sustainable Dining Initiative</h2>
 
             {/* Stats */}
             <div className="grid md:grid-cols-3 gap-4 mb-8">
-              <div className="bg-emerald-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-emerald-600">45,000</p>
-                <p className="text-sm text-gray-600">Plastics Reduced</p>
+              <div className="bg-[#34c759]/10 rounded-2xl p-5 text-center">
+                <p className="text-4xl font-semibold text-[#34c759] tracking-tight">45,000</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Plastics Reduced</p>
               </div>
-              <div className="bg-blue-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-blue-600">12</p>
-                <p className="text-sm text-gray-600">Dining Locations</p>
+              <div className="bg-[#0071e3]/10 rounded-2xl p-5 text-center">
+                <p className="text-4xl font-semibold text-[#0071e3] tracking-tight">12</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Dining Locations</p>
               </div>
-              <div className="bg-purple-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-purple-600">4.1/5</p>
-                <p className="text-sm text-gray-600">Satisfaction</p>
+              <div className="bg-[#af52de]/10 rounded-2xl p-5 text-center">
+                <p className="text-4xl font-semibold text-[#af52de] tracking-tight">4.1/5</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Satisfaction</p>
               </div>
             </div>
 
             {/* Initiatives */}
-            <h3 className="text-xl font-bold text-[#13294B] mb-4">Current Initiatives</h3>
-            <div className="space-y-4 mb-8">
+            <h3 className="text-xl font-semibold text-[#1d1d1f] mb-4">Current Initiatives</h3>
+            <div className="space-y-3 mb-8">
               {[
                 { name: 'Reusable Container Program', status: 'Active', locations: 'All dining halls', progress: 75 },
                 { name: 'Compostable Utensils', status: 'Active', locations: 'Lenoir, Chase', progress: 60 },
                 { name: 'Trayless Dining', status: 'Pilot', locations: 'Lenoir', progress: 40 },
                 { name: 'Local Food Sourcing', status: 'Expanding', locations: 'Ram\'s Head', progress: 55 },
               ].map((item, i) => (
-                <div key={i} className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                  <div className="flex items-start justify-between mb-2">
+                <div key={i} className="bg-white rounded-2xl p-5 shadow-sm">
+                  <div className="flex items-start justify-between mb-3">
                     <div>
-                      <h4 className="font-bold text-[#13294B]">{item.name}</h4>
-                      <p className="text-sm text-gray-500">{item.locations}</p>
+                      <h4 className="font-semibold text-[#1d1d1f]">{item.name}</h4>
+                      <p className="text-sm text-[#86868b]">{item.locations}</p>
                     </div>
-                    <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded text-xs">{item.status}</span>
+                    <span className="px-2.5 py-1 bg-[#34c759]/10 text-[#34c759] rounded-full text-xs font-medium">{item.status}</span>
                   </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${item.progress}%` }} />
+                  <div className="h-1.5 bg-[#f5f5f7] rounded-full overflow-hidden">
+                    <div className="h-full bg-[#34c759] rounded-full" style={{ width: `${item.progress}%` }} />
                   </div>
                 </div>
               ))}
             </div>
 
             {/* Feedback */}
-            <div className="bg-emerald-50 rounded-lg p-6 border border-emerald-200">
-              <h3 className="font-bold text-emerald-800 mb-2">Share Your Feedback</h3>
-              <p className="text-sm text-emerald-700 mb-4">Help us improve sustainable dining options.</p>
-              <Button>Give Feedback</Button>
+            <div className="bg-[#34c759]/10 rounded-2xl p-6">
+              <h3 className="font-semibold text-[#1d1d1f] mb-2">Share Your Feedback</h3>
+              <p className="text-sm text-[#6e6e73] mb-4">Help us improve sustainable dining options.</p>
+              <button className="bg-[#34c759] text-white px-5 py-2.5 rounded-full font-medium hover:bg-[#30d158] transition-colors">
+                Give Feedback
+              </button>
             </div>
           </div>
         )}
@@ -189,54 +199,59 @@ export default function EnvironmentalPage() {
         {/* Green Fund Tab */}
         {activeTab === 'greenfund' && (
           <div>
-            <div className="flex items-start justify-between mb-6">
+            <div className="flex items-start justify-between mb-8">
               <div>
-                <h2 className="text-2xl font-bold text-[#13294B]">Green Fund</h2>
-                <p className="text-gray-600 mt-1">Student-funded grants for sustainability projects</p>
+                <h2 className="text-3xl font-semibold text-[#1d1d1f] tracking-tight">Green Fund</h2>
+                <p className="text-[#6e6e73] mt-1">Student-funded grants for sustainability projects</p>
               </div>
-              <Button onClick={() => setShowProjectForm(true)}>Apply for Funding</Button>
+              <button
+                onClick={() => setShowProjectForm(true)}
+                className="bg-[#34c759] text-white px-5 py-2.5 rounded-full font-medium hover:bg-[#30d158] transition-colors"
+              >
+                Apply for Funding
+              </button>
             </div>
 
             {/* Stats */}
             <div className="grid md:grid-cols-3 gap-4 mb-8">
-              <div className="bg-emerald-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-emerald-600">$156K</p>
-                <p className="text-sm text-gray-600">Total Funded</p>
+              <div className="bg-[#34c759]/10 rounded-2xl p-5 text-center">
+                <p className="text-4xl font-semibold text-[#34c759] tracking-tight">$156K</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Total Funded</p>
               </div>
-              <div className="bg-blue-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-blue-600">23</p>
-                <p className="text-sm text-gray-600">Projects Funded</p>
+              <div className="bg-[#0071e3]/10 rounded-2xl p-5 text-center">
+                <p className="text-4xl font-semibold text-[#0071e3] tracking-tight">23</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Projects Funded</p>
               </div>
-              <div className="bg-purple-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-purple-600">45</p>
-                <p className="text-sm text-gray-600">Applications</p>
+              <div className="bg-[#af52de]/10 rounded-2xl p-5 text-center">
+                <p className="text-4xl font-semibold text-[#af52de] tracking-tight">45</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Applications</p>
               </div>
             </div>
 
             {/* Funded Projects */}
-            <h3 className="text-xl font-bold text-[#13294B] mb-4">Recently Funded Projects</h3>
-            <div className="space-y-4 mb-8">
+            <h3 className="text-xl font-semibold text-[#1d1d1f] mb-4">Recently Funded Projects</h3>
+            <div className="space-y-3 mb-8">
               {[
                 { name: 'Solar Panel Installation - Davis Library', amount: 25000, org: 'Facilities Services' },
                 { name: 'Campus Composting Bins', amount: 8500, org: 'Sustainability Office' },
                 { name: 'Native Plant Garden', amount: 5000, org: 'Environmental Sciences Club' },
                 { name: 'E-Bike Fleet Expansion', amount: 15000, org: 'Transportation' },
               ].map((project, i) => (
-                <div key={i} className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 flex items-center justify-between">
+                <div key={i} className="bg-white rounded-2xl p-5 shadow-sm flex items-center justify-between">
                   <div>
-                    <h4 className="font-bold text-[#13294B]">{project.name}</h4>
-                    <p className="text-sm text-gray-500">{project.org}</p>
+                    <h4 className="font-semibold text-[#1d1d1f]">{project.name}</h4>
+                    <p className="text-sm text-[#86868b]">{project.org}</p>
                   </div>
-                  <span className="text-emerald-600 font-bold">${project.amount.toLocaleString()}</span>
+                  <span className="text-[#34c759] font-semibold text-lg">${project.amount.toLocaleString()}</span>
                 </div>
               ))}
             </div>
 
             {/* Project Form Modal */}
             {showProjectForm && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
-                  <h3 className="text-xl font-bold text-[#13294B] mb-4">Green Fund Application</h3>
+              <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+                  <h3 className="text-xl font-semibold text-[#1d1d1f] mb-6">Green Fund Application</h3>
                   <form onSubmit={(e) => { e.preventDefault(); setSubmitted('project'); setShowProjectForm(false); }} className="space-y-4">
                     <Input label="Project Title" required />
                     <Input label="Your Name" required />
@@ -245,9 +260,17 @@ export default function EnvironmentalPage() {
                     <Input label="Funding Requested ($)" type="number" required />
                     <Textarea label="Project Description" required rows={4} />
                     <Textarea label="Environmental Impact" required rows={3} />
-                    <div className="flex gap-3">
-                      <Button type="submit">Submit Application</Button>
-                      <Button variant="secondary" onClick={() => setShowProjectForm(false)}>Cancel</Button>
+                    <div className="flex gap-3 pt-2">
+                      <button type="submit" className="flex-1 bg-[#34c759] text-white px-5 py-2.5 rounded-full font-medium hover:bg-[#30d158] transition-colors">
+                        Submit Application
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowProjectForm(false)}
+                        className="flex-1 bg-[#f5f5f7] text-[#1d1d1f] px-5 py-2.5 rounded-full font-medium hover:bg-[#e8e8ed] transition-colors"
+                      >
+                        Cancel
+                      </button>
                     </div>
                   </form>
                 </div>
@@ -259,28 +282,28 @@ export default function EnvironmentalPage() {
         {/* Bike Share Tab */}
         {activeTab === 'bikeshare' && (
           <div>
-            <h2 className="text-2xl font-bold text-[#13294B] mb-6">Bike Share Program</h2>
+            <h2 className="text-3xl font-semibold text-[#1d1d1f] tracking-tight mb-8">Bike Share Program</h2>
 
             {/* Stats */}
             <div className="grid md:grid-cols-3 gap-4 mb-8">
-              <div className="bg-emerald-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-emerald-600">89</p>
-                <p className="text-sm text-gray-600">Bikes Available</p>
+              <div className="bg-[#34c759]/10 rounded-2xl p-5 text-center">
+                <p className="text-4xl font-semibold text-[#34c759] tracking-tight">89</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Bikes Available</p>
               </div>
-              <div className="bg-blue-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-blue-600">12</p>
-                <p className="text-sm text-gray-600">Stations</p>
+              <div className="bg-[#0071e3]/10 rounded-2xl p-5 text-center">
+                <p className="text-4xl font-semibold text-[#0071e3] tracking-tight">12</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Stations</p>
               </div>
-              <div className="bg-purple-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-purple-600">4,500</p>
-                <p className="text-sm text-gray-600">Rides This Month</p>
+              <div className="bg-[#af52de]/10 rounded-2xl p-5 text-center">
+                <p className="text-4xl font-semibold text-[#af52de] tracking-tight">4,500</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Rides This Month</p>
               </div>
             </div>
 
             {/* Station Map */}
-            <div className="bg-white rounded-lg p-6 shadow-sm mb-8">
-              <h3 className="font-bold text-[#13294B] mb-4">Station Locations</h3>
-              <div className="grid md:grid-cols-3 gap-4">
+            <div className="bg-white rounded-2xl p-6 shadow-sm mb-8">
+              <h3 className="font-semibold text-[#1d1d1f] mb-4">Station Locations</h3>
+              <div className="grid md:grid-cols-3 gap-3">
                 {[
                   { name: 'Student Union', bikes: 12, available: 8 },
                   { name: 'Davis Library', bikes: 10, available: 6 },
@@ -289,25 +312,42 @@ export default function EnvironmentalPage() {
                   { name: 'Morrison', bikes: 8, available: 7 },
                   { name: 'Carmichael', bikes: 10, available: 4 },
                 ].map((station, i) => (
-                  <div key={i} className="p-3 bg-gray-50 rounded-lg">
-                    <p className="font-medium text-[#13294B]">{station.name}</p>
-                    <p className="text-sm text-emerald-600">{station.available}/{station.bikes} available</p>
+                  <div key={i} className="p-4 bg-[#f5f5f7] rounded-xl">
+                    <p className="font-medium text-[#1d1d1f]">{station.name}</p>
+                    <p className="text-sm text-[#34c759] font-medium">{station.available}/{station.bikes} available</p>
                   </div>
                 ))}
               </div>
             </div>
 
             {/* How to Use */}
-            <div className="bg-emerald-50 rounded-lg p-6 border border-emerald-200">
-              <h3 className="font-bold text-emerald-800 mb-4">How to Use</h3>
-              <ol className="space-y-2 text-emerald-700">
-                <li>1. Download the UNC Bike Share app</li>
-                <li>2. Create an account with your UNC email</li>
-                <li>3. Find an available bike at any station</li>
-                <li>4. Scan the QR code to unlock</li>
-                <li>5. Return to any station when done</li>
+            <div className="bg-[#34c759]/10 rounded-2xl p-6">
+              <h3 className="font-semibold text-[#1d1d1f] mb-4">How to Use</h3>
+              <ol className="space-y-2 text-[#6e6e73]">
+                <li className="flex items-start gap-3">
+                  <span className="w-6 h-6 bg-[#34c759] text-white rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0">1</span>
+                  <span>Download the UNC Bike Share app</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="w-6 h-6 bg-[#34c759] text-white rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0">2</span>
+                  <span>Create an account with your UNC email</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="w-6 h-6 bg-[#34c759] text-white rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0">3</span>
+                  <span>Find an available bike at any station</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="w-6 h-6 bg-[#34c759] text-white rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0">4</span>
+                  <span>Scan the QR code to unlock</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="w-6 h-6 bg-[#34c759] text-white rounded-full flex items-center justify-center text-xs font-medium flex-shrink-0">5</span>
+                  <span>Return to any station when done</span>
+                </li>
               </ol>
-              <Button className="mt-4">Download App</Button>
+              <button className="mt-6 bg-[#34c759] text-white px-5 py-2.5 rounded-full font-medium hover:bg-[#30d158] transition-colors">
+                Download App
+              </button>
             </div>
           </div>
         )}
@@ -315,59 +355,68 @@ export default function EnvironmentalPage() {
         {/* Climate Committee Tab */}
         {activeTab === 'committee' && (
           <div>
-            <div className="flex items-start justify-between mb-6">
+            <div className="flex items-start justify-between mb-8">
               <div>
-                <h2 className="text-2xl font-bold text-[#13294B]">Climate Action Committee</h2>
-                <p className="text-gray-600 mt-1">Student committee advising on campus climate policy</p>
+                <h2 className="text-3xl font-semibold text-[#1d1d1f] tracking-tight">Climate Action Committee</h2>
+                <p className="text-[#6e6e73] mt-1">Student committee advising on campus climate policy</p>
               </div>
-              <Button onClick={() => setShowCommitteeForm(true)}>Join Committee</Button>
+              <button
+                onClick={() => setShowCommitteeForm(true)}
+                className="bg-[#34c759] text-white px-5 py-2.5 rounded-full font-medium hover:bg-[#30d158] transition-colors"
+              >
+                Join Committee
+              </button>
             </div>
 
             {/* Stats */}
             <div className="grid md:grid-cols-3 gap-4 mb-8">
-              <div className="bg-emerald-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-emerald-600">15</p>
-                <p className="text-sm text-gray-600">Members</p>
+              <div className="bg-[#34c759]/10 rounded-2xl p-5 text-center">
+                <p className="text-4xl font-semibold text-[#34c759] tracking-tight">15</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Members</p>
               </div>
-              <div className="bg-blue-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-blue-600">12</p>
-                <p className="text-sm text-gray-600">Meetings</p>
+              <div className="bg-[#0071e3]/10 rounded-2xl p-5 text-center">
+                <p className="text-4xl font-semibold text-[#0071e3] tracking-tight">12</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Meetings</p>
               </div>
-              <div className="bg-purple-50 rounded-lg p-4 text-center">
-                <p className="text-3xl font-bold text-purple-600">8</p>
-                <p className="text-sm text-gray-600">Initiatives</p>
+              <div className="bg-[#af52de]/10 rounded-2xl p-5 text-center">
+                <p className="text-4xl font-semibold text-[#af52de] tracking-tight">8</p>
+                <p className="text-sm text-[#6e6e73] mt-1">Initiatives</p>
               </div>
             </div>
 
             {/* Current Initiatives */}
-            <h3 className="text-xl font-bold text-[#13294B] mb-4">Current Initiatives</h3>
-            <div className="space-y-4 mb-8">
+            <h3 className="text-xl font-semibold text-[#1d1d1f] mb-4">Current Initiatives</h3>
+            <div className="space-y-3 mb-8">
               {[
                 'Advocating for 100% renewable energy by 2035',
                 'Expanding campus EV charging infrastructure',
                 'Implementing green building standards for new construction',
                 'Creating sustainability curriculum requirements',
               ].map((initiative, i) => (
-                <div key={i} className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 flex items-center gap-3">
-                  <span className="text-emerald-500 text-xl">✓</span>
-                  <span className="text-[#13294B]">{initiative}</span>
+                <div key={i} className="bg-white rounded-2xl p-5 shadow-sm flex items-center gap-4">
+                  <div className="w-8 h-8 bg-[#34c759]/10 rounded-full flex items-center justify-center flex-shrink-0">
+                    <svg className="w-4 h-4 text-[#34c759]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <span className="text-[#1d1d1f]">{initiative}</span>
                 </div>
               ))}
             </div>
 
             {/* Meeting Schedule */}
-            <div className="bg-white rounded-lg p-6 shadow-sm">
-              <h3 className="font-bold text-[#13294B] mb-4">Next Meeting</h3>
-              <p className="text-lg font-medium text-emerald-600">February 5, 2026 at 5:00 PM</p>
-              <p className="text-gray-500">Student Union Room 3407</p>
-              <p className="text-sm text-gray-400 mt-2">Meetings are open to all students</p>
+            <div className="bg-white rounded-2xl p-6 shadow-sm">
+              <h3 className="font-semibold text-[#1d1d1f] mb-4">Next Meeting</h3>
+              <p className="text-xl font-semibold text-[#34c759]">February 5, 2026 at 5:00 PM</p>
+              <p className="text-[#6e6e73] mt-1">Student Union Room 3407</p>
+              <p className="text-sm text-[#86868b] mt-3">Meetings are open to all students</p>
             </div>
 
             {/* Committee Form Modal */}
             {showCommitteeForm && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                <div className="bg-white rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
-                  <h3 className="text-xl font-bold text-[#13294B] mb-4">Join Climate Action Committee</h3>
+              <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-white rounded-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+                  <h3 className="text-xl font-semibold text-[#1d1d1f] mb-6">Join Climate Action Committee</h3>
                   <form onSubmit={(e) => { e.preventDefault(); setSubmitted('committee'); setShowCommitteeForm(false); }} className="space-y-4">
                     <Input label="Full Name" required />
                     <Input label="Email" type="email" required />
@@ -381,9 +430,17 @@ export default function EnvironmentalPage() {
                     ]} />
                     <Input label="Major" required />
                     <Textarea label="Why do you want to join?" required rows={3} />
-                    <div className="flex gap-3">
-                      <Button type="submit">Apply</Button>
-                      <Button variant="secondary" onClick={() => setShowCommitteeForm(false)}>Cancel</Button>
+                    <div className="flex gap-3 pt-2">
+                      <button type="submit" className="flex-1 bg-[#34c759] text-white px-5 py-2.5 rounded-full font-medium hover:bg-[#30d158] transition-colors">
+                        Apply
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowCommitteeForm(false)}
+                        className="flex-1 bg-[#f5f5f7] text-[#1d1d1f] px-5 py-2.5 rounded-full font-medium hover:bg-[#e8e8ed] transition-colors"
+                      >
+                        Cancel
+                      </button>
                     </div>
                   </form>
                 </div>
@@ -395,21 +452,21 @@ export default function EnvironmentalPage() {
         {/* All Policies Tab */}
         {activeTab === 'policies' && (
           <div>
-            <h2 className="text-2xl font-bold text-[#13294B] mb-6">Environmental Policies</h2>
-            <div className="space-y-4">
+            <h2 className="text-3xl font-semibold text-[#1d1d1f] tracking-tight mb-8">Environmental Policies</h2>
+            <div className="space-y-3">
               {deptPolicies.map(policy => (
-                <div key={policy.id} className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-bold text-[#13294B]">{policy.title}</h3>
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      policy.status === 'in_progress' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'
+                <div key={policy.id} className="bg-white rounded-2xl p-5 shadow-sm">
+                  <div className="flex items-start justify-between mb-3">
+                    <h3 className="font-semibold text-[#1d1d1f]">{policy.title}</h3>
+                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                      policy.status === 'in_progress' ? 'bg-[#0071e3]/10 text-[#0071e3]' : 'bg-[#f5f5f7] text-[#86868b]'
                     }`}>
                       {policy.status === 'in_progress' ? 'In Progress' : 'Planned'}
                     </span>
                   </div>
-                  <p className="text-sm text-gray-600 mb-3">{policy.description}</p>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${policy.progress}%` }} />
+                  <p className="text-sm text-[#6e6e73] mb-4">{policy.description}</p>
+                  <div className="h-1.5 bg-[#f5f5f7] rounded-full overflow-hidden">
+                    <div className="h-full bg-[#34c759] rounded-full" style={{ width: `${policy.progress}%` }} />
                   </div>
                 </div>
               ))}
