@@ -1,49 +1,37 @@
 import { useState } from 'react'
 import Head from 'next/head'
-import Link from 'next/link'
 import Layout from '../../components/Layout'
-import { Input, Select, Textarea, Button, Checkbox } from '../../components/FormInput'
+import { Input, Select, Textarea } from '../../components/FormInput'
 import { useApp } from '../../lib/store'
 import { wellnessResources, departmentContacts, departmentFAQs, departmentAnnouncements, serviceGuides } from '../../lib/data'
 
 export default function WellnessPage() {
-  const [activeTab, setActiveTab] = useState('resources')
-  const [showTrainingForm, setShowTrainingForm] = useState(false)
-  const [showAmbassadorForm, setShowAmbassadorForm] = useState(false)
-  const [trainingForm, setTrainingForm] = useState({ name: '', email: '', pid: '', role: '', experience: '' })
-  const [ambassadorForm, setAmbassadorForm] = useState({ name: '', email: '', pid: '', year: '', major: '', motivation: '' })
+  const [activeTab, setActiveTab] = useState('overview')
+  const [showRideForm, setShowRideForm] = useState(false)
+  const [showSafetyPlanForm, setShowSafetyPlanForm] = useState(false)
+  const [showVolunteerForm, setShowVolunteerForm] = useState(false)
   const [submitted, setSubmitted] = useState(null)
   const { policies } = useApp()
 
   const deptPolicies = policies.filter(p => p.department === 'wellness')
 
-  const handleTrainingSubmit = (e) => {
-    e.preventDefault()
-    setSubmitted('training')
-    setShowTrainingForm(false)
-    setTrainingForm({ name: '', email: '', pid: '', role: '', experience: '' })
-  }
-
-  const handleAmbassadorSubmit = (e) => {
-    e.preventDefault()
-    setSubmitted('ambassador')
-    setShowAmbassadorForm(false)
-    setAmbassadorForm({ name: '', email: '', pid: '', year: '', major: '', motivation: '' })
-  }
-
+  // Tab structure matching the 6 policies
   const tabs = [
-    { id: 'resources', label: 'Resources' },
-    { id: 'training', label: 'Mental Health First Aid' },
-    { id: 'ambassadors', label: 'Wellness Ambassadors' },
-    { id: 'advocacy', label: 'CAPS Advocacy' },
+    { id: 'overview', label: 'Overview' },
+    { id: 'caps-access', label: 'CAPS Access' },
+    { id: 'safety-rides', label: 'Safety & Rides' },
+    { id: 'planb-narcan', label: 'Plan B & Narcan' },
+    { id: 'event-safety', label: 'Event Safety' },
+    { id: 'wellness-button', label: 'Wellness Button' },
+    { id: 'health-integration', label: 'Health Integration' },
     { id: 'faq', label: 'FAQ & Contact' },
-    { id: 'policies', label: 'All Policies' },
   ]
 
   const contact = departmentContacts.wellness
   const faqs = departmentFAQs.wellness
   const announcements = departmentAnnouncements.wellness
-  const capsGuide = serviceGuides['caps-appointment']
+  const capsGuide = serviceGuides['caps-dropin']
+  const rideGuide = serviceGuides['safe-ride']
   const [expandedFaq, setExpandedFaq] = useState(null)
   const [feedbackForm, setFeedbackForm] = useState({ topic: '', message: '', email: '' })
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
@@ -54,13 +42,45 @@ export default function WellnessPage() {
     setFeedbackForm({ topic: '', message: '', email: '' })
   }
 
+  const handleFormSubmit = (type) => (e) => {
+    e.preventDefault()
+    setSubmitted(type)
+    setShowRideForm(false)
+    setShowSafetyPlanForm(false)
+    setShowVolunteerForm(false)
+  }
+
+  // Get specific policy by ID
+  const getPolicy = (id) => deptPolicies.find(p => p.id === id)
+
+  // Policy progress component
+  const PolicyProgress = ({ policy }) => (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 mb-8">
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <span className={`px-2.5 py-1 rounded text-xs font-mono border ${
+            policy?.status === 'completed' ? 'bg-[#3fb950]/10 text-[#3fb950] border-[#3fb950]' :
+            policy?.status === 'in_progress' ? 'bg-[#58a6ff]/10 text-[#58a6ff] border-[#58a6ff]' :
+            'bg-[#21262d] text-[#6e7681] border-[#30363d]'
+          }`}>
+            {policy?.status === 'in_progress' ? 'IN PROGRESS' : policy?.status === 'completed' ? 'COMPLETED' : 'PLANNED'}
+          </span>
+        </div>
+        <span className="text-[#8b949e] font-mono text-sm">{policy?.progress || 0}% Complete</span>
+      </div>
+      <div className="h-2 bg-[#21262d] rounded overflow-hidden">
+        <div className="h-full bg-[#3fb950] rounded transition-all" style={{ width: `${policy?.progress || 0}%` }} />
+      </div>
+    </div>
+  )
+
   return (
     <Layout>
       <Head>
         <title>Student Wellness | Project Bold</title>
       </Head>
 
-      {/* Hero with grid background */}
+      {/* Hero */}
       <div className="relative bg-[#0a0e14] border-b border-[#30363d] overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
@@ -76,7 +96,7 @@ export default function WellnessPage() {
           </h1>
           <p className="text-[#8b949e] text-lg max-w-2xl leading-relaxed">
             Mental health, safety, and holistic student wellbeing. Access CAPS, crisis support,
-            wellness resources, and join our peer support programs.
+            wellness resources, and safety programs.
           </p>
         </div>
       </div>
@@ -110,7 +130,7 @@ export default function WellnessPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-5 py-4 text-xs font-medium tracking-widest uppercase whitespace-nowrap transition-all border-b-2 ${
+                className={`px-4 py-4 text-xs font-medium tracking-wider uppercase whitespace-nowrap transition-all border-b-2 ${
                   activeTab === tab.id
                     ? 'border-[#3fb950] text-[#3fb950]'
                     : 'border-transparent text-[#8b949e] hover:text-[#f0f6fc] hover:border-[#30363d]'
@@ -128,8 +148,9 @@ export default function WellnessPage() {
           {submitted && (
             <div className="mb-8 bg-[#161b22] border border-[#3fb950] rounded-lg p-5">
               <p className="text-[#f0f6fc] font-medium">
-                {submitted === 'training' && 'Thank you for registering for Mental Health First Aid training! We will contact you with session details.'}
-                {submitted === 'ambassador' && 'Thank you for applying to the Wellness Ambassadors program! We will review your application and contact you soon.'}
+                {submitted === 'ride' && 'Your ride request has been submitted! You will receive a confirmation shortly.'}
+                {submitted === 'safetyplan' && 'Your event safety plan has been submitted for review. We will contact you within 2 business days.'}
+                {submitted === 'volunteer' && 'Thank you for volunteering! We will reach out with training information.'}
               </p>
               <button onClick={() => setSubmitted(null)} className="text-[#3fb950] text-sm font-medium mt-3 hover:underline">
                 Dismiss
@@ -137,158 +158,259 @@ export default function WellnessPage() {
             </div>
           )}
 
-          {/* Resources Tab */}
-          {activeTab === 'resources' && (
+          {/* Overview Tab */}
+          {activeTab === 'overview' && (
             <div>
-              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-8">Wellness Resources</h2>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-8">Wellness Initiatives Overview</h2>
 
-              {/* Quick Access Buttons */}
-              <div className="grid md:grid-cols-3 gap-5 mb-12">
-                <a href="https://caps.unc.edu" target="_blank" rel="noopener noreferrer"
-                  className="bg-[#161b22] border border-[#3fb950] rounded-lg p-6 text-center hover:bg-[#21262d] transition-all group">
-                  <div className="w-12 h-12 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded-lg flex items-center justify-center mx-auto mb-4 group-hover:border-[#3fb950]">
-                    <svg className="w-6 h-6 text-[#3fb950]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                    </svg>
+              {/* Policy Cards */}
+              <div className="grid md:grid-cols-2 gap-5 mb-12">
+                {deptPolicies.map(policy => (
+                  <div key={policy.id} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 hover:border-[#3fb950] transition-colors cursor-pointer"
+                    onClick={() => setActiveTab(policy.id === 'caps-expansion' ? 'caps-access' :
+                      policy.id === 'safety-taskforce' ? 'safety-rides' :
+                      policy.id === 'planb-narcan' ? 'planb-narcan' :
+                      policy.id === 'event-safety' ? 'event-safety' :
+                      policy.id === 'wellness-button' ? 'wellness-button' :
+                      policy.id === 'health-integration' ? 'health-integration' : 'overview')}>
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="font-semibold text-[#f0f6fc] pr-4">{policy.title}</h3>
+                      <span className={`px-2 py-0.5 rounded text-xs font-mono border flex-shrink-0 ${
+                        policy.status === 'completed' ? 'bg-[#3fb950]/10 text-[#3fb950] border-[#3fb950]' :
+                        policy.status === 'in_progress' ? 'bg-[#58a6ff]/10 text-[#58a6ff] border-[#58a6ff]' :
+                        'bg-[#21262d] text-[#6e7681] border-[#30363d]'
+                      }`}>
+                        {policy.progress}%
+                      </span>
+                    </div>
+                    <p className="text-sm text-[#8b949e] mb-4 line-clamp-2">{policy.description}</p>
+                    <div className="h-1.5 bg-[#21262d] rounded overflow-hidden">
+                      <div className="h-full bg-[#3fb950] rounded" style={{ width: `${policy.progress}%` }} />
+                    </div>
                   </div>
-                  <p className="font-semibold text-lg text-[#f0f6fc]">CAPS</p>
-                  <p className="text-sm text-[#8b949e] mt-1">Counseling & Psychological Services</p>
-                </a>
-                <a href="https://campushealth.unc.edu" target="_blank" rel="noopener noreferrer"
-                  className="bg-[#161b22] border border-[#58a6ff] rounded-lg p-6 text-center hover:bg-[#21262d] transition-all group">
-                  <div className="w-12 h-12 bg-[#58a6ff]/10 border border-[#58a6ff]/30 rounded-lg flex items-center justify-center mx-auto mb-4 group-hover:border-[#58a6ff]">
-                    <svg className="w-6 h-6 text-[#58a6ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
-                  </div>
-                  <p className="font-semibold text-lg text-[#f0f6fc]">Campus Health</p>
-                  <p className="text-sm text-[#8b949e] mt-1">Medical Services & Appointments</p>
-                </a>
-                <a href="https://studentwellness.unc.edu" target="_blank" rel="noopener noreferrer"
-                  className="bg-[#161b22] border border-[#a371f7] rounded-lg p-6 text-center hover:bg-[#21262d] transition-all group">
-                  <div className="w-12 h-12 bg-[#a371f7]/10 border border-[#a371f7]/30 rounded-lg flex items-center justify-center mx-auto mb-4 group-hover:border-[#a371f7]">
-                    <svg className="w-6 h-6 text-[#a371f7]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                    </svg>
-                  </div>
-                  <p className="font-semibold text-lg text-[#f0f6fc]">Student Wellness</p>
-                  <p className="text-sm text-[#8b949e] mt-1">Programs & Resources</p>
-                </a>
+                ))}
               </div>
 
-              {/* Resource Directory */}
-              <h3 className="text-lg font-semibold text-[#f0f6fc] tracking-tight mb-5 uppercase tracking-widest text-sm">Resource Directory</h3>
-              <div className="grid md:grid-cols-2 gap-4">
-                {wellnessResources.map(resource => (
-                  <div key={resource.id} className={`bg-[#161b22] border rounded-lg p-5 ${resource.emergency ? 'border-[#da3633]' : 'border-[#30363d]'}`}>
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <h4 className="font-semibold text-[#f0f6fc]">{resource.name}</h4>
-                        <p className="text-sm text-[#6e7681] mt-1">{resource.hours}</p>
-                      </div>
-                      {resource.emergency && (
-                        <span className="px-2.5 py-1 rounded text-xs font-mono font-medium bg-[#da3633]/10 text-[#da3633] border border-[#da3633]">
-                          24/7 CRISIS
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-4 flex gap-4">
-                      <a href={`tel:${resource.phone.replace(/\D/g, '')}`} className="text-sm text-[#3fb950] font-mono hover:underline">
-                        {resource.phone}
-                      </a>
-                      <a href={resource.url} target="_blank" rel="noopener noreferrer" className="text-sm text-[#58a6ff] font-medium hover:underline">
-                        Website
-                      </a>
-                    </div>
-                  </div>
+              {/* Quick Resources */}
+              <h3 className="text-lg font-semibold text-[#f0f6fc] mb-5">Quick Resources</h3>
+              <div className="grid md:grid-cols-3 gap-4">
+                {wellnessResources.slice(0, 3).map(resource => (
+                  <a key={resource.id} href={resource.url} target="_blank" rel="noopener noreferrer"
+                    className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 hover:border-[#3fb950] transition-colors">
+                    <h4 className="font-semibold text-[#f0f6fc] mb-1">{resource.name}</h4>
+                    <p className="text-sm text-[#8b949e] mb-2">{resource.hours}</p>
+                    <p className="text-[#3fb950] font-mono text-sm">{resource.phone}</p>
+                  </a>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Mental Health First Aid Tab */}
-          {activeTab === 'training' && (
+          {/* CAPS Access Tab - Policy 1 */}
+          {activeTab === 'caps-access' && (
             <div>
-              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8">
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">Expand CAPS Access</h2>
+              <p className="text-[#8b949e] mb-6">Drop-In Hours and More Locations Across Campus</p>
+
+              <PolicyProgress policy={getPolicy('caps-expansion')} />
+
+              <div className="grid lg:grid-cols-2 gap-8 mb-10">
+                {/* Drop-In Locations */}
                 <div>
-                  <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight">Mental Health First Aid Training</h2>
-                  <p className="text-[#8b949e] mt-2">Learn to recognize and respond to mental health crises</p>
+                  <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Drop-In Locations</h3>
+                  <div className="space-y-4">
+                    {[
+                      { name: 'CAPS Main Office', location: 'Campus Health Building', hours: 'Mon-Wed 2-4pm', status: 'active' },
+                      { name: 'Student Union', location: 'Room 3205', hours: 'Tue-Thu 1-3pm', status: 'active' },
+                      { name: 'South Campus Hub', location: 'Ram Village Community Center', hours: 'Wed-Fri 3-5pm', status: 'coming' },
+                    ].map((loc, i) => (
+                      <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="font-semibold text-[#f0f6fc]">{loc.name}</h4>
+                            <p className="text-sm text-[#8b949e] mt-1">{loc.location}</p>
+                            <p className="text-sm text-[#6e7681] font-mono mt-1">{loc.hours}</p>
+                          </div>
+                          <span className={`px-2 py-1 rounded text-xs font-mono ${
+                            loc.status === 'active' ? 'bg-[#3fb950]/10 text-[#3fb950] border border-[#3fb950]' :
+                            'bg-[#d29922]/10 text-[#d29922] border border-[#d29922]'
+                          }`}>
+                            {loc.status === 'active' ? 'ACTIVE' : 'COMING SOON'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-                <button
-                  onClick={() => setShowTrainingForm(true)}
-                  className="bg-[#3fb950] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#46c356] transition-colors uppercase text-sm tracking-wide"
-                >
-                  Register for Training
-                </button>
-              </div>
 
-              {/* Stats */}
-              <div className="grid md:grid-cols-3 gap-4 mb-10">
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
-                  <p className="text-3xl font-mono font-bold text-[#3fb950]">156</p>
-                  <p className="text-xs text-[#6e7681] mt-1 uppercase tracking-widest">Students Trained</p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
-                  <p className="text-3xl font-mono font-bold text-[#58a6ff]">12</p>
-                  <p className="text-xs text-[#6e7681] mt-1 uppercase tracking-widest">Sessions Completed</p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
-                  <p className="text-3xl font-mono font-bold text-[#a371f7]">89%</p>
-                  <p className="text-xs text-[#6e7681] mt-1 uppercase tracking-widest">Completion Rate</p>
-                </div>
-              </div>
-
-              {/* Upcoming Sessions */}
-              <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Upcoming Training Sessions</h3>
-              <div className="space-y-4 mb-10">
-                {[
-                  { date: 'Feb 8, 2026', time: '9:00 AM - 4:00 PM', location: 'Student Union 3201', spots: 12 },
-                  { date: 'Feb 22, 2026', time: '9:00 AM - 4:00 PM', location: 'Davis Library 247', spots: 8 },
-                  { date: 'Mar 8, 2026', time: '9:00 AM - 4:00 PM', location: 'Student Union 3201', spots: 20 },
-                ].map((session, i) => (
-                  <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div>
-                      <p className="font-semibold text-[#f0f6fc]">{session.date}</p>
-                      <p className="text-sm text-[#6e7681] mt-1 font-mono">{session.time} | {session.location}</p>
+                {/* Virtual Counseling */}
+                <div>
+                  <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Virtual Counseling</h3>
+                  <div className="bg-[#161b22] border border-[#58a6ff] rounded-lg p-6">
+                    <div className="w-12 h-12 bg-[#58a6ff]/10 border border-[#58a6ff]/30 rounded-lg flex items-center justify-center mb-4">
+                      <svg className="w-6 h-6 text-[#58a6ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <span className="px-2.5 py-1 rounded text-xs font-mono bg-[#d29922]/10 text-[#d29922] border border-[#d29922]">
-                        {session.spots} SPOTS LEFT
-                      </span>
-                      <button
-                        onClick={() => setShowTrainingForm(true)}
-                        className="text-[#3fb950] font-medium text-sm hover:underline uppercase tracking-wide"
-                      >
-                        Register
-                      </button>
+                    <h4 className="font-semibold text-[#f0f6fc] mb-2">Telehealth Sessions Available</h4>
+                    <p className="text-sm text-[#8b949e] mb-4">Access counseling from anywhere with our expanded virtual options. Schedule through ConnectCarolina.</p>
+                    <a href="https://caps.unc.edu" target="_blank" rel="noopener noreferrer"
+                      className="inline-block bg-[#58a6ff] text-[#0d1117] px-5 py-2.5 rounded font-semibold hover:bg-[#79b8ff] transition-colors text-sm">
+                      Schedule Appointment
+                    </a>
+                  </div>
+
+                  {/* How-To Guide */}
+                  {capsGuide && (
+                    <div className="mt-6">
+                      <h4 className="text-sm font-semibold text-[#f0f6fc] mb-4">{capsGuide.title}</h4>
+                      <div className="space-y-3">
+                        {capsGuide.steps.map(step => (
+                          <div key={step.step} className="flex gap-3">
+                            <div className="w-6 h-6 bg-[#3fb950] text-[#0d1117] rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">
+                              {step.step}
+                            </div>
+                            <div>
+                              <p className="font-medium text-[#f0f6fc] text-sm">{step.title}</p>
+                              <p className="text-xs text-[#8b949e]">{step.description}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Safety Task Force & Rides Tab - Policy 2 */}
+          {activeTab === 'safety-rides' && (
+            <div>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">Off-Campus Safety Task Force</h2>
+              <p className="text-[#8b949e] mb-6">Late-Night Ride Programs and SafeWalk Expansion</p>
+
+              <PolicyProgress policy={getPolicy('safety-taskforce')} />
+
+              <div className="grid lg:grid-cols-2 gap-8 mb-10">
+                {/* Request a Ride */}
+                <div className="bg-[#161b22] border border-[#3fb950] rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-[#f0f6fc] mb-4">Request a Late-Night Ride</h3>
+                  <p className="text-sm text-[#8b949e] mb-6">Safe, peer-driven transportation home from off-campus locations. Available Thu-Sat 10pm-3am.</p>
+
+                  <div className="grid grid-cols-3 gap-4 mb-6">
+                    <div className="text-center">
+                      <p className="text-2xl font-mono font-bold text-[#3fb950]">247</p>
+                      <p className="text-xs text-[#6e7681] uppercase">Rides Given</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-mono font-bold text-[#58a6ff]">32</p>
+                      <p className="text-xs text-[#6e7681] uppercase">Volunteers</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-mono font-bold text-[#a371f7]">4.9</p>
+                      <p className="text-xs text-[#6e7681] uppercase">Avg Rating</p>
                     </div>
                   </div>
-                ))}
+
+                  <button onClick={() => setShowRideForm(true)}
+                    className="w-full bg-[#3fb950] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#46c356] transition-colors">
+                    Request a Ride
+                  </button>
+                </div>
+
+                {/* Volunteer */}
+                <div className="bg-[#161b22] border border-[#58a6ff] rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-[#f0f6fc] mb-4">Become a Safe Ride Volunteer</h3>
+                  <p className="text-sm text-[#8b949e] mb-6">Help keep fellow Tar Heels safe. Volunteer drivers receive training, gas reimbursement, and service hours.</p>
+
+                  <ul className="space-y-2 mb-6">
+                    {['Background check & training provided', 'Flexible scheduling', 'Gas reimbursement included', 'Earn service hours'].map((item, i) => (
+                      <li key={i} className="flex items-center gap-2 text-sm text-[#8b949e]">
+                        <span className="text-[#3fb950]">✓</span> {item}
+                      </li>
+                    ))}
+                  </ul>
+
+                  <button onClick={() => setShowVolunteerForm(true)}
+                    className="w-full bg-[#58a6ff] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#79b8ff] transition-colors">
+                    Apply to Volunteer
+                  </button>
+                </div>
               </div>
 
-              {/* Training Form Modal */}
-              {showTrainingForm && (
+              {/* How-To Guide */}
+              {rideGuide && (
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-[#f0f6fc] mb-5">{rideGuide.title}</h3>
+                  <div className="grid md:grid-cols-4 gap-4">
+                    {rideGuide.steps.map(step => (
+                      <div key={step.step} className="relative">
+                        <div className="absolute -top-2 left-3 bg-[#3fb950] text-[#0d1117] text-xs font-bold px-2 py-0.5 rounded">
+                          Step {step.step}
+                        </div>
+                        <div className="bg-[#21262d] rounded-lg p-4 pt-5">
+                          <h4 className="font-medium text-[#f0f6fc] text-sm mb-1">{step.title}</h4>
+                          <p className="text-xs text-[#8b949e]">{step.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Ride Request Modal */}
+              {showRideForm && (
                 <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
-                    <h3 className="text-xl font-bold text-[#f0f6fc] tracking-tight mb-6">Register for Training</h3>
-                    <form onSubmit={handleTrainingSubmit} className="space-y-5">
-                      <Input label="Full Name" name="name" value={trainingForm.name} onChange={e => setTrainingForm({...trainingForm, name: e.target.value})} required />
-                      <Input label="Email" type="email" name="email" value={trainingForm.email} onChange={e => setTrainingForm({...trainingForm, email: e.target.value})} required />
-                      <Input label="PID" name="pid" value={trainingForm.pid} onChange={e => setTrainingForm({...trainingForm, pid: e.target.value})} required />
-                      <Select label="Role" name="role" value={trainingForm.role} onChange={e => setTrainingForm({...trainingForm, role: e.target.value})} required
+                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg max-w-md w-full p-6">
+                    <h3 className="text-xl font-bold text-[#f0f6fc] mb-6">Request a Ride</h3>
+                    <form onSubmit={handleFormSubmit('ride')} className="space-y-4">
+                      <Input label="Your Name" required />
+                      <Input label="Phone Number" type="tel" required />
+                      <Input label="Pickup Address" required placeholder="e.g., 123 Franklin St" />
+                      <Input label="Destination" required placeholder="e.g., Granville Towers" />
+                      <Select label="Number of Passengers" required
                         options={[
-                          { value: 'ra', label: 'Resident Advisor' },
-                          { value: 'org_leader', label: 'Student Org Leader' },
-                          { value: 'peer_mentor', label: 'Peer Mentor' },
-                          { value: 'other', label: 'Other Student' },
+                          { value: '1', label: '1 person' },
+                          { value: '2', label: '2 people' },
+                          { value: '3', label: '3 people' },
+                          { value: '4', label: '4 people' },
                         ]}
                       />
-                      <Textarea label="Prior Experience (optional)" name="experience" value={trainingForm.experience} onChange={e => setTrainingForm({...trainingForm, experience: e.target.value})} />
                       <div className="flex gap-3 pt-2">
-                        <button type="submit" className="flex-1 bg-[#3fb950] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#46c356] transition-colors">
-                          Submit Registration
+                        <button type="submit" className="flex-1 bg-[#3fb950] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#46c356]">
+                          Request Ride
                         </button>
-                        <button type="button" onClick={() => setShowTrainingForm(false)} className="px-6 py-3 rounded font-medium text-[#8b949e] border border-[#30363d] hover:bg-[#21262d] transition-colors">
+                        <button type="button" onClick={() => setShowRideForm(false)} className="px-6 py-3 rounded text-[#8b949e] border border-[#30363d] hover:bg-[#21262d]">
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+              {/* Volunteer Modal */}
+              {showVolunteerForm && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg max-w-md w-full p-6">
+                    <h3 className="text-xl font-bold text-[#f0f6fc] mb-6">Volunteer Application</h3>
+                    <form onSubmit={handleFormSubmit('volunteer')} className="space-y-4">
+                      <Input label="Full Name" required />
+                      <Input label="Email" type="email" required />
+                      <Input label="PID" required />
+                      <Select label="Do you have a car?" required
+                        options={[
+                          { value: 'yes', label: 'Yes' },
+                          { value: 'no', label: 'No (can still volunteer as navigator)' },
+                        ]}
+                      />
+                      <Textarea label="Why do you want to volunteer?" rows={3} />
+                      <div className="flex gap-3 pt-2">
+                        <button type="submit" className="flex-1 bg-[#58a6ff] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#79b8ff]">
+                          Submit Application
+                        </button>
+                        <button type="button" onClick={() => setShowVolunteerForm(false)} className="px-6 py-3 rounded text-[#8b949e] border border-[#30363d] hover:bg-[#21262d]">
                           Cancel
                         </button>
                       </div>
@@ -299,155 +421,268 @@ export default function WellnessPage() {
             </div>
           )}
 
-          {/* Wellness Ambassadors Tab */}
-          {activeTab === 'ambassadors' && (
+          {/* Plan B & Narcan Tab - Policy 3 */}
+          {activeTab === 'planb-narcan' && (
             <div>
-              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8">
-                <div>
-                  <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight">Wellness Ambassadors Program</h2>
-                  <p className="text-[#8b949e] mt-2">Join our peer support network promoting mental health awareness</p>
-                </div>
-                <button
-                  onClick={() => setShowAmbassadorForm(true)}
-                  className="bg-[#3fb950] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#46c356] transition-colors uppercase text-sm tracking-wide"
-                >
-                  Apply Now
-                </button>
-              </div>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">Plan B & Narcan Distribution</h2>
+              <p className="text-[#8b949e] mb-6">Increased Access to Life-Saving Resources Across Campus</p>
 
-              {/* Stats */}
+              <PolicyProgress policy={getPolicy('planb-narcan')} />
+
+              {/* Location Map */}
+              <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Distribution Locations</h3>
               <div className="grid md:grid-cols-3 gap-4 mb-10">
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
-                  <p className="text-3xl font-mono font-bold text-[#3fb950]">45</p>
-                  <p className="text-xs text-[#6e7681] mt-1 uppercase tracking-widest">Active Ambassadors</p>
+                {[
+                  { name: 'Campus Health', address: 'James A. Taylor Building', planb: true, narcan: true, hours: 'M-F 8am-5pm' },
+                  { name: 'Student Union', address: 'Room 1301 (Info Desk)', planb: true, narcan: true, hours: 'Daily 8am-10pm' },
+                  { name: 'Hinton James', address: 'Front Desk', planb: false, narcan: true, hours: '24/7' },
+                  { name: 'Granville Towers', address: 'RA Office', planb: false, narcan: true, hours: '24/7' },
+                  { name: 'Morrison Residence', address: 'Community Office', planb: false, narcan: true, hours: 'M-F 9am-5pm' },
+                  { name: 'Rams Head', address: 'Recreation Desk', planb: true, narcan: true, hours: 'Daily 6am-11pm' },
+                ].map((loc, i) => (
+                  <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+                    <h4 className="font-semibold text-[#f0f6fc] mb-1">{loc.name}</h4>
+                    <p className="text-sm text-[#8b949e] mb-2">{loc.address}</p>
+                    <p className="text-xs text-[#6e7681] font-mono mb-3">{loc.hours}</p>
+                    <div className="flex gap-2">
+                      {loc.planb && <span className="px-2 py-0.5 rounded text-xs bg-[#a371f7]/10 text-[#a371f7] border border-[#a371f7]">Plan B</span>}
+                      {loc.narcan && <span className="px-2 py-0.5 rounded text-xs bg-[#3fb950]/10 text-[#3fb950] border border-[#3fb950]">Narcan</span>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Education Section */}
+              <div className="grid lg:grid-cols-2 gap-8">
+                <div className="bg-[#161b22] border border-[#a371f7] rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-[#f0f6fc] mb-4">About Plan B</h3>
+                  <p className="text-sm text-[#8b949e] mb-4">Plan B (levonorgestrel) is emergency contraception that can prevent pregnancy when taken within 72 hours of unprotected sex. It's most effective when taken as soon as possible.</p>
+                  <ul className="space-y-2 text-sm text-[#8b949e]">
+                    <li>• Available free to all UNC students</li>
+                    <li>• No appointment or ID needed at most locations</li>
+                    <li>• Confidential - no questions asked</li>
+                  </ul>
                 </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
-                  <p className="text-3xl font-mono font-bold text-[#58a6ff]">8</p>
-                  <p className="text-xs text-[#6e7681] mt-1 uppercase tracking-widest">Events Hosted</p>
+
+                <div className="bg-[#161b22] border border-[#3fb950] rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-[#f0f6fc] mb-4">About Narcan (Naloxone)</h3>
+                  <p className="text-sm text-[#8b949e] mb-4">Narcan is a life-saving medication that can reverse an opioid overdose. It's safe, easy to use, and can be the difference between life and death.</p>
+                  <ul className="space-y-2 text-sm text-[#8b949e]">
+                    <li>• Free training available monthly</li>
+                    <li>• Nasal spray - no needles required</li>
+                    <li>• Good Samaritan law protects you</li>
+                  </ul>
+                  <button className="mt-4 bg-[#3fb950] text-[#0d1117] px-5 py-2.5 rounded font-semibold hover:bg-[#46c356] transition-colors text-sm">
+                    Sign Up for Training
+                  </button>
                 </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
-                  <p className="text-3xl font-mono font-bold text-[#a371f7]">2,100</p>
-                  <p className="text-xs text-[#6e7681] mt-1 uppercase tracking-widest">Students Reached</p>
+              </div>
+            </div>
+          )}
+
+          {/* Event Safety Tab - Policy 4 */}
+          {activeTab === 'event-safety' && (
+            <div>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">Off-Campus Event Safety Planning</h2>
+              <p className="text-[#8b949e] mb-6">Safety Plans for Registered Student Organization Events</p>
+
+              <PolicyProgress policy={getPolicy('event-safety')} />
+
+              <div className="grid lg:grid-cols-2 gap-8 mb-10">
+                {/* Submit Safety Plan */}
+                <div>
+                  <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Submit a Safety Plan</h3>
+                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
+                    <p className="text-sm text-[#8b949e] mb-6">Registered student organizations hosting off-campus events with 50+ attendees must submit a safety plan at least 7 days in advance.</p>
+
+                    <div className="space-y-4 mb-6">
+                      {['Transportation plan', 'Crowd management strategy', 'Emergency contact list', 'Sober monitor assignments'].map((item, i) => (
+                        <div key={i} className="flex items-center gap-3">
+                          <div className="w-6 h-6 rounded bg-[#3fb950]/10 border border-[#3fb950]/30 flex items-center justify-center">
+                            <span className="text-[#3fb950] text-xs">✓</span>
+                          </div>
+                          <span className="text-sm text-[#f0f6fc]">{item}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button onClick={() => setShowSafetyPlanForm(true)}
+                      className="w-full bg-[#3fb950] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#46c356] transition-colors">
+                      Start Safety Plan
+                    </button>
+                  </div>
+                </div>
+
+                {/* Resources & Workshops */}
+                <div>
+                  <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Workshops & Resources</h3>
+
+                  <div className="space-y-4">
+                    <div className="bg-[#161b22] border border-[#58a6ff] rounded-lg p-5">
+                      <div className="flex items-center gap-3 mb-2">
+                        <span className="px-2 py-0.5 rounded text-xs bg-[#58a6ff]/10 text-[#58a6ff] border border-[#58a6ff]">WORKSHOP</span>
+                        <span className="text-xs text-[#6e7681] font-mono">Feb 10, 2026</span>
+                      </div>
+                      <h4 className="font-semibold text-[#f0f6fc]">Event Safety 101</h4>
+                      <p className="text-sm text-[#8b949e] mt-1">Learn the basics of creating effective safety plans. 5pm, Union 3201</p>
+                    </div>
+
+                    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
+                      <h4 className="font-semibold text-[#f0f6fc] mb-2">Safety Plan Template</h4>
+                      <p className="text-sm text-[#8b949e] mb-3">Download our template to get started on your event safety plan.</p>
+                      <button className="text-[#58a6ff] text-sm font-medium hover:underline">Download Template (PDF)</button>
+                    </div>
+
+                    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
+                      <h4 className="font-semibold text-[#f0f6fc] mb-2">Best Practices Guide</h4>
+                      <p className="text-sm text-[#8b949e] mb-3">Comprehensive guide to hosting safe off-campus events.</p>
+                      <button className="text-[#58a6ff] text-sm font-medium hover:underline">View Guide</button>
+                    </div>
+                  </div>
                 </div>
               </div>
 
-              {/* What Ambassadors Do */}
-              <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">What Ambassadors Do</h3>
-              <div className="grid md:grid-cols-2 gap-4 mb-10">
-                {[
-                  { icon: (
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
-                  ), title: 'Lead Workshops', desc: 'Facilitate mental health awareness sessions', color: '#3fb950' },
-                  { icon: (
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                    </svg>
-                  ), title: 'Peer Support', desc: 'Provide one-on-one support and resource navigation', color: '#58a6ff' },
-                  { icon: (
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                    </svg>
-                  ), title: 'Social Media', desc: 'Create engaging wellness content', color: '#a371f7' },
-                  { icon: (
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  ), title: 'Events', desc: 'Plan and host wellness events on campus', color: '#d29922' },
-                ].map((item, i) => (
-                  <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 hover:border-[#8b949e] transition-colors">
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-3 border" style={{ backgroundColor: `${item.color}15`, borderColor: `${item.color}50`, color: item.color }}>
-                      {item.icon}
+              {/* Safety Plan Modal */}
+              {showSafetyPlanForm && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
+                    <h3 className="text-xl font-bold text-[#f0f6fc] mb-6">Submit Event Safety Plan</h3>
+                    <form onSubmit={handleFormSubmit('safetyplan')} className="space-y-4">
+                      <Input label="Organization Name" required />
+                      <Input label="Event Name" required />
+                      <Input label="Event Date" type="date" required />
+                      <Input label="Event Location" required />
+                      <Input label="Expected Attendance" type="number" required />
+                      <Textarea label="Transportation Plan" required rows={2} placeholder="How will attendees get to/from the event?" />
+                      <Textarea label="Emergency Contacts" required rows={2} placeholder="List 2-3 sober contacts with phone numbers" />
+                      <Textarea label="Additional Safety Measures" rows={2} />
+                      <div className="flex gap-3 pt-2">
+                        <button type="submit" className="flex-1 bg-[#3fb950] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#46c356]">
+                          Submit Plan
+                        </button>
+                        <button type="button" onClick={() => setShowSafetyPlanForm(false)} className="px-6 py-3 rounded text-[#8b949e] border border-[#30363d] hover:bg-[#21262d]">
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Wellness Button Tab - Policy 5 */}
+          {activeTab === 'wellness-button' && (
+            <div>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">Student Wellness Button in Canvas</h2>
+              <p className="text-[#8b949e] mb-6">One-Click Access to Mental Health, Medical, and Safety Resources</p>
+
+              <PolicyProgress policy={getPolicy('wellness-button')} />
+
+              {/* Preview */}
+              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-8 mb-10">
+                <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-6">Canvas Integration Preview</h3>
+
+                <div className="bg-[#21262d] rounded-lg p-6 max-w-2xl">
+                  <div className="flex items-center gap-4 mb-6 pb-4 border-b border-[#30363d]">
+                    <div className="w-10 h-10 bg-[#3fb950] rounded-lg flex items-center justify-center">
+                      <span className="text-white font-bold">♥</span>
                     </div>
+                    <div>
+                      <p className="font-semibold text-[#f0f6fc]">Student Wellness</p>
+                      <p className="text-xs text-[#8b949e]">Click for instant access to resources</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[
+                      { icon: '🧠', label: 'CAPS', color: '#3fb950' },
+                      { icon: '🏥', label: 'Health', color: '#58a6ff' },
+                      { icon: '💊', label: 'Plan B/Narcan', color: '#a371f7' },
+                      { icon: '🚗', label: 'Safe Ride', color: '#d29922' },
+                    ].map((item, i) => (
+                      <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-3 text-center hover:border-[#3fb950] transition-colors cursor-pointer">
+                        <span className="text-2xl">{item.icon}</span>
+                        <p className="text-xs font-medium text-[#f0f6fc] mt-2">{item.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* What It Links To */}
+              <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Quick Access Resources</h3>
+              <div className="grid md:grid-cols-2 gap-4">
+                {[
+                  { title: 'CAPS Appointments', desc: 'Schedule counseling sessions directly', link: 'https://caps.unc.edu' },
+                  { title: 'Campus Health Portal', desc: 'Medical appointments and records', link: 'https://campushealth.unc.edu' },
+                  { title: 'Plan B & Narcan Locations', desc: 'Find distribution points near you', link: '#' },
+                  { title: 'Safe Ride Request', desc: 'Request late-night transportation', link: '#' },
+                  { title: 'Crisis Resources', desc: '24/7 hotlines and text support', link: '#' },
+                  { title: 'Wellness Programs', desc: 'Workshops and peer support', link: '#' },
+                ].map((item, i) => (
+                  <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 hover:border-[#3fb950] transition-colors">
                     <h4 className="font-semibold text-[#f0f6fc]">{item.title}</h4>
                     <p className="text-sm text-[#8b949e] mt-1">{item.desc}</p>
                   </div>
                 ))}
               </div>
-
-              {/* Ambassador Form Modal */}
-              {showAmbassadorForm && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
-                    <h3 className="text-xl font-bold text-[#f0f6fc] tracking-tight mb-6">Apply to be a Wellness Ambassador</h3>
-                    <form onSubmit={handleAmbassadorSubmit} className="space-y-5">
-                      <Input label="Full Name" name="name" value={ambassadorForm.name} onChange={e => setAmbassadorForm({...ambassadorForm, name: e.target.value})} required />
-                      <Input label="Email" type="email" name="email" value={ambassadorForm.email} onChange={e => setAmbassadorForm({...ambassadorForm, email: e.target.value})} required />
-                      <Input label="PID" name="pid" value={ambassadorForm.pid} onChange={e => setAmbassadorForm({...ambassadorForm, pid: e.target.value})} required />
-                      <Select label="Year" name="year" value={ambassadorForm.year} onChange={e => setAmbassadorForm({...ambassadorForm, year: e.target.value})} required
-                        options={[
-                          { value: 'freshman', label: 'First Year' },
-                          { value: 'sophomore', label: 'Sophomore' },
-                          { value: 'junior', label: 'Junior' },
-                          { value: 'senior', label: 'Senior' },
-                          { value: 'grad', label: 'Graduate Student' },
-                        ]}
-                      />
-                      <Input label="Major" name="major" value={ambassadorForm.major} onChange={e => setAmbassadorForm({...ambassadorForm, major: e.target.value})} required />
-                      <Textarea label="Why do you want to be a Wellness Ambassador?" name="motivation" value={ambassadorForm.motivation} onChange={e => setAmbassadorForm({...ambassadorForm, motivation: e.target.value})} required rows={4} />
-                      <div className="flex gap-3 pt-2">
-                        <button type="submit" className="flex-1 bg-[#3fb950] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#46c356] transition-colors">
-                          Submit Application
-                        </button>
-                        <button type="button" onClick={() => setShowAmbassadorForm(false)} className="px-6 py-3 rounded font-medium text-[#8b949e] border border-[#30363d] hover:bg-[#21262d] transition-colors">
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
-          {/* CAPS Advocacy Tab */}
-          {activeTab === 'advocacy' && (
+          {/* Health Integration Tab - Policy 6 */}
+          {activeTab === 'health-integration' && (
             <div>
-              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">CAPS Expansion Advocacy</h2>
-              <p className="text-[#8b949e] mb-8">Join us in advocating for expanded mental health services</p>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">Campus Health ConnectCarolina Integration</h2>
+              <p className="text-[#8b949e] mb-6">Unified Scheduling for Medical and Mental Health Appointments</p>
 
-              {/* Progress */}
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6 mb-10">
-                <h3 className="font-semibold text-[#f0f6fc] mb-6 uppercase text-sm tracking-widest">Campaign Progress</h3>
-                <div className="space-y-6">
-                  <div>
-                    <div className="flex justify-between text-sm mb-2">
-                      <span className="text-[#f0f6fc] font-medium">Petition Signatures</span>
-                      <span className="text-[#8b949e] font-mono">3,420 / 5,000</span>
-                    </div>
-                    <div className="h-2 bg-[#21262d] rounded overflow-hidden">
-                      <div className="h-full bg-[#3fb950] rounded" style={{ width: '68%' }} />
-                    </div>
+              <PolicyProgress policy={getPolicy('health-integration')} />
+
+              {/* Benefits */}
+              <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Integration Benefits</h3>
+              <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+                {[
+                  { icon: '📅', title: 'Unified Scheduling', desc: 'One platform for all health appointments' },
+                  { icon: '📋', title: 'Coordinated Care', desc: 'Providers see your full health picture' },
+                  { icon: '🔔', title: 'Smart Reminders', desc: 'Automated appointment notifications' },
+                  { icon: '📱', title: 'Mobile Access', desc: 'Schedule from anywhere, anytime' },
+                ].map((item, i) => (
+                  <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
+                    <span className="text-2xl">{item.icon}</span>
+                    <h4 className="font-semibold text-[#f0f6fc] mt-3">{item.title}</h4>
+                    <p className="text-sm text-[#8b949e] mt-1">{item.desc}</p>
                   </div>
-                  <div>
-                    <div className="flex justify-between text-sm mb-2">
-                      <span className="text-[#f0f6fc] font-medium">Meetings with Administration</span>
-                      <span className="text-[#8b949e] font-mono">5 / 8</span>
-                    </div>
-                    <div className="h-2 bg-[#21262d] rounded overflow-hidden">
-                      <div className="h-full bg-[#58a6ff] rounded" style={{ width: '62%' }} />
-                    </div>
-                  </div>
-                </div>
+                ))}
               </div>
 
-              {/* Action Items */}
-              <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Take Action</h3>
-              <div className="grid md:grid-cols-2 gap-5">
-                <div className="bg-[#161b22] border border-[#3fb950] rounded-lg p-6">
-                  <h4 className="font-semibold text-[#f0f6fc] mb-2">Sign the Petition</h4>
-                  <p className="text-sm text-[#8b949e] mb-5">Add your voice to demand expanded CAPS hours and more counselors.</p>
-                  <button className="bg-[#3fb950] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#46c356] transition-colors uppercase text-sm tracking-wide">
-                    Sign Petition
-                  </button>
+              {/* Current Status */}
+              <div className="bg-[#161b22] border border-[#d29922] rounded-lg p-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <span className="px-2.5 py-1 rounded text-xs font-mono bg-[#d29922]/10 text-[#d29922] border border-[#d29922]">IN DEVELOPMENT</span>
                 </div>
-                <div className="bg-[#161b22] border border-[#58a6ff] rounded-lg p-6">
-                  <h4 className="font-semibold text-[#f0f6fc] mb-2">Contact Administration</h4>
-                  <p className="text-sm text-[#8b949e] mb-5">Send a pre-written email to university leadership.</p>
-                  <button className="bg-[#58a6ff] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#79b8ff] transition-colors uppercase text-sm tracking-wide">
-                    Send Email
-                  </button>
+                <h3 className="text-lg font-semibold text-[#f0f6fc] mb-2">Advocacy in Progress</h3>
+                <p className="text-sm text-[#8b949e] mb-4">We're working with Campus Health and ITS to integrate health services into ConnectCarolina. Current timeline: Fall 2026 pilot.</p>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-4 h-4 rounded-full bg-[#3fb950]" />
+                    <span className="text-sm text-[#f0f6fc]">Requirements gathering - Complete</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-4 h-4 rounded-full bg-[#3fb950]" />
+                    <span className="text-sm text-[#f0f6fc]">Stakeholder meetings - Complete</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-4 h-4 rounded-full bg-[#d29922]" />
+                    <span className="text-sm text-[#f0f6fc]">Technical planning - In Progress</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-4 h-4 rounded-full bg-[#30363d]" />
+                    <span className="text-sm text-[#8b949e]">Development - Pending</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="w-4 h-4 rounded-full bg-[#30363d]" />
+                    <span className="text-sm text-[#8b949e]">Pilot launch - Fall 2026</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -503,7 +738,7 @@ export default function WellnessPage() {
                       </div>
                     ) : (
                       <form onSubmit={handleFeedbackSubmit} className="space-y-4">
-                        <Select label="Topic" name="topic" value={feedbackForm.topic} onChange={e => setFeedbackForm({...feedbackForm, topic: e.target.value})} required
+                        <Select label="Topic" value={feedbackForm.topic} onChange={e => setFeedbackForm({...feedbackForm, topic: e.target.value})} required
                           options={[
                             { value: 'suggestion', label: 'Suggestion' },
                             { value: 'question', label: 'Question' },
@@ -511,8 +746,8 @@ export default function WellnessPage() {
                             { value: 'compliment', label: 'Compliment' },
                           ]}
                         />
-                        <Textarea label="Message" name="message" value={feedbackForm.message} onChange={e => setFeedbackForm({...feedbackForm, message: e.target.value})} required rows={3} />
-                        <Input label="Email (optional)" type="email" name="email" value={feedbackForm.email} onChange={e => setFeedbackForm({...feedbackForm, email: e.target.value})} />
+                        <Textarea label="Message" value={feedbackForm.message} onChange={e => setFeedbackForm({...feedbackForm, message: e.target.value})} required rows={3} />
+                        <Input label="Email (optional)" type="email" value={feedbackForm.email} onChange={e => setFeedbackForm({...feedbackForm, email: e.target.value})} />
                         <button type="submit" className="w-full bg-[#3fb950] text-[#0d1117] px-4 py-2.5 rounded font-semibold hover:bg-[#46c356] transition-colors">
                           Submit Feedback
                         </button>
@@ -545,22 +780,6 @@ export default function WellnessPage() {
                 </div>
               </div>
 
-              {/* How-To Guide */}
-              <div className="mb-8">
-                <h3 className="text-lg font-semibold text-[#f0f6fc] tracking-tight mb-5">{capsGuide.title}</h3>
-                <div className="grid md:grid-cols-4 gap-4">
-                  {capsGuide.steps.map((step) => (
-                    <div key={step.step} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 relative">
-                      <div className="absolute -top-3 left-4 bg-[#3fb950] text-[#0d1117] text-xs font-bold px-2 py-1 rounded">
-                        Step {step.step}
-                      </div>
-                      <h4 className="font-semibold text-[#f0f6fc] mt-2 mb-2">{step.title}</h4>
-                      <p className="text-sm text-[#8b949e]">{step.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               {/* Announcements */}
               <div>
                 <h3 className="text-lg font-semibold text-[#f0f6fc] tracking-tight mb-5">Recent Updates</h3>
@@ -584,46 +803,6 @@ export default function WellnessPage() {
                     </div>
                   ))}
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* All Policies Tab */}
-          {activeTab === 'policies' && (
-            <div>
-              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-8">Wellness Department Policies</h2>
-              <div className="space-y-4">
-                {deptPolicies.map(policy => (
-                  <div key={policy.id} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="font-semibold text-[#f0f6fc]">{policy.title}</h3>
-                      <span className={`px-2.5 py-1 rounded text-xs font-mono border ${
-                        policy.status === 'completed' ? 'bg-[#3fb950]/10 text-[#3fb950] border-[#3fb950]' :
-                        policy.status === 'in_progress' ? 'bg-[#58a6ff]/10 text-[#58a6ff] border-[#58a6ff]' :
-                        'bg-[#21262d] text-[#6e7681] border-[#30363d]'
-                      }`}>
-                        {policy.status === 'in_progress' ? 'IN PROGRESS' : policy.status === 'completed' ? 'COMPLETED' : 'PLANNED'}
-                      </span>
-                    </div>
-                    <p className="text-sm text-[#8b949e] mb-4">{policy.description}</p>
-                    <div className="flex justify-between text-xs text-[#6e7681] mb-2">
-                      <span className="uppercase tracking-widest">Progress</span>
-                      <span className="font-mono">{policy.progress}%</span>
-                    </div>
-                    <div className="h-2 bg-[#21262d] rounded overflow-hidden">
-                      <div className="h-full bg-[#3fb950] rounded transition-all" style={{ width: `${policy.progress}%` }} />
-                    </div>
-                    {policy.digitalFeatures && (
-                      <div className="flex flex-wrap gap-2 mt-4">
-                        {policy.digitalFeatures.map(f => (
-                          <span key={f} className="px-2.5 py-1 bg-[#3fb950]/10 text-[#3fb950] border border-[#3fb950]/30 rounded text-xs font-mono">
-                            {f.replace(/-/g, ' ')}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
               </div>
             </div>
           )}

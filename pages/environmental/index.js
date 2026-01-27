@@ -1,23 +1,37 @@
 import { useState } from 'react'
 import Head from 'next/head'
 import Layout from '../../components/Layout'
-import { Input, Select, Textarea, Button } from '../../components/FormInput'
+import { Input, Select, Textarea } from '../../components/FormInput'
 import { useApp } from '../../lib/store'
 import { departmentContacts, departmentFAQs, departmentAnnouncements, serviceGuides } from '../../lib/data'
 
 export default function EnvironmentalPage() {
-  const [activeTab, setActiveTab] = useState('carbon')
-  const [showProjectForm, setShowProjectForm] = useState(false)
-  const [showCommitteeForm, setShowCommitteeForm] = useState(false)
-  const [submitted, setSubmitted] = useState(null)
+  const [activeTab, setActiveTab] = useState('overview')
+  const [showAdoptModal, setShowAdoptModal] = useState(false)
+  const [showDonateModal, setShowDonateModal] = useState(false)
+  const [adoptForm, setAdoptForm] = useState({ orgName: '', contact: '', email: '', space: '' })
+  const [donateForm, setDonateForm] = useState({ name: '', email: '', items: '', pickupDate: '' })
+  const [formSubmitted, setFormSubmitted] = useState(false)
   const { policies } = useApp()
 
   const deptPolicies = policies.filter(p => p.department === 'environmental')
+  const getPolicy = (id) => deptPolicies.find(p => p.id === id)
+
+  const tabs = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'sustain-week', label: 'Sustain Carolina' },
+    { id: 'too-good-to-go', label: 'Too Good To Go' },
+    { id: 'adopt-a-space', label: 'Adopt-a-Space' },
+    { id: 'composting', label: 'Composting' },
+    { id: 'moveout-shop', label: 'Move-Out Shop' },
+    { id: 'faq', label: 'FAQ & Contact' },
+  ]
 
   const contact = departmentContacts.environmental
   const faqs = departmentFAQs.environmental
   const announcements = departmentAnnouncements.environmental
-  const greenFundGuide = serviceGuides['green-fund']
+  const adoptGuide = serviceGuides['adopt-space']
+  const tgtgGuide = serviceGuides['too-good-to-go']
   const [expandedFaq, setExpandedFaq] = useState(null)
   const [feedbackForm, setFeedbackForm] = useState({ topic: '', message: '', email: '' })
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
@@ -28,13 +42,56 @@ export default function EnvironmentalPage() {
     setFeedbackForm({ topic: '', message: '', email: '' })
   }
 
+  const handleAdoptSubmit = (e) => {
+    e.preventDefault()
+    setFormSubmitted(true)
+    setShowAdoptModal(false)
+    setAdoptForm({ orgName: '', contact: '', email: '', space: '' })
+  }
+
+  const handleDonateSubmit = (e) => {
+    e.preventDefault()
+    setFormSubmitted(true)
+    setShowDonateModal(false)
+    setDonateForm({ name: '', email: '', items: '', pickupDate: '' })
+  }
+
+  const PolicyProgress = ({ policy }) => (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 mb-8">
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <h3 className="text-lg font-semibold text-[#f0f6fc] mb-1">{policy?.title}</h3>
+          <p className="text-sm text-[#8b949e]">{policy?.description?.slice(0, 150)}...</p>
+        </div>
+        <span className={`px-2.5 py-1 rounded text-xs font-mono border flex-shrink-0 ml-4 ${
+          policy?.status === 'in_progress'
+            ? 'border-[#3fb950] text-[#3fb950] bg-[#3fb950]/10'
+            : policy?.status === 'completed'
+            ? 'border-[#3fb950] text-[#3fb950] bg-[#3fb950]/10'
+            : 'border-[#6e7681] text-[#6e7681] bg-[#6e7681]/10'
+        }`}>
+          {policy?.status === 'in_progress' ? 'IN PROGRESS' : policy?.status === 'completed' ? 'COMPLETED' : 'PLANNED'}
+        </span>
+      </div>
+      <div className="flex items-center gap-4">
+        <div className="flex-1 h-2 bg-[#21262d] rounded overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-[#238636] to-[#3fb950] rounded transition-all"
+            style={{ width: `${policy?.progress || 0}%` }}
+          />
+        </div>
+        <span className="text-[#8b949e] font-mono text-sm">{policy?.progress || 0}%</span>
+      </div>
+    </div>
+  )
+
   return (
     <Layout>
       <Head>
         <title>Environmental | Project Bold</title>
       </Head>
 
-      {/* Hero with grid background */}
+      {/* Hero */}
       <div className="relative bg-gradient-to-b from-[#0a0e14] to-[#0d1117] text-white py-20 overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
@@ -45,9 +102,7 @@ export default function EnvironmentalPage() {
         <div className="relative max-w-6xl mx-auto px-6">
           <div className="flex items-center gap-4 mb-4">
             <div className="w-14 h-14 bg-[#3fb950]/20 border border-[#3fb950]/30 rounded-lg flex items-center justify-center">
-              <svg className="w-7 h-7 text-[#3fb950]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-              </svg>
+              <span className="text-2xl">🌱</span>
             </div>
             <div>
               <p className="text-[#3fb950] text-xs font-mono uppercase tracking-widest mb-1">SUSTAINABILITY DIVISION</p>
@@ -55,8 +110,8 @@ export default function EnvironmentalPage() {
             </div>
           </div>
           <p className="text-[#8b949e] text-lg max-w-2xl mt-4">
-            Sustainability, climate action, and green initiatives. Building a more
-            sustainable Carolina for future generations.
+            Sustainability, climate action, and green initiatives. Building a more sustainable Carolina through
+            food waste reduction, campus cleanups, and environmental education.
           </p>
         </div>
       </div>
@@ -65,15 +120,7 @@ export default function EnvironmentalPage() {
       <div className="bg-[#0d1117] border-b border-[#30363d] sticky top-16 z-40">
         <div className="max-w-6xl mx-auto px-6">
           <div className="flex gap-0 overflow-x-auto">
-            {[
-              { id: 'carbon', label: 'Carbon Neutrality' },
-              { id: 'dining', label: 'Sustainable Dining' },
-              { id: 'greenfund', label: 'Green Fund' },
-              { id: 'bikeshare', label: 'Bike Share' },
-              { id: 'committee', label: 'Climate Committee' },
-              { id: 'faq', label: 'FAQ & Contact' },
-              { id: 'policies', label: 'All Policies' },
-            ].map(tab => (
+            {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
@@ -92,391 +139,457 @@ export default function EnvironmentalPage() {
 
       <main className="bg-[#0a0e14] min-h-screen">
         <div className="max-w-6xl mx-auto px-6 py-10">
-          {submitted && (
+          {formSubmitted && (
             <div className="mb-8 bg-[#161b22] border border-[#3fb950]/30 rounded-lg p-5">
-              <p className="text-[#f0f6fc] font-medium">
-                {submitted === 'project' && 'Your Green Fund application has been submitted! We will review and contact you within 2 weeks.'}
-                {submitted === 'committee' && 'Thank you for your interest in the Climate Action Committee! We will reach out about next steps.'}
-              </p>
-              <button onClick={() => setSubmitted(null)} className="text-[#3fb950] text-sm mt-2 font-medium hover:underline">Dismiss</button>
+              <p className="text-[#f0f6fc] font-medium">Your submission has been received! We'll be in touch soon.</p>
+              <button onClick={() => setFormSubmitted(false)} className="text-[#3fb950] text-sm mt-2 font-medium hover:underline">Dismiss</button>
             </div>
           )}
 
-          {/* Carbon Neutrality Tab */}
-          {activeTab === 'carbon' && (
+          {/* Overview Tab */}
+          {activeTab === 'overview' && (
             <div>
-              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-8">Carbon Neutrality Push</h2>
-
-              {/* Progress */}
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6 mb-8">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-[#f0f6fc] uppercase text-xs tracking-widest">UNC Carbon Reduction Progress</h3>
-                  <span className="text-[#6e7681] text-xs font-mono">TARGET: 2040</span>
-                </div>
-                <div className="flex items-center gap-6 mb-4">
-                  <div className="text-5xl font-mono font-bold text-[#3fb950] tracking-tight">12%</div>
-                  <div className="flex-1">
-                    <p className="text-sm text-[#8b949e] mb-2">Reduction from 2007 baseline</p>
-                    <div className="h-2 bg-[#21262d] rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-[#238636] to-[#3fb950] rounded-full" style={{ width: '12%' }} />
-                    </div>
-                  </div>
-                </div>
-                <p className="text-sm text-[#6e7681]">Goal: Carbon neutrality by 2040</p>
-              </div>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-8">Environmental Overview</h2>
 
               {/* Stats */}
-              <div className="grid md:grid-cols-3 gap-4 mb-8">
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <p className="text-4xl font-mono font-bold text-[#3fb950] tracking-tight">890</p>
-                  <p className="text-xs text-[#8b949e] mt-1 uppercase tracking-widest">Petition Signatures</p>
+              <div className="grid md:grid-cols-4 gap-4 mb-10">
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
+                  <p className="text-4xl font-semibold font-mono text-[#3fb950]">{deptPolicies.length}</p>
+                  <p className="text-sm text-[#6e7681] mt-1 uppercase tracking-wide">Initiatives</p>
                 </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <p className="text-4xl font-mono font-bold text-[#58a6ff] tracking-tight">45</p>
-                  <p className="text-xs text-[#8b949e] mt-1 uppercase tracking-widest">Actions Taken</p>
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
+                  <p className="text-4xl font-semibold font-mono text-[#58a6ff]">
+                    {deptPolicies.filter(p => p.status === 'in_progress').length}
+                  </p>
+                  <p className="text-sm text-[#6e7681] mt-1 uppercase tracking-wide">In Progress</p>
                 </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <p className="text-4xl font-mono font-bold text-[#a371f7] tracking-tight">5</p>
-                  <p className="text-xs text-[#8b949e] mt-1 uppercase tracking-widest">Admin Meetings</p>
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
+                  <p className="text-4xl font-semibold font-mono text-[#a371f7]">
+                    {Math.round(deptPolicies.reduce((sum, p) => sum + (p.progress || 0), 0) / deptPolicies.length) || 0}%
+                  </p>
+                  <p className="text-sm text-[#6e7681] mt-1 uppercase tracking-wide">Avg Progress</p>
                 </div>
-              </div>
-
-              {/* Take Action */}
-              <h3 className="text-xs font-semibold text-[#8b949e] uppercase tracking-widest mb-4">Take Action</h3>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="bg-[#161b22] border border-[#3fb950] rounded-lg p-6">
-                  <h4 className="font-semibold text-lg text-[#f0f6fc] mb-2">Sign the Petition</h4>
-                  <p className="text-[#8b949e] mb-4">Demand accelerated carbon neutrality timeline from university leadership.</p>
-                  <button className="bg-[#238636] text-white px-5 py-2.5 rounded font-medium hover:bg-[#2ea043] transition-colors">
-                    Sign Now
-                  </button>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                  <h4 className="font-semibold text-lg text-[#f0f6fc] mb-2">Contact Administration</h4>
-                  <p className="text-[#8b949e] mb-4">Send a pre-written email to the Chancellor's office.</p>
-                  <button className="bg-[#21262d] text-[#f0f6fc] px-5 py-2.5 rounded font-medium hover:bg-[#30363d] border border-[#30363d] transition-colors">
-                    Send Email
-                  </button>
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
+                  <p className="text-4xl font-semibold font-mono text-[#d29922]">5</p>
+                  <p className="text-sm text-[#6e7681] mt-1 uppercase tracking-wide">Policy Areas</p>
                 </div>
               </div>
 
-              {/* Impact Calculator */}
-              <div className="mt-8 bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                <h3 className="font-semibold text-[#f0f6fc] mb-2">Calculate Your Impact</h3>
-                <p className="text-sm text-[#8b949e] mb-4">See how your daily choices affect carbon emissions.</p>
-                <button className="bg-[#238636] text-white px-5 py-2.5 rounded font-medium hover:bg-[#2ea043] transition-colors">
-                  Open Calculator
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Sustainable Dining Tab */}
-          {activeTab === 'dining' && (
-            <div>
-              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-8">Sustainable Dining Initiative</h2>
-
-              {/* Stats */}
-              <div className="grid md:grid-cols-3 gap-4 mb-8">
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <p className="text-4xl font-mono font-bold text-[#3fb950] tracking-tight">45,000</p>
-                  <p className="text-xs text-[#8b949e] mt-1 uppercase tracking-widest">Plastics Reduced</p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <p className="text-4xl font-mono font-bold text-[#58a6ff] tracking-tight">12</p>
-                  <p className="text-xs text-[#8b949e] mt-1 uppercase tracking-widest">Dining Locations</p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <p className="text-4xl font-mono font-bold text-[#a371f7] tracking-tight">4.1/5</p>
-                  <p className="text-xs text-[#8b949e] mt-1 uppercase tracking-widest">Satisfaction</p>
-                </div>
-              </div>
-
-              {/* Initiatives */}
-              <h3 className="text-xs font-semibold text-[#8b949e] uppercase tracking-widest mb-4">Current Initiatives</h3>
-              <div className="space-y-3 mb-8">
-                {[
-                  { name: 'Reusable Container Program', status: 'Active', locations: 'All dining halls', progress: 75 },
-                  { name: 'Compostable Utensils', status: 'Active', locations: 'Lenoir, Chase', progress: 60 },
-                  { name: 'Trayless Dining', status: 'Pilot', locations: 'Lenoir', progress: 40 },
-                  { name: 'Local Food Sourcing', status: 'Expanding', locations: 'Ram\'s Head', progress: 55 },
-                ].map((item, i) => (
-                  <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
+              {/* All Policies */}
+              <h3 className="text-xl font-semibold text-[#f0f6fc] mb-5 uppercase tracking-wide">All Environmental Policies</h3>
+              <div className="space-y-4">
+                {deptPolicies.map(policy => (
+                  <div key={policy.id} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
                     <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h4 className="font-semibold text-[#f0f6fc]">{item.name}</h4>
-                        <p className="text-sm text-[#6e7681]">{item.locations}</p>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-[#f0f6fc]">{policy.title}</h4>
+                        <p className="text-sm text-[#8b949e] mt-1">{policy.description}</p>
                       </div>
-                      <span className="px-2.5 py-1 bg-transparent border border-[#3fb950] text-[#3fb950] rounded text-xs font-mono uppercase">{item.status}</span>
+                      <span className={`px-2.5 py-1 rounded text-xs font-medium border ml-4 ${
+                        policy.status === 'in_progress'
+                          ? 'border-[#3fb950] text-[#3fb950] bg-[#3fb950]/10'
+                          : 'border-[#30363d] text-[#6e7681] bg-[#21262d]'
+                      }`}>
+                        {policy.status === 'in_progress' ? 'In Progress' : 'Planned'}
+                      </span>
                     </div>
                     <div className="h-1.5 bg-[#21262d] rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-[#238636] to-[#3fb950] rounded-full" style={{ width: `${item.progress}%` }} />
+                      <div
+                        className="h-full bg-gradient-to-r from-[#238636] to-[#3fb950] rounded-full transition-all"
+                        style={{ width: `${policy.progress}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-[#6e7681] mt-2 font-mono">{policy.progress}% complete</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Announcements */}
+              <h3 className="text-xl font-semibold text-[#f0f6fc] mt-10 mb-5 uppercase tracking-wide">Recent Updates</h3>
+              <div className="space-y-3">
+                {announcements.map(ann => (
+                  <div key={ann.id} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 flex items-start gap-4">
+                    <div className={`px-2 py-1 rounded text-xs font-mono ${
+                      ann.type === 'event' ? 'bg-[#3fb950]/10 text-[#3fb950] border border-[#3fb950]' :
+                      ann.type === 'deadline' ? 'bg-[#d29922]/10 text-[#d29922] border border-[#d29922]' :
+                      'bg-[#3fb950]/10 text-[#3fb950] border border-[#3fb950]'
+                    }`}>
+                      {ann.type.toUpperCase()}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-1">
+                        <h4 className="font-semibold text-[#f0f6fc]">{ann.title}</h4>
+                        <span className="text-xs text-[#6e7681] font-mono">{ann.date}</span>
+                      </div>
+                      <p className="text-sm text-[#8b949e]">{ann.content}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Sustain Carolina Week Tab */}
+          {activeTab === 'sustain-week' && (
+            <div>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-4">Sustain Carolina Week</h2>
+              <PolicyProgress policy={getPolicy('sustain-carolina-week')} />
+
+              {/* About */}
+              <div className="bg-[#161b22] border border-[#3fb950]/30 rounded-lg p-6 mb-10">
+                <h3 className="font-semibold text-[#3fb950] text-lg mb-3">About the Week</h3>
+                <p className="text-[#8b949e] mb-4">
+                  Sustain Carolina Week is a campus-wide celebration uniting student organizations, academic departments,
+                  and community partners. The week features zero-waste challenges, sustainable fashion pop-ups, faculty
+                  panels, and outdoor service projects like litter cleanups.
+                </p>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4 text-center">
+                    <p className="text-2xl font-semibold font-mono text-[#3fb950]">March 3-7</p>
+                    <p className="text-sm text-[#6e7681]">2026 Dates</p>
+                  </div>
+                  <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4 text-center">
+                    <p className="text-2xl font-semibold font-mono text-[#58a6ff]">0</p>
+                    <p className="text-sm text-[#6e7681]">Events Planned</p>
+                  </div>
+                  <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4 text-center">
+                    <p className="text-2xl font-semibold font-mono text-[#a371f7]">0</p>
+                    <p className="text-sm text-[#6e7681]">Partners</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Event Categories */}
+              <h3 className="text-xl font-semibold text-[#f0f6fc] mb-5 uppercase tracking-wide">Planned Events</h3>
+              <div className="grid md:grid-cols-2 gap-6 mb-10">
+                {[
+                  { name: 'Zero-Waste Challenges', icon: '♻️', description: 'Campus-wide competitions to reduce waste and track impact' },
+                  { name: 'Sustainable Fashion Pop-Up', icon: '👗', description: 'Clothing swap and thrift market in the Pit' },
+                  { name: 'Faculty Sustainability Panels', icon: '🎤', description: 'Discussions on climate research and campus initiatives' },
+                  { name: 'Litter Cleanup Day', icon: '🧹', description: 'Service project cleaning up campus and surrounding areas' },
+                ].map((event, i) => (
+                  <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 bg-[#3fb950]/20 border border-[#3fb950]/40 rounded-lg flex items-center justify-center">
+                        <span className="text-2xl">{event.icon}</span>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-[#f0f6fc]">{event.name}</h4>
+                        <p className="text-sm text-[#8b949e] mt-1">{event.description}</p>
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
 
-              {/* Feedback */}
+              {/* Get Involved */}
               <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                <h3 className="font-semibold text-[#f0f6fc] mb-2">Share Your Feedback</h3>
-                <p className="text-sm text-[#8b949e] mb-4">Help us improve sustainable dining options.</p>
-                <button className="bg-[#238636] text-white px-5 py-2.5 rounded font-medium hover:bg-[#2ea043] transition-colors">
-                  Give Feedback
+                <h3 className="font-semibold text-[#f0f6fc] text-lg mb-4">Get Involved</h3>
+                <p className="text-[#8b949e] mb-4">
+                  Want to host an event or partner with Sustain Carolina Week? Let us know!
+                </p>
+                <button className="px-6 py-3 bg-[#238636] text-white rounded font-medium hover:bg-[#2ea043] transition-colors">
+                  Partner With Us
                 </button>
               </div>
             </div>
           )}
 
-          {/* Green Fund Tab */}
-          {activeTab === 'greenfund' && (
+          {/* Too Good To Go Tab */}
+          {activeTab === 'too-good-to-go' && (
             <div>
-              <div className="flex items-start justify-between mb-8">
-                <div>
-                  <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight">Green Fund</h2>
-                  <p className="text-[#8b949e] mt-1">Student-funded grants for sustainability projects</p>
-                </div>
-                <button
-                  onClick={() => setShowProjectForm(true)}
-                  className="bg-[#238636] text-white px-5 py-2.5 rounded font-medium hover:bg-[#2ea043] transition-colors"
-                >
-                  Apply for Funding
-                </button>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-4">Too Good To Go Program</h2>
+              <PolicyProgress policy={getPolicy('too-good-to-go')} />
+
+              {/* About */}
+              <div className="bg-[#161b22] border border-[#3fb950]/30 rounded-lg p-6 mb-10">
+                <h3 className="font-semibold text-[#3fb950] text-lg mb-3">About the Program</h3>
+                <p className="text-[#8b949e] mb-4">
+                  We're partnering with Carolina Dining Services to redistribute surplus dining hall meals through a
+                  low-cost or free student access platform. This reduces food waste while addressing food insecurity—a
+                  key intersection of sustainability and equity.
+                </p>
               </div>
 
               {/* Stats */}
-              <div className="grid md:grid-cols-3 gap-4 mb-8">
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <p className="text-4xl font-mono font-bold text-[#3fb950] tracking-tight">$156K</p>
-                  <p className="text-xs text-[#8b949e] mt-1 uppercase tracking-widest">Total Funded</p>
+              <div className="grid md:grid-cols-3 gap-4 mb-10">
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
+                  <p className="text-4xl font-semibold font-mono text-[#3fb950]">0</p>
+                  <p className="text-sm text-[#6e7681] mt-1 uppercase tracking-wide">Meals Redistributed</p>
                 </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <p className="text-4xl font-mono font-bold text-[#58a6ff] tracking-tight">23</p>
-                  <p className="text-xs text-[#8b949e] mt-1 uppercase tracking-widest">Projects Funded</p>
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
+                  <p className="text-4xl font-semibold font-mono text-[#58a6ff]">0 lbs</p>
+                  <p className="text-sm text-[#6e7681] mt-1 uppercase tracking-wide">Waste Reduced</p>
                 </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <p className="text-4xl font-mono font-bold text-[#a371f7] tracking-tight">45</p>
-                  <p className="text-xs text-[#8b949e] mt-1 uppercase tracking-widest">Applications</p>
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
+                  <p className="text-4xl font-semibold font-mono text-[#a371f7]">0</p>
+                  <p className="text-sm text-[#6e7681] mt-1 uppercase tracking-wide">Students Served</p>
                 </div>
               </div>
 
-              {/* Funded Projects */}
-              <h3 className="text-xs font-semibold text-[#8b949e] uppercase tracking-widest mb-4">Recently Funded Projects</h3>
-              <div className="space-y-3 mb-8">
+              {/* How It Works */}
+              <h3 className="text-xl font-semibold text-[#f0f6fc] mb-5 uppercase tracking-wide">{tgtgGuide.title}</h3>
+              <div className="grid md:grid-cols-4 gap-4 mb-10">
+                {tgtgGuide.steps.map((step) => (
+                  <div key={step.step} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 relative">
+                    <div className="absolute -top-3 left-4 bg-[#238636] text-white text-xs font-bold px-2 py-1 rounded">
+                      Step {step.step}
+                    </div>
+                    <h4 className="font-semibold text-[#f0f6fc] mt-2 mb-2">{step.title}</h4>
+                    <p className="text-sm text-[#8b949e]">{step.description}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Locations */}
+              <h3 className="text-xl font-semibold text-[#f0f6fc] mb-5 uppercase tracking-wide">Participating Locations</h3>
+              <div className="grid md:grid-cols-2 gap-4">
                 {[
-                  { name: 'Solar Panel Installation - Davis Library', amount: 25000, org: 'Facilities Services' },
-                  { name: 'Campus Composting Bins', amount: 8500, org: 'Sustainability Office' },
-                  { name: 'Native Plant Garden', amount: 5000, org: 'Environmental Sciences Club' },
-                  { name: 'E-Bike Fleet Expansion', amount: 15000, org: 'Transportation' },
-                ].map((project, i) => (
+                  { name: 'Lenoir Dining Hall', status: 'Pilot', time: 'End of dinner service' },
+                  { name: 'Chase Dining Hall', status: 'Pilot', time: 'End of dinner service' },
+                ].map((loc, i) => (
                   <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 flex items-center justify-between">
                     <div>
-                      <h4 className="font-semibold text-[#f0f6fc]">{project.name}</h4>
-                      <p className="text-sm text-[#6e7681]">{project.org}</p>
+                      <h4 className="font-semibold text-[#f0f6fc]">{loc.name}</h4>
+                      <p className="text-sm text-[#6e7681]">{loc.time}</p>
                     </div>
-                    <span className="text-[#3fb950] font-mono font-bold text-lg">${project.amount.toLocaleString()}</span>
+                    <span className="px-2.5 py-1 bg-[#3fb950]/10 border border-[#3fb950] text-[#3fb950] rounded text-xs font-mono uppercase">
+                      {loc.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Adopt-a-Space Tab */}
+          {activeTab === 'adopt-a-space' && (
+            <div>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-4">Adopt-a-Space Program</h2>
+              <PolicyProgress policy={getPolicy('adopt-a-space')} />
+
+              {/* About */}
+              <div className="bg-[#161b22] border border-[#3fb950]/30 rounded-lg p-6 mb-10">
+                <h3 className="font-semibold text-[#3fb950] text-lg mb-3">About the Program</h3>
+                <p className="text-[#8b949e] mb-4">
+                  Empower student organizations, residence halls, and RAs to adopt designated campus spaces and maintain
+                  them through regular cleanup events. Monthly Campus Cleanup Days offer service hours and team-building
+                  opportunities while keeping our campus beautiful.
+                </p>
+              </div>
+
+              {/* Stats */}
+              <div className="grid md:grid-cols-3 gap-4 mb-10">
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
+                  <p className="text-4xl font-semibold font-mono text-[#3fb950]">0</p>
+                  <p className="text-sm text-[#6e7681] mt-1 uppercase tracking-wide">Spaces Adopted</p>
+                </div>
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
+                  <p className="text-4xl font-semibold font-mono text-[#58a6ff]">0</p>
+                  <p className="text-sm text-[#6e7681] mt-1 uppercase tracking-wide">Cleanup Events</p>
+                </div>
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
+                  <p className="text-4xl font-semibold font-mono text-[#a371f7]">0</p>
+                  <p className="text-sm text-[#6e7681] mt-1 uppercase tracking-wide">Volunteers</p>
+                </div>
+              </div>
+
+              {/* How It Works */}
+              <h3 className="text-xl font-semibold text-[#f0f6fc] mb-5 uppercase tracking-wide">{adoptGuide.title}</h3>
+              <div className="grid md:grid-cols-4 gap-4 mb-10">
+                {adoptGuide.steps.map((step) => (
+                  <div key={step.step} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 relative">
+                    <div className="absolute -top-3 left-4 bg-[#238636] text-white text-xs font-bold px-2 py-1 rounded">
+                      Step {step.step}
+                    </div>
+                    <h4 className="font-semibold text-[#f0f6fc] mt-2 mb-2">{step.title}</h4>
+                    <p className="text-sm text-[#8b949e]">{step.description}</p>
                   </div>
                 ))}
               </div>
 
-              {/* Project Form Modal */}
-              {showProjectForm && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
-                    <h3 className="text-xl font-bold text-[#f0f6fc] mb-6">Green Fund Application</h3>
-                    <form onSubmit={(e) => { e.preventDefault(); setSubmitted('project'); setShowProjectForm(false); }} className="space-y-4">
-                      <Input label="Project Title" required />
-                      <Input label="Your Name" required />
-                      <Input label="Email" type="email" required />
-                      <Input label="Organization/Department" required />
-                      <Input label="Funding Requested ($)" type="number" required />
-                      <Textarea label="Project Description" required rows={4} />
-                      <Textarea label="Environmental Impact" required rows={3} />
-                      <div className="flex gap-3 pt-2">
-                        <button type="submit" className="flex-1 bg-[#238636] text-white px-5 py-2.5 rounded font-medium hover:bg-[#2ea043] transition-colors">
-                          Submit Application
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowProjectForm(false)}
-                          className="flex-1 bg-[#21262d] text-[#f0f6fc] px-5 py-2.5 rounded font-medium hover:bg-[#30363d] border border-[#30363d] transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Bike Share Tab */}
-          {activeTab === 'bikeshare' && (
-            <div>
-              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-8">Bike Share Program</h2>
-
-              {/* Stats */}
-              <div className="grid md:grid-cols-3 gap-4 mb-8">
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <p className="text-4xl font-mono font-bold text-[#3fb950] tracking-tight">89</p>
-                  <p className="text-xs text-[#8b949e] mt-1 uppercase tracking-widest">Bikes Available</p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <p className="text-4xl font-mono font-bold text-[#58a6ff] tracking-tight">12</p>
-                  <p className="text-xs text-[#8b949e] mt-1 uppercase tracking-widest">Stations</p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <p className="text-4xl font-mono font-bold text-[#a371f7] tracking-tight">4,500</p>
-                  <p className="text-xs text-[#8b949e] mt-1 uppercase tracking-widest">Rides This Month</p>
-                </div>
-              </div>
-
-              {/* Station Map */}
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6 mb-8">
-                <h3 className="font-semibold text-[#f0f6fc] mb-4 uppercase text-xs tracking-widest">Station Locations</h3>
-                <div className="grid md:grid-cols-3 gap-3">
-                  {[
-                    { name: 'Student Union', bikes: 12, available: 8 },
-                    { name: 'Davis Library', bikes: 10, available: 6 },
-                    { name: 'Rams Head', bikes: 8, available: 5 },
-                    { name: 'Friday Center', bikes: 6, available: 3 },
-                    { name: 'Morrison', bikes: 8, available: 7 },
-                    { name: 'Carmichael', bikes: 10, available: 4 },
-                  ].map((station, i) => (
-                    <div key={i} className="p-4 bg-[#21262d] border border-[#30363d] rounded-lg">
-                      <p className="font-medium text-[#f0f6fc]">{station.name}</p>
-                      <p className="text-sm font-mono text-[#3fb950]">{station.available}/{station.bikes} <span className="text-[#6e7681]">available</span></p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* How to Use */}
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                <h3 className="font-semibold text-[#f0f6fc] mb-4 uppercase text-xs tracking-widest">How to Use</h3>
-                <ol className="space-y-3 text-[#8b949e]">
-                  <li className="flex items-start gap-3">
-                    <span className="w-6 h-6 bg-[#238636] text-white rounded flex items-center justify-center text-xs font-mono flex-shrink-0">1</span>
-                    <span>Download the UNC Bike Share app</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className="w-6 h-6 bg-[#238636] text-white rounded flex items-center justify-center text-xs font-mono flex-shrink-0">2</span>
-                    <span>Create an account with your UNC email</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className="w-6 h-6 bg-[#238636] text-white rounded flex items-center justify-center text-xs font-mono flex-shrink-0">3</span>
-                    <span>Find an available bike at any station</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className="w-6 h-6 bg-[#238636] text-white rounded flex items-center justify-center text-xs font-mono flex-shrink-0">4</span>
-                    <span>Scan the QR code to unlock</span>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className="w-6 h-6 bg-[#238636] text-white rounded flex items-center justify-center text-xs font-mono flex-shrink-0">5</span>
-                    <span>Return to any station when done</span>
-                  </li>
-                </ol>
-                <button className="mt-6 bg-[#238636] text-white px-5 py-2.5 rounded font-medium hover:bg-[#2ea043] transition-colors">
-                  Download App
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Climate Committee Tab */}
-          {activeTab === 'committee' && (
-            <div>
-              <div className="flex items-start justify-between mb-8">
-                <div>
-                  <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight">Climate Action Committee</h2>
-                  <p className="text-[#8b949e] mt-1">Student committee advising on campus climate policy</p>
-                </div>
-                <button
-                  onClick={() => setShowCommitteeForm(true)}
-                  className="bg-[#238636] text-white px-5 py-2.5 rounded font-medium hover:bg-[#2ea043] transition-colors"
-                >
-                  Join Committee
-                </button>
-              </div>
-
-              {/* Stats */}
-              <div className="grid md:grid-cols-3 gap-4 mb-8">
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <p className="text-4xl font-mono font-bold text-[#3fb950] tracking-tight">15</p>
-                  <p className="text-xs text-[#8b949e] mt-1 uppercase tracking-widest">Members</p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <p className="text-4xl font-mono font-bold text-[#58a6ff] tracking-tight">12</p>
-                  <p className="text-xs text-[#8b949e] mt-1 uppercase tracking-widest">Meetings</p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <p className="text-4xl font-mono font-bold text-[#a371f7] tracking-tight">8</p>
-                  <p className="text-xs text-[#8b949e] mt-1 uppercase tracking-widest">Initiatives</p>
-                </div>
-              </div>
-
-              {/* Current Initiatives */}
-              <h3 className="text-xs font-semibold text-[#8b949e] uppercase tracking-widest mb-4">Current Initiatives</h3>
-              <div className="space-y-3 mb-8">
+              {/* Available Spaces */}
+              <h3 className="text-xl font-semibold text-[#f0f6fc] mb-5 uppercase tracking-wide">Available Spaces</h3>
+              <div className="grid md:grid-cols-3 gap-4 mb-10">
                 {[
-                  'Advocating for 100% renewable energy by 2035',
-                  'Expanding campus EV charging infrastructure',
-                  'Implementing green building standards for new construction',
-                  'Creating sustainability curriculum requirements',
-                ].map((initiative, i) => (
-                  <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 flex items-center gap-4">
-                    <div className="w-8 h-8 bg-[#238636]/20 border border-[#3fb950]/30 rounded flex items-center justify-center flex-shrink-0">
-                      <svg className="w-4 h-4 text-[#3fb950]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <span className="text-[#f0f6fc]">{initiative}</span>
+                  { name: 'Polk Place Quad', status: 'Available' },
+                  { name: 'McCorkle Place', status: 'Available' },
+                  { name: 'The Pit Area', status: 'Available' },
+                  { name: 'South Campus Walkways', status: 'Available' },
+                  { name: 'Stadium Drive', status: 'Available' },
+                  { name: 'Kenan Woods Trail', status: 'Available' },
+                ].map((space, i) => (
+                  <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 flex items-center justify-between">
+                    <span className="text-[#f0f6fc] font-medium">{space.name}</span>
+                    <span className="px-2 py-1 bg-[#3fb950]/10 border border-[#3fb950] text-[#3fb950] rounded text-xs font-mono">
+                      {space.status}
+                    </span>
                   </div>
                 ))}
               </div>
 
-              {/* Meeting Schedule */}
+              {/* Register */}
               <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                <h3 className="font-semibold text-[#f0f6fc] mb-4 uppercase text-xs tracking-widest">Next Meeting</h3>
-                <p className="text-xl font-mono font-bold text-[#3fb950]">February 5, 2026 at 5:00 PM</p>
-                <p className="text-[#8b949e] mt-1">Student Union Room 3407</p>
-                <p className="text-sm text-[#6e7681] mt-3">Meetings are open to all students</p>
+                <h3 className="font-semibold text-[#f0f6fc] text-lg mb-4">Register Your Organization</h3>
+                <p className="text-[#8b949e] mb-4">
+                  Adopt a space and commit to regular cleanup events. Earn service hours and leaderboard recognition!
+                </p>
+                <button
+                  onClick={() => setShowAdoptModal(true)}
+                  className="px-6 py-3 bg-[#238636] text-white rounded font-medium hover:bg-[#2ea043] transition-colors"
+                >
+                  Adopt a Space
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Composting Tab */}
+          {activeTab === 'composting' && (
+            <div>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-4">Composting Expansion</h2>
+              <PolicyProgress policy={getPolicy('composting-expansion')} />
+
+              {/* About */}
+              <div className="bg-[#161b22] border border-[#3fb950]/30 rounded-lg p-6 mb-10">
+                <h3 className="font-semibold text-[#3fb950] text-lg mb-3">About the Initiative</h3>
+                <p className="text-[#8b949e] mb-4">
+                  We're expanding composting infrastructure across campus, particularly in dining halls. In collaboration
+                  with Carolina Dining and Facilities, we're installing more compost bins and plate-clearing systems with
+                  educational signage and student ambassadors to help reduce waste sent to landfills.
+                </p>
               </div>
 
-              {/* Committee Form Modal */}
-              {showCommitteeForm && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
-                    <h3 className="text-xl font-bold text-[#f0f6fc] mb-6">Join Climate Action Committee</h3>
-                    <form onSubmit={(e) => { e.preventDefault(); setSubmitted('committee'); setShowCommitteeForm(false); }} className="space-y-4">
-                      <Input label="Full Name" required />
-                      <Input label="Email" type="email" required />
-                      <Input label="PID" required />
-                      <Select label="Year" required options={[
-                        { value: 'freshman', label: 'First Year' },
-                        { value: 'sophomore', label: 'Sophomore' },
-                        { value: 'junior', label: 'Junior' },
-                        { value: 'senior', label: 'Senior' },
-                        { value: 'grad', label: 'Graduate' },
-                      ]} />
-                      <Input label="Major" required />
-                      <Textarea label="Why do you want to join?" required rows={3} />
-                      <div className="flex gap-3 pt-2">
-                        <button type="submit" className="flex-1 bg-[#238636] text-white px-5 py-2.5 rounded font-medium hover:bg-[#2ea043] transition-colors">
-                          Apply
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowCommitteeForm(false)}
-                          className="flex-1 bg-[#21262d] text-[#f0f6fc] px-5 py-2.5 rounded font-medium hover:bg-[#30363d] border border-[#30363d] transition-colors"
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
-                  </div>
+              {/* Stats */}
+              <div className="grid md:grid-cols-3 gap-4 mb-10">
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
+                  <p className="text-4xl font-semibold font-mono text-[#3fb950]">0</p>
+                  <p className="text-sm text-[#6e7681] mt-1 uppercase tracking-wide">Stations</p>
                 </div>
-              )}
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
+                  <p className="text-4xl font-semibold font-mono text-[#58a6ff]">0 lbs</p>
+                  <p className="text-sm text-[#6e7681] mt-1 uppercase tracking-wide">Waste Diverted</p>
+                </div>
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
+                  <p className="text-4xl font-semibold font-mono text-[#a371f7]">0</p>
+                  <p className="text-sm text-[#6e7681] mt-1 uppercase tracking-wide">Ambassadors</p>
+                </div>
+              </div>
+
+              {/* What Can Be Composted */}
+              <h3 className="text-xl font-semibold text-[#f0f6fc] mb-5 uppercase tracking-wide">What Can Be Composted</h3>
+              <div className="grid md:grid-cols-2 gap-6 mb-10">
+                <div className="bg-[#161b22] border border-[#3fb950]/30 rounded-lg p-6">
+                  <h4 className="font-semibold text-[#3fb950] mb-4">Yes - Compost These</h4>
+                  <ul className="space-y-2 text-sm text-[#8b949e]">
+                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">✓</span> Food scraps & leftovers</li>
+                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">✓</span> Coffee grounds & filters</li>
+                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">✓</span> Paper napkins & towels</li>
+                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">✓</span> Cardboard (uncoated)</li>
+                    <li className="flex items-center gap-2"><span className="text-[#3fb950]">✓</span> Fruit & vegetable peels</li>
+                  </ul>
+                </div>
+
+                <div className="bg-[#161b22] border border-[#f85149]/30 rounded-lg p-6">
+                  <h4 className="font-semibold text-[#f85149] mb-4">No - Don't Compost These</h4>
+                  <ul className="space-y-2 text-sm text-[#8b949e]">
+                    <li className="flex items-center gap-2"><span className="text-[#f85149]">✗</span> Plastic containers or utensils</li>
+                    <li className="flex items-center gap-2"><span className="text-[#f85149]">✗</span> Styrofoam</li>
+                    <li className="flex items-center gap-2"><span className="text-[#f85149]">✗</span> Metal or glass</li>
+                    <li className="flex items-center gap-2"><span className="text-[#f85149]">✗</span> Coated paper products</li>
+                    <li className="flex items-center gap-2"><span className="text-[#f85149]">✗</span> Meat bones (large)</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Become an Ambassador */}
+              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
+                <h3 className="font-semibold text-[#f0f6fc] text-lg mb-4">Become a Composting Ambassador</h3>
+                <p className="text-[#8b949e] mb-4">
+                  Help educate fellow students about proper composting. Ambassadors staff stations during peak hours
+                  and earn service hours.
+                </p>
+                <button className="px-6 py-3 bg-[#238636] text-white rounded font-medium hover:bg-[#2ea043] transition-colors">
+                  Sign Up
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Move-Out Shop Tab */}
+          {activeTab === 'moveout-shop' && (
+            <div>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-4">Move-Out Donation Shop</h2>
+              <PolicyProgress policy={getPolicy('moveout-shop')} />
+
+              {/* About */}
+              <div className="bg-[#161b22] border border-[#3fb950]/30 rounded-lg p-6 mb-10">
+                <h3 className="font-semibold text-[#3fb950] text-lg mb-3">About the Shop</h3>
+                <p className="text-[#8b949e] mb-4">
+                  The Move-Out Donation Shop is a Carolina Thrift-style initiative operated semiannually to collect,
+                  sort, and resell or donate discarded items. We reduce landfill waste, promote reuse, and support
+                  affordability for students needing inexpensive supplies at the start of each semester.
+                </p>
+              </div>
+
+              {/* Stats */}
+              <div className="grid md:grid-cols-3 gap-4 mb-10">
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
+                  <p className="text-4xl font-semibold font-mono text-[#3fb950]">0</p>
+                  <p className="text-sm text-[#6e7681] mt-1 uppercase tracking-wide">Items Collected</p>
+                </div>
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
+                  <p className="text-4xl font-semibold font-mono text-[#58a6ff]">0</p>
+                  <p className="text-sm text-[#6e7681] mt-1 uppercase tracking-wide">Items Sold</p>
+                </div>
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
+                  <p className="text-4xl font-semibold font-mono text-[#a371f7]">0</p>
+                  <p className="text-sm text-[#6e7681] mt-1 uppercase tracking-wide">Items Donated</p>
+                </div>
+              </div>
+
+              {/* Accepted Items */}
+              <h3 className="text-xl font-semibold text-[#f0f6fc] mb-5 uppercase tracking-wide">What We Accept</h3>
+              <div className="grid md:grid-cols-4 gap-4 mb-10">
+                {[
+                  { name: 'Furniture', icon: '🪑', examples: 'Chairs, desks, lamps, shelves' },
+                  { name: 'Electronics', icon: '💻', examples: 'Chargers, cables, small appliances' },
+                  { name: 'School Supplies', icon: '📚', examples: 'Notebooks, binders, organizers' },
+                  { name: 'Dorm Items', icon: '🛏️', examples: 'Bedding, storage, decor' },
+                ].map((cat, i) => (
+                  <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 text-center">
+                    <span className="text-3xl">{cat.icon}</span>
+                    <p className="text-[#f0f6fc] font-medium mt-2">{cat.name}</p>
+                    <p className="text-xs text-[#6e7681] mt-1">{cat.examples}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Actions */}
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
+                  <h3 className="font-semibold text-[#f0f6fc] text-lg mb-4">Donate Items</h3>
+                  <p className="text-[#8b949e] mb-4">
+                    Moving out? Schedule a pickup or drop off items at designated locations during finals week.
+                  </p>
+                  <button
+                    onClick={() => setShowDonateModal(true)}
+                    className="px-6 py-3 bg-[#238636] text-white rounded font-medium hover:bg-[#2ea043] transition-colors"
+                  >
+                    Schedule Donation
+                  </button>
+                </div>
+
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
+                  <h3 className="font-semibold text-[#f0f6fc] text-lg mb-4">Shop the Store</h3>
+                  <p className="text-[#8b949e] mb-4">
+                    Find affordable supplies at the start of each semester. All proceeds support sustainability programs.
+                  </p>
+                  <button className="px-6 py-3 bg-[#21262d] border border-[#30363d] text-[#f0f6fc] rounded font-medium hover:bg-[#30363d] transition-colors">
+                    View Schedule
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -532,9 +645,11 @@ export default function EnvironmentalPage() {
                       <form onSubmit={handleFeedbackSubmit} className="space-y-4">
                         <Select label="Topic" name="topic" value={feedbackForm.topic} onChange={e => setFeedbackForm({...feedbackForm, topic: e.target.value})} required
                           options={[
-                            { value: 'sustainability', label: 'Sustainability' },
-                            { value: 'greenfund', label: 'Green Fund' },
-                            { value: 'bikeshare', label: 'Bike Share' },
+                            { value: 'sustain-week', label: 'Sustain Carolina Week' },
+                            { value: 'too-good-to-go', label: 'Too Good To Go' },
+                            { value: 'adopt-a-space', label: 'Adopt-a-Space' },
+                            { value: 'composting', label: 'Composting' },
+                            { value: 'moveout-shop', label: 'Move-Out Shop' },
                             { value: 'other', label: 'Other' },
                           ]}
                         />
@@ -572,22 +687,6 @@ export default function EnvironmentalPage() {
                 </div>
               </div>
 
-              {/* How-To Guide */}
-              <div>
-                <h3 className="text-lg font-bold text-[#f0f6fc] tracking-tight mb-4">{greenFundGuide.title}</h3>
-                <div className="grid md:grid-cols-4 gap-4">
-                  {greenFundGuide.steps.map((step) => (
-                    <div key={step.step} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 relative">
-                      <div className="absolute -top-3 left-4 bg-[#238636] text-white text-xs font-bold px-2 py-1 rounded">
-                        Step {step.step}
-                      </div>
-                      <h4 className="font-semibold text-[#f0f6fc] mt-2 mb-2">{step.title}</h4>
-                      <p className="text-sm text-[#8b949e]">{step.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               {/* Announcements */}
               <div>
                 <h3 className="text-lg font-bold text-[#f0f6fc] tracking-tight mb-4">Recent Updates</h3>
@@ -595,6 +694,7 @@ export default function EnvironmentalPage() {
                   {announcements.map(ann => (
                     <div key={ann.id} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 flex items-start gap-4">
                       <div className={`px-2 py-1 rounded text-xs font-mono ${
+                        ann.type === 'event' ? 'bg-[#3fb950]/10 text-[#3fb950] border border-[#3fb950]' :
                         ann.type === 'deadline' ? 'bg-[#d29922]/10 text-[#d29922] border border-[#d29922]' :
                         'bg-[#3fb950]/10 text-[#3fb950] border border-[#3fb950]'
                       }`}>
@@ -613,35 +713,72 @@ export default function EnvironmentalPage() {
               </div>
             </div>
           )}
-
-          {/* All Policies Tab */}
-          {activeTab === 'policies' && (
-            <div>
-              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-8">Environmental Policies</h2>
-              <div className="space-y-3">
-                {deptPolicies.map(policy => (
-                  <div key={policy.id} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="font-semibold text-[#f0f6fc]">{policy.title}</h3>
-                      <span className={`px-2.5 py-1 rounded text-xs font-mono uppercase border ${
-                        policy.status === 'in_progress'
-                          ? 'border-[#58a6ff] text-[#58a6ff]'
-                          : 'border-[#6e7681] text-[#6e7681]'
-                      }`}>
-                        {policy.status === 'in_progress' ? 'In Progress' : 'Planned'}
-                      </span>
-                    </div>
-                    <p className="text-sm text-[#8b949e] mb-4">{policy.description}</p>
-                    <div className="h-1.5 bg-[#21262d] rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-[#238636] to-[#3fb950] rounded-full" style={{ width: `${policy.progress}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </main>
+
+      {/* Adopt-a-Space Modal */}
+      {showAdoptModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#161b22] border border-[#30363d] rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-semibold text-[#f0f6fc] mb-5">Adopt a Campus Space</h3>
+            <form onSubmit={handleAdoptSubmit} className="space-y-5">
+              <Input label="Organization Name" name="orgName" value={adoptForm.orgName} onChange={e => setAdoptForm({...adoptForm, orgName: e.target.value})} required className="bg-[#0d1117] border-[#30363d] text-[#f0f6fc]" />
+              <Input label="Contact Person" name="contact" value={adoptForm.contact} onChange={e => setAdoptForm({...adoptForm, contact: e.target.value})} required className="bg-[#0d1117] border-[#30363d] text-[#f0f6fc]" />
+              <Input label="Email" type="email" name="email" value={adoptForm.email} onChange={e => setAdoptForm({...adoptForm, email: e.target.value})} required className="bg-[#0d1117] border-[#30363d] text-[#f0f6fc]" />
+              <Select label="Preferred Space" name="space" value={adoptForm.space} onChange={e => setAdoptForm({...adoptForm, space: e.target.value})} required
+                options={[
+                  { value: 'polk', label: 'Polk Place Quad' },
+                  { value: 'mccorkle', label: 'McCorkle Place' },
+                  { value: 'pit', label: 'The Pit Area' },
+                  { value: 'south', label: 'South Campus Walkways' },
+                  { value: 'stadium', label: 'Stadium Drive' },
+                  { value: 'kenan', label: 'Kenan Woods Trail' },
+                ]}
+                className="bg-[#0d1117] border-[#30363d] text-[#f0f6fc]"
+              />
+              <div className="flex gap-3 pt-2">
+                <button type="submit" className="px-6 py-3 bg-[#238636] text-white rounded font-medium hover:bg-[#2ea043] transition-colors">
+                  Register
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAdoptModal(false)}
+                  className="px-6 py-3 bg-[#21262d] border border-[#30363d] text-[#f0f6fc] rounded font-medium hover:bg-[#30363d] transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Donate Items Modal */}
+      {showDonateModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#161b22] border border-[#30363d] rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+            <h3 className="text-xl font-semibold text-[#f0f6fc] mb-5">Schedule a Donation</h3>
+            <form onSubmit={handleDonateSubmit} className="space-y-5">
+              <Input label="Your Name" name="name" value={donateForm.name} onChange={e => setDonateForm({...donateForm, name: e.target.value})} required className="bg-[#0d1117] border-[#30363d] text-[#f0f6fc]" />
+              <Input label="Email" type="email" name="email" value={donateForm.email} onChange={e => setDonateForm({...donateForm, email: e.target.value})} required className="bg-[#0d1117] border-[#30363d] text-[#f0f6fc]" />
+              <Textarea label="Items to Donate" name="items" value={donateForm.items} onChange={e => setDonateForm({...donateForm, items: e.target.value})} required rows={3} placeholder="List the items you'd like to donate..." className="bg-[#0d1117] border-[#30363d] text-[#f0f6fc]" />
+              <Input label="Preferred Pickup Date" type="date" name="pickupDate" value={donateForm.pickupDate} onChange={e => setDonateForm({...donateForm, pickupDate: e.target.value})} required className="bg-[#0d1117] border-[#30363d] text-[#f0f6fc]" />
+              <div className="flex gap-3 pt-2">
+                <button type="submit" className="px-6 py-3 bg-[#238636] text-white rounded font-medium hover:bg-[#2ea043] transition-colors">
+                  Schedule
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDonateModal(false)}
+                  className="px-6 py-3 bg-[#21262d] border border-[#30363d] text-[#f0f6fc] rounded font-medium hover:bg-[#30363d] transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </Layout>
   )
 }

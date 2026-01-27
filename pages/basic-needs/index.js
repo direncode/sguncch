@@ -1,37 +1,34 @@
 import { useState } from 'react'
 import Head from 'next/head'
 import Layout from '../../components/Layout'
-import { Input, Select, Textarea, Button } from '../../components/FormInput'
+import { Input, Select, Textarea } from '../../components/FormInput'
 import { useApp } from '../../lib/store'
 import { departmentContacts, departmentFAQs, departmentAnnouncements, serviceGuides } from '../../lib/data'
 
 export default function BasicNeedsPage() {
-  const [activeTab, setActiveTab] = useState('food')
-  const [showHousingForm, setShowHousingForm] = useState(false)
-  const [showTechForm, setShowTechForm] = useState(false)
-  const [housingForm, setHousingForm] = useState({ name: '', email: '', pid: '', situation: '', urgency: '', amount: '' })
-  const [techForm, setTechForm] = useState({ name: '', email: '', pid: '', device: '', reason: '', duration: '' })
+  const [activeTab, setActiveTab] = useState('overview')
+  const [showShuttleReservation, setShowShuttleReservation] = useState(false)
+  const [showSwipeShare, setShowSwipeShare] = useState(false)
   const [submitted, setSubmitted] = useState(null)
-  const { policies, operationalData } = useApp()
+  const { policies } = useApp()
 
-  const pantryLocations = operationalData?.foodPantry?.locations || []
   const deptPolicies = policies.filter(p => p.department === 'basic-needs')
 
+  // Tabs matching the 5 policies
   const tabs = [
-    { id: 'food', label: 'Food Pantry' },
-    { id: 'housing', label: 'Emergency Housing' },
-    { id: 'textbooks', label: 'Textbooks' },
-    { id: 'technology', label: 'Tech Loaner' },
-    { id: 'financial', label: 'Financial Literacy' },
+    { id: 'overview', label: 'Overview' },
+    { id: 'farmers-markets', label: 'Farmers Markets' },
+    { id: 'food-security', label: 'Food Security Hub' },
+    { id: 'plus-swipe', label: 'Plus Swipe' },
+    { id: 'grocery-shuttle', label: 'Grocery Shuttle' },
+    { id: 'offcampus-living', label: 'Off-Campus Living' },
     { id: 'faq', label: 'FAQ & Contact' },
-    { id: 'policies', label: 'All Policies' },
   ]
 
   const contact = departmentContacts['basic-needs']
   const faqs = departmentFAQs['basic-needs']
   const announcements = departmentAnnouncements['basic-needs']
-  const pantryGuide = serviceGuides['food-pantry']
-  const techGuide = serviceGuides['tech-loaner']
+  const shuttleGuide = serviceGuides['grocery-shuttle']
   const [expandedFaq, setExpandedFaq] = useState(null)
   const [feedbackForm, setFeedbackForm] = useState({ topic: '', message: '', email: '' })
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
@@ -42,13 +39,40 @@ export default function BasicNeedsPage() {
     setFeedbackForm({ topic: '', message: '', email: '' })
   }
 
+  const handleFormSubmit = (type) => (e) => {
+    e.preventDefault()
+    setSubmitted(type)
+    setShowShuttleReservation(false)
+    setShowSwipeShare(false)
+  }
+
+  const getPolicy = (id) => deptPolicies.find(p => p.id === id)
+
+  const PolicyProgress = ({ policy }) => (
+    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 mb-8">
+      <div className="flex items-start justify-between mb-4">
+        <span className={`px-2.5 py-1 rounded text-xs font-mono border ${
+          policy?.status === 'completed' ? 'bg-[#3fb950]/10 text-[#3fb950] border-[#3fb950]' :
+          policy?.status === 'in_progress' ? 'bg-[#58a6ff]/10 text-[#58a6ff] border-[#58a6ff]' :
+          'bg-[#21262d] text-[#6e7681] border-[#30363d]'
+        }`}>
+          {policy?.status === 'in_progress' ? 'IN PROGRESS' : policy?.status === 'completed' ? 'COMPLETED' : 'PLANNED'}
+        </span>
+        <span className="text-[#8b949e] font-mono text-sm">{policy?.progress || 0}% Complete</span>
+      </div>
+      <div className="h-2 bg-[#21262d] rounded overflow-hidden">
+        <div className="h-full bg-[#d29922] rounded transition-all" style={{ width: `${policy?.progress || 0}%` }} />
+      </div>
+    </div>
+  )
+
   return (
     <Layout>
       <Head>
         <title>Basic Needs | Project Bold</title>
       </Head>
 
-      {/* Hero - Palantir dark style with grid */}
+      {/* Hero */}
       <div className="relative bg-[#0a0e14] border-b border-[#30363d] overflow-hidden">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0" style={{
@@ -56,48 +80,46 @@ export default function BasicNeedsPage() {
             backgroundSize: '40px 40px'
           }} />
         </div>
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#d29922]/10 blur-3xl rounded-full" />
         <div className="relative max-w-6xl mx-auto px-6 py-16">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-12 h-12 bg-[#d29922]/20 border border-[#d29922]/40 rounded-lg flex items-center justify-center">
-              <span className="text-2xl">🍎</span>
-            </div>
-            <div>
-              <p className="text-[#d29922] text-xs font-mono uppercase tracking-widest mb-1">Student Services</p>
-              <h1 className="text-4xl md:text-5xl font-semibold text-[#f0f6fc] tracking-tight">Basic Needs</h1>
-            </div>
-          </div>
-          <p className="text-[#8b949e] text-lg max-w-2xl mt-4">
-            Food security, housing support, textbook affordability, and technology access.
-            No Tar Heel should struggle to meet basic needs.
+          <p className="text-[#d29922] text-xs font-medium tracking-widest uppercase mb-4">Basic Needs</p>
+          <h1 className="text-4xl md:text-5xl font-bold text-[#f0f6fc] tracking-tight mb-4">
+            Supporting Every Tar Heel
+          </h1>
+          <p className="text-[#8b949e] text-lg max-w-2xl leading-relaxed">
+            Food security, grocery access, affordable dining, and housing education.
+            No student should struggle to meet basic needs.
           </p>
         </div>
       </div>
 
       {/* Emergency Banner */}
-      <div className="bg-[#0d1117] border-b border-[#30363d] py-4">
-        <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-3">
+      <div className="bg-[#b62324] border-b border-[#da3633]">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-            <p className="text-red-400 font-medium text-sm">Need immediate assistance?</p>
+            <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+            <p className="font-semibold text-white uppercase text-sm tracking-wide">Need immediate help?</p>
           </div>
-          <a href="tel:919-962-8396" className="px-5 py-2 bg-red-500/10 border border-red-500/30 text-red-400 rounded text-sm font-medium hover:bg-red-500/20 transition">
-            Dean of Students: 919-962-8396
-          </a>
+          <div className="flex flex-wrap gap-3 text-sm">
+            <a href="tel:919-966-4042" className="bg-white text-[#b62324] px-4 py-2 rounded font-mono font-bold hover:bg-[#f0f6fc] transition-colors">
+              Dean of Students: 919-966-4042
+            </a>
+          </div>
         </div>
       </div>
 
-      {/* Tabs - Palantir style */}
-      <div className="bg-[#0d1117] border-b border-[#30363d] sticky top-14 z-40">
+      {/* Tabs */}
+      <div className="bg-[#0d1117] sticky top-16 z-40 border-b border-[#30363d]">
         <div className="max-w-6xl mx-auto px-6">
           <div className="flex gap-0 overflow-x-auto">
             {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-5 py-4 text-xs font-medium uppercase tracking-widest whitespace-nowrap transition-all border-b-2 ${
+                className={`px-4 py-4 text-xs font-medium tracking-wider uppercase whitespace-nowrap transition-all border-b-2 ${
                   activeTab === tab.id
-                    ? 'text-[#d29922] border-[#d29922]'
-                    : 'text-[#6e7681] border-transparent hover:text-[#8b949e] hover:border-[#30363d]'
+                    ? 'border-[#d29922] text-[#d29922]'
+                    : 'border-transparent text-[#8b949e] hover:text-[#f0f6fc] hover:border-[#30363d]'
                 }`}
               >
                 {tab.label}
@@ -107,167 +129,238 @@ export default function BasicNeedsPage() {
         </div>
       </div>
 
-      <main className="bg-[#0a0e14] min-h-screen">
-        <div className="max-w-6xl mx-auto px-6 py-10">
+      <main className="bg-[#0d1117] min-h-screen">
+        <div className="max-w-6xl mx-auto px-6 py-12">
           {submitted && (
-            <div className="mb-6 bg-[#161b22] border border-green-500/30 rounded-lg p-5">
-              <p className="text-green-400 font-medium">
-                {submitted === 'housing' && 'Your emergency housing application has been submitted. A case manager will contact you within 24-48 hours.'}
-                {submitted === 'tech' && 'Your technology loaner request has been submitted. We will email you pickup details within 2-3 business days.'}
+            <div className="mb-8 bg-[#161b22] border border-[#d29922] rounded-lg p-5">
+              <p className="text-[#f0f6fc] font-medium">
+                {submitted === 'shuttle' && 'Your shuttle reservation has been confirmed! Check your email for details.'}
+                {submitted === 'swipe' && 'Thank you! Your meal swipe share has been registered.'}
               </p>
-              <button onClick={() => setSubmitted(null)} className="text-green-400/70 text-sm mt-2 hover:text-green-400">Dismiss</button>
+              <button onClick={() => setSubmitted(null)} className="text-[#d29922] text-sm font-medium mt-3 hover:underline">
+                Dismiss
+              </button>
             </div>
           )}
 
-          {/* Food Pantry Tab */}
-          {activeTab === 'food' && (
-            <div className="space-y-8">
-              <div>
-                <p className="text-[#d29922] text-xs font-mono uppercase tracking-widest mb-2">Food Security</p>
-                <h2 className="text-3xl font-semibold text-[#f0f6fc] tracking-tight">Carolina Cupboard Food Pantry</h2>
+          {/* Overview Tab */}
+          {activeTab === 'overview' && (
+            <div>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-8">Basic Needs Initiatives</h2>
+
+              <div className="grid md:grid-cols-2 gap-5 mb-12">
+                {deptPolicies.map(policy => (
+                  <div key={policy.id} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 hover:border-[#d29922] transition-colors cursor-pointer"
+                    onClick={() => setActiveTab(
+                      policy.id === 'farmers-markets' ? 'farmers-markets' :
+                      policy.id === 'food-security-hub' ? 'food-security' :
+                      policy.id === 'plus-swipe-expansion' ? 'plus-swipe' :
+                      policy.id === 'grocery-shuttle' ? 'grocery-shuttle' :
+                      policy.id === 'offcampus-education' ? 'offcampus-living' : 'overview'
+                    )}>
+                    <div className="flex items-start justify-between mb-3">
+                      <h3 className="font-semibold text-[#f0f6fc] pr-4">{policy.title}</h3>
+                      <span className={`px-2 py-0.5 rounded text-xs font-mono border flex-shrink-0 ${
+                        policy.status === 'completed' ? 'bg-[#3fb950]/10 text-[#3fb950] border-[#3fb950]' :
+                        policy.status === 'in_progress' ? 'bg-[#58a6ff]/10 text-[#58a6ff] border-[#58a6ff]' :
+                        'bg-[#21262d] text-[#6e7681] border-[#30363d]'
+                      }`}>
+                        {policy.progress}%
+                      </span>
+                    </div>
+                    <p className="text-sm text-[#8b949e] mb-4 line-clamp-2">{policy.description}</p>
+                    <div className="h-1.5 bg-[#21262d] rounded overflow-hidden">
+                      <div className="h-full bg-[#d29922] rounded" style={{ width: `${policy.progress}%` }} />
+                    </div>
+                  </div>
+                ))}
               </div>
 
+              {/* Quick Stats */}
               <div className="grid md:grid-cols-4 gap-4">
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
-                  <p className="text-4xl font-mono font-semibold text-[#d29922]">4,200</p>
-                  <p className="text-xs text-[#6e7681] mt-2 uppercase tracking-wide">Visits This Semester</p>
+                {[
+                  { label: 'Pantry Visits This Month', value: '847', color: '#d29922' },
+                  { label: 'Shuttle Rides Given', value: '156', color: '#3fb950' },
+                  { label: 'Swipes Shared', value: '324', color: '#58a6ff' },
+                  { label: 'Workshop Attendees', value: '89', color: '#a371f7' },
+                ].map((stat, i) => (
+                  <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
+                    <p className="text-3xl font-mono font-bold" style={{ color: stat.color }}>{stat.value}</p>
+                    <p className="text-xs text-[#6e7681] mt-1 uppercase tracking-widest">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Farmers Markets Tab - Policy 1 */}
+          {activeTab === 'farmers-markets' && (
+            <div>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">On-Campus Farmers Markets</h2>
+              <p className="text-[#8b949e] mb-6">Fresh Local Produce and Chase Farm Stands</p>
+
+              <PolicyProgress policy={getPolicy('farmers-markets')} />
+
+              {/* Market Schedule */}
+              <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Market Schedule</h3>
+              <div className="grid md:grid-cols-2 gap-5 mb-10">
+                <div className="bg-[#161b22] border border-[#d29922] rounded-lg p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-2xl">🥕</span>
+                    <div>
+                      <h4 className="font-semibold text-[#f0f6fc]">The Pit Market</h4>
+                      <p className="text-sm text-[#8b949e]">Main campus location</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <p className="text-[#f0f6fc]"><span className="text-[#6e7681]">When:</span> Wednesdays 11am-2pm</p>
+                    <p className="text-[#f0f6fc]"><span className="text-[#6e7681]">Where:</span> The Pit (Polk Place)</p>
+                    <p className="text-[#f0f6fc]"><span className="text-[#6e7681]">Accepts:</span> Cash, Card, Plus Swipe</p>
+                  </div>
                 </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
-                  <p className="text-4xl font-mono font-semibold text-green-400">3</p>
-                  <p className="text-xs text-[#6e7681] mt-2 uppercase tracking-wide">Locations</p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
-                  <p className="text-4xl font-mono font-semibold text-blue-400">890</p>
-                  <p className="text-xs text-[#6e7681] mt-2 uppercase tracking-wide">Donations Received</p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
-                  <p className="text-4xl font-mono font-semibold text-purple-400">100%</p>
-                  <p className="text-xs text-[#6e7681] mt-2 uppercase tracking-wide">Confidential</p>
+
+                <div className="bg-[#161b22] border border-[#3fb950] rounded-lg p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-2xl">🌽</span>
+                    <div>
+                      <h4 className="font-semibold text-[#f0f6fc]">South Campus Stand</h4>
+                      <p className="text-sm text-[#8b949e]">Chase Farm partnership</p>
+                    </div>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    <p className="text-[#f0f6fc]"><span className="text-[#6e7681]">When:</span> Fridays 3pm-6pm</p>
+                    <p className="text-[#f0f6fc]"><span className="text-[#6e7681]">Where:</span> Ram Village Community Center</p>
+                    <p className="text-[#f0f6fc]"><span className="text-[#6e7681]">Accepts:</span> Cash, Card, Plus Swipe</p>
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <h3 className="text-lg font-semibold text-[#f0f6fc] mb-4 flex items-center gap-2">
-                  <span className="w-1 h-4 bg-[#d29922] rounded-full" />
-                  Pantry Locations
-                </h3>
+              {/* What's Available */}
+              <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">What You'll Find</h3>
+              <div className="grid md:grid-cols-4 gap-4 mb-10">
+                {[
+                  { emoji: '🍅', name: 'Fresh Vegetables' },
+                  { emoji: '🍎', name: 'Seasonal Fruits' },
+                  { emoji: '🥚', name: 'Farm Fresh Eggs' },
+                  { emoji: '🍯', name: 'Local Honey' },
+                  { emoji: '🥖', name: 'Artisan Breads' },
+                  { emoji: '🧀', name: 'Local Cheeses' },
+                  { emoji: '🌿', name: 'Fresh Herbs' },
+                  { emoji: '🥗', name: 'Prepared Foods' },
+                ].map((item, i) => (
+                  <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 text-center">
+                    <span className="text-2xl">{item.emoji}</span>
+                    <p className="text-sm text-[#f0f6fc] mt-2">{item.name}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Partner Farms */}
+              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
+                <h3 className="font-semibold text-[#f0f6fc] mb-4">Partner Farms & Vendors</h3>
                 <div className="grid md:grid-cols-3 gap-4">
-                  {pantryLocations.map(loc => (
-                    <div key={loc.id} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                      <div className="flex items-start justify-between mb-3">
-                        <h4 className="font-semibold text-[#f0f6fc]">{loc.name}</h4>
-                        <span className={`px-2.5 py-1 rounded text-xs font-mono uppercase border ${
-                          loc.inventory === 'high' ? 'border-green-500/30 text-green-400 bg-green-500/10' :
-                          loc.inventory === 'medium' ? 'border-[#d29922]/30 text-[#d29922] bg-[#d29922]/10' :
-                          'border-red-500/30 text-red-400 bg-red-500/10'
-                        }`}>
-                          {loc.inventory}
-                        </span>
-                      </div>
-                      <p className="text-sm text-[#8b949e]">{loc.address}</p>
-                      <p className="text-sm text-[#6e7681] mt-1">Hours: {loc.hours}</p>
+                  {['Carrboro Farmers Market', 'Chase Farm', 'Maple View Farm', 'Cates Farm', 'Celebrity Dairy', 'Sunrise Farm'].map((farm, i) => (
+                    <div key={i} className="flex items-center gap-2 text-sm text-[#8b949e]">
+                      <span className="text-[#3fb950]">✓</span> {farm}
                     </div>
                   ))}
-                </div>
-              </div>
-
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-8">
-                <h3 className="text-lg font-semibold text-[#f0f6fc] mb-6 flex items-center gap-2">
-                  <span className="w-1 h-4 bg-[#d29922] rounded-full" />
-                  How It Works
-                </h3>
-                <ol className="space-y-6">
-                  {[
-                    { step: 1, title: 'Visit any location during open hours', desc: 'No appointment or registration required' },
-                    { step: 2, title: 'Swipe your OneCard', desc: 'This helps us track usage anonymously for funding' },
-                    { step: 3, title: 'Select what you need', desc: 'Fresh produce, pantry staples, personal care items' },
-                  ].map(item => (
-                    <li key={item.step} className="flex gap-5">
-                      <span className="w-10 h-10 bg-[#d29922]/20 border border-[#d29922]/40 text-[#d29922] rounded-lg flex items-center justify-center font-mono font-semibold shrink-0">{item.step}</span>
-                      <div>
-                        <p className="font-semibold text-[#f0f6fc]">{item.title}</p>
-                        <p className="text-sm text-[#6e7681] mt-0.5">{item.desc}</p>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-
-              <div className="bg-[#161b22] border border-[#d29922]/30 rounded-lg p-6">
-                <h3 className="font-semibold text-[#f0f6fc] mb-2">Want to Help?</h3>
-                <p className="text-sm text-[#8b949e] mb-4">Donate food items or volunteer at Carolina Cupboard.</p>
-                <div className="flex gap-3">
-                  <button className="px-4 py-2 bg-[#d29922] text-[#0a0e14] rounded text-sm font-medium hover:bg-[#e5a526] transition">Donate Items</button>
-                  <button className="px-4 py-2 bg-transparent border border-[#30363d] text-[#8b949e] rounded text-sm font-medium hover:border-[#d29922] hover:text-[#d29922] transition">Volunteer</button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Emergency Housing Tab */}
-          {activeTab === 'housing' && (
-            <div className="space-y-8">
-              <div className="flex items-start justify-between">
+          {/* Food Security Hub Tab - Policy 2 */}
+          {activeTab === 'food-security' && (
+            <div>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">Centralized Food Security Hub</h2>
+              <p className="text-[#8b949e] mb-6">Meal Swipe Sharing, Pantries, and Community Fridges</p>
+
+              <PolicyProgress policy={getPolicy('food-security-hub')} />
+
+              <div className="grid lg:grid-cols-2 gap-8 mb-10">
+                {/* Meal Swipe Sharing */}
+                <div className="bg-[#161b22] border border-[#58a6ff] rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-[#f0f6fc] mb-4">Meal Swipe Sharing</h3>
+                  <p className="text-sm text-[#8b949e] mb-6">Share your extra meal swipes with students in need, or request swipes when you need them.</p>
+
+                  <div className="grid grid-cols-2 gap-4 mb-6">
+                    <div className="text-center p-4 bg-[#21262d] rounded-lg">
+                      <p className="text-2xl font-mono font-bold text-[#58a6ff]">324</p>
+                      <p className="text-xs text-[#6e7681] uppercase">Swipes Shared</p>
+                    </div>
+                    <div className="text-center p-4 bg-[#21262d] rounded-lg">
+                      <p className="text-2xl font-mono font-bold text-[#3fb950]">156</p>
+                      <p className="text-xs text-[#6e7681] uppercase">Students Helped</p>
+                    </div>
+                  </div>
+
+                  <button onClick={() => setShowSwipeShare(true)}
+                    className="w-full bg-[#58a6ff] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#79b8ff] transition-colors">
+                    Share or Request Swipes
+                  </button>
+                </div>
+
+                {/* Pantry Locations */}
                 <div>
-                  <p className="text-[#d29922] text-xs font-mono uppercase tracking-widest mb-2">Emergency Services</p>
-                  <h2 className="text-3xl font-semibold text-[#f0f6fc] tracking-tight">Emergency Housing Fund</h2>
-                  <p className="text-[#8b949e] mt-2">Financial assistance for students facing housing insecurity</p>
-                </div>
-                <button onClick={() => setShowHousingForm(true)} className="px-4 py-2 bg-[#d29922] text-[#0a0e14] rounded text-sm font-medium hover:bg-[#e5a526] transition">
-                  Apply for Assistance
-                </button>
-              </div>
-
-              <div className="grid md:grid-cols-3 gap-4">
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
-                  <p className="text-4xl font-mono font-semibold text-[#d29922]">$18,500</p>
-                  <p className="text-xs text-[#6e7681] mt-2 uppercase tracking-wide">Distributed This Year</p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
-                  <p className="text-4xl font-mono font-semibold text-green-400">12</p>
-                  <p className="text-xs text-[#6e7681] mt-2 uppercase tracking-wide">Students Helped</p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
-                  <p className="text-4xl font-mono font-semibold text-blue-400">48hrs</p>
-                  <p className="text-xs text-[#6e7681] mt-2 uppercase tracking-wide">Avg Response Time</p>
+                  <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Food Pantries</h3>
+                  <div className="space-y-3">
+                    {[
+                      { name: 'Carolina Cupboard - Union', hours: 'M-F 10am-4pm', address: 'Student Union Lower Level' },
+                      { name: 'Carolina Cupboard - South', hours: 'T/Th 2pm-6pm', address: 'Ram Village Community Center' },
+                      { name: 'Carolina Cupboard - North', hours: 'M/W 3pm-7pm', address: 'Hinton James Ground Floor' },
+                    ].map((pantry, i) => (
+                      <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+                        <h4 className="font-semibold text-[#f0f6fc]">{pantry.name}</h4>
+                        <p className="text-sm text-[#8b949e] mt-1">{pantry.address}</p>
+                        <p className="text-xs text-[#6e7681] font-mono mt-1">{pantry.hours}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                <h3 className="font-semibold text-[#f0f6fc] mb-4 flex items-center gap-2">
-                  <span className="w-1 h-4 bg-[#d29922] rounded-full" />
-                  Eligibility
-                </h3>
-                <ul className="space-y-3 text-[#8b949e]">
-                  {['Currently enrolled UNC student', 'Facing unexpected housing emergency (eviction, family crisis, etc.)', 'Demonstrated financial need'].map((item, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <span className="text-green-400 mt-0.5">✓</span>
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+              {/* Community Fridges */}
+              <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Community Fridges</h3>
+              <div className="grid md:grid-cols-4 gap-4">
+                {[
+                  { location: 'Student Union', building: 'Near Room 1301' },
+                  { location: 'Davis Library', building: 'Ground Floor' },
+                  { location: 'Sitterson Hall', building: 'Main Lobby' },
+                  { location: 'Kenan-Flagler', building: 'Student Lounge' },
+                ].map((fridge, i) => (
+                  <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[#3fb950]">🧊</span>
+                      <h4 className="font-semibold text-[#f0f6fc] text-sm">{fridge.location}</h4>
+                    </div>
+                    <p className="text-xs text-[#8b949e]">{fridge.building}</p>
+                  </div>
+                ))}
               </div>
 
-              {showHousingForm && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
-                    <h3 className="text-xl font-semibold text-[#f0f6fc] mb-6">Emergency Housing Assistance Application</h3>
-                    <form onSubmit={(e) => { e.preventDefault(); setSubmitted('housing'); setShowHousingForm(false) }} className="space-y-4">
-                      <Input label="Full Name" name="name" value={housingForm.name} onChange={e => setHousingForm({...housingForm, name: e.target.value})} required />
-                      <Input label="Email" type="email" name="email" value={housingForm.email} onChange={e => setHousingForm({...housingForm, email: e.target.value})} required />
-                      <Input label="PID" name="pid" value={housingForm.pid} onChange={e => setHousingForm({...housingForm, pid: e.target.value})} required />
-                      <Select label="Urgency Level" name="urgency" value={housingForm.urgency} onChange={e => setHousingForm({...housingForm, urgency: e.target.value})} required
+              {/* Swipe Share Modal */}
+              {showSwipeShare && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg max-w-md w-full p-6">
+                    <h3 className="text-xl font-bold text-[#f0f6fc] mb-6">Meal Swipe Exchange</h3>
+                    <form onSubmit={handleFormSubmit('swipe')} className="space-y-4">
+                      <Select label="I want to..." required
                         options={[
-                          { value: 'immediate', label: 'Immediate (homeless tonight)' },
-                          { value: 'week', label: 'Within a week' },
-                          { value: 'month', label: 'Within a month' },
+                          { value: 'share', label: 'Share my extra swipes' },
+                          { value: 'request', label: 'Request meal swipes' },
                         ]}
                       />
-                      <Textarea label="Describe your situation" name="situation" value={housingForm.situation} onChange={e => setHousingForm({...housingForm, situation: e.target.value})} required rows={4} />
-                      <Input label="Amount Needed (if known)" name="amount" value={housingForm.amount} onChange={e => setHousingForm({...housingForm, amount: e.target.value})} placeholder="$" />
+                      <Input label="Your Name" required />
+                      <Input label="Email" type="email" required />
+                      <Input label="Number of Swipes" type="number" required />
+                      <Textarea label="Message (optional)" rows={2} />
                       <div className="flex gap-3 pt-2">
-                        <button type="submit" className="px-4 py-2 bg-[#d29922] text-[#0a0e14] rounded text-sm font-medium hover:bg-[#e5a526] transition">Submit Application</button>
-                        <button type="button" onClick={() => setShowHousingForm(false)} className="px-4 py-2 bg-transparent border border-[#30363d] text-[#8b949e] rounded text-sm font-medium hover:border-[#6e7681] transition">Cancel</button>
+                        <button type="submit" className="flex-1 bg-[#58a6ff] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#79b8ff]">
+                          Submit
+                        </button>
+                        <button type="button" onClick={() => setShowSwipeShare(false)} className="px-6 py-3 rounded text-[#8b949e] border border-[#30363d] hover:bg-[#21262d]">
+                          Cancel
+                        </button>
                       </div>
                     </form>
                   </div>
@@ -276,144 +369,173 @@ export default function BasicNeedsPage() {
             </div>
           )}
 
-          {/* Textbooks Tab */}
-          {activeTab === 'textbooks' && (
-            <div className="space-y-8">
-              <div>
-                <p className="text-[#d29922] text-xs font-mono uppercase tracking-widest mb-2">Academic Resources</p>
-                <h2 className="text-3xl font-semibold text-[#f0f6fc] tracking-tight">Textbook Affordability Initiative</h2>
+          {/* Plus Swipe Tab - Policy 3 */}
+          {activeTab === 'plus-swipe' && (
+            <div>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">Expand Plus Swipe Options</h2>
+              <p className="text-[#8b949e] mb-6">Healthier Off-Campus Dining Locations</p>
+
+              <PolicyProgress policy={getPolicy('plus-swipe-expansion')} />
+
+              {/* Current Vendors */}
+              <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Current Plus Swipe Vendors</h3>
+              <div className="grid md:grid-cols-3 gap-4 mb-10">
+                {[
+                  { name: 'Alpine Bagel', type: 'Breakfast/Lunch', location: 'Student Union' },
+                  { name: 'Starbucks', type: 'Coffee/Snacks', location: 'Multiple locations' },
+                  { name: 'Chick-fil-A', type: 'Fast Food', location: 'Student Union' },
+                  { name: 'Panda Express', type: 'Fast Food', location: 'Student Union' },
+                  { name: 'Wendy\'s', type: 'Fast Food', location: 'Lenoir' },
+                  { name: 'Subway', type: 'Sandwiches', location: 'Student Union' },
+                ].map((vendor, i) => (
+                  <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+                    <h4 className="font-semibold text-[#f0f6fc]">{vendor.name}</h4>
+                    <p className="text-sm text-[#8b949e] mt-1">{vendor.type}</p>
+                    <p className="text-xs text-[#6e7681] mt-1">{vendor.location}</p>
+                  </div>
+                ))}
               </div>
 
-              <div className="grid md:grid-cols-3 gap-4">
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
-                  <p className="text-4xl font-mono font-semibold text-[#d29922]">127</p>
-                  <p className="text-xs text-[#6e7681] mt-2 uppercase tracking-wide">OER Courses Available</p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
-                  <p className="text-4xl font-mono font-semibold text-green-400">$245K</p>
-                  <p className="text-xs text-[#6e7681] mt-2 uppercase tracking-wide">Student Savings</p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
-                  <p className="text-4xl font-mono font-semibold text-blue-400">890</p>
-                  <p className="text-xs text-[#6e7681] mt-2 uppercase tracking-wide">Books Exchanged</p>
-                </div>
-              </div>
-
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                <h3 className="font-semibold text-[#f0f6fc] mb-4 flex items-center gap-2">
-                  <span className="w-1 h-4 bg-[#d29922] rounded-full" />
-                  Find Free/Low-Cost Textbooks
-                </h3>
-                <div className="flex gap-4">
-                  <input
-                    type="text"
-                    placeholder="Search by course (e.g., ECON 101)"
-                    className="flex-1 bg-[#0d1117] border border-[#30363d] rounded px-4 py-2 text-[#f0f6fc] placeholder-[#6e7681] focus:outline-none focus:border-[#d29922]"
-                  />
-                  <button className="px-4 py-2 bg-[#d29922] text-[#0a0e14] rounded text-sm font-medium hover:bg-[#e5a526] transition">Search</button>
-                </div>
-                <p className="text-sm text-[#6e7681] mt-3">Search our OER database for free open educational resources</p>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold text-[#f0f6fc] mb-4 flex items-center gap-2">
-                  <span className="w-1 h-4 bg-[#d29922] rounded-full" />
-                  Resources
-                </h3>
+              {/* Proposed Additions */}
+              <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Proposed Healthier Options</h3>
+              <div className="bg-[#161b22] border border-[#d29922] rounded-lg p-6 mb-10">
+                <p className="text-sm text-[#8b949e] mb-6">We're advocating to add these healthier off-campus options to Plus Swipe:</p>
                 <div className="grid md:grid-cols-2 gap-4">
                   {[
-                    { title: 'UNC Library Course Reserves', desc: 'Free 2-hour textbook loans at Davis Library' },
-                    { title: 'Textbook Exchange', desc: 'Buy/sell used textbooks with other students' },
-                    { title: 'Cost Calculator', desc: 'Compare prices across bookstores and rental services' },
-                    { title: 'Professor OER Guide', desc: 'Resources for faculty adopting open textbooks' },
-                  ].map((item, i) => (
-                    <a key={i} href="#" className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 hover:border-[#d29922] transition-all group">
-                      <h4 className="font-semibold text-[#f0f6fc] group-hover:text-[#d29922] transition">{item.title}</h4>
-                      <p className="text-sm text-[#6e7681] mt-1">{item.desc}</p>
-                    </a>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Technology Loaner Tab */}
-          {activeTab === 'technology' && (
-            <div className="space-y-8">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[#d29922] text-xs font-mono uppercase tracking-widest mb-2">Technology Access</p>
-                  <h2 className="text-3xl font-semibold text-[#f0f6fc] tracking-tight">Technology Loaner Program</h2>
-                  <p className="text-[#8b949e] mt-2">Borrow laptops and Wi-Fi hotspots for academic use</p>
-                </div>
-                <button onClick={() => setShowTechForm(true)} className="px-4 py-2 bg-[#d29922] text-[#0a0e14] rounded text-sm font-medium hover:bg-[#e5a526] transition">
-                  Request Device
-                </button>
-              </div>
-
-              <div className="grid md:grid-cols-3 gap-4">
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
-                  <p className="text-4xl font-mono font-semibold text-[#d29922]">150</p>
-                  <p className="text-xs text-[#6e7681] mt-2 uppercase tracking-wide">Devices Available</p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
-                  <p className="text-4xl font-mono font-semibold text-green-400">89</p>
-                  <p className="text-xs text-[#6e7681] mt-2 uppercase tracking-wide">Currently Loaned</p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
-                  <p className="text-4xl font-mono font-semibold text-blue-400">23</p>
-                  <p className="text-xs text-[#6e7681] mt-2 uppercase tracking-wide">On Waitlist</p>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold text-[#f0f6fc] mb-4 flex items-center gap-2">
-                  <span className="w-1 h-4 bg-[#d29922] rounded-full" />
-                  Available Devices
-                </h3>
-                <div className="grid md:grid-cols-3 gap-4">
-                  {[
-                    { name: 'Laptop (Windows)', available: 28, total: 80 },
-                    { name: 'Laptop (Mac)', available: 12, total: 40 },
-                    { name: 'Wi-Fi Hotspot', available: 21, total: 30 },
-                  ].map((device, i) => (
-                    <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                      <h4 className="font-semibold text-[#f0f6fc]">{device.name}</h4>
-                      <p className="text-sm text-[#6e7681] mt-1 font-mono">{device.available} of {device.total} available</p>
-                      <div className="mt-3 h-1.5 bg-[#21262d] rounded-full overflow-hidden">
-                        <div className="h-full bg-[#d29922] rounded-full" style={{ width: `${(device.available / device.total) * 100}%` }} />
+                    { name: 'Vimala\'s Curryblossom', reason: 'Local, healthy Indian cuisine' },
+                    { name: 'Roots Natural Kitchen', reason: 'Build-your-own grain bowls' },
+                    { name: 'Med Deli', reason: 'Mediterranean, vegetarian-friendly' },
+                    { name: 'Cosmic Cantina', reason: 'Late-night healthy options' },
+                    { name: 'Guasaca', reason: 'Fresh Venezuelan bowls' },
+                    { name: 'Harvest 18', reason: 'Farm-to-table salads' },
+                  ].map((vendor, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <span className="text-[#d29922]">→</span>
+                      <div>
+                        <p className="font-medium text-[#f0f6fc]">{vendor.name}</p>
+                        <p className="text-xs text-[#8b949e]">{vendor.reason}</p>
                       </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {showTechForm && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
-                    <h3 className="text-xl font-semibold text-[#f0f6fc] mb-6">Request Technology Loaner</h3>
-                    <form onSubmit={(e) => { e.preventDefault(); setSubmitted('tech'); setShowTechForm(false) }} className="space-y-4">
-                      <Input label="Full Name" name="name" value={techForm.name} onChange={e => setTechForm({...techForm, name: e.target.value})} required />
-                      <Input label="Email" type="email" name="email" value={techForm.email} onChange={e => setTechForm({...techForm, email: e.target.value})} required />
-                      <Input label="PID" name="pid" value={techForm.pid} onChange={e => setTechForm({...techForm, pid: e.target.value})} required />
-                      <Select label="Device Type" name="device" value={techForm.device} onChange={e => setTechForm({...techForm, device: e.target.value})} required
+              {/* Support the Initiative */}
+              <div className="bg-[#161b22] border border-[#3fb950] rounded-lg p-6">
+                <h3 className="font-semibold text-[#f0f6fc] mb-4">Support This Initiative</h3>
+                <p className="text-sm text-[#8b949e] mb-4">Help us expand Plus Swipe to healthier options by sharing your feedback with Carolina Dining.</p>
+                <button className="bg-[#3fb950] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#46c356] transition-colors">
+                  Submit Feedback to Dining
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Grocery Shuttle Tab - Policy 4 */}
+          {activeTab === 'grocery-shuttle' && (
+            <div>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">Student Grocery Shuttle</h2>
+              <p className="text-[#8b949e] mb-6">Free Transportation to Affordable Grocery Stores</p>
+
+              <PolicyProgress policy={getPolicy('grocery-shuttle')} />
+
+              <div className="grid lg:grid-cols-2 gap-8 mb-10">
+                {/* Schedule */}
+                <div>
+                  <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Shuttle Schedule</h3>
+                  <div className="space-y-4">
+                    {[
+                      { day: 'Saturday', time: '10am - 4pm', route: 'Trader Joe\'s & Harris Teeter', status: 'active' },
+                      { day: 'Sunday', time: '12pm - 5pm', route: 'Walmart & Aldi', status: 'active' },
+                      { day: 'Wednesday', time: '4pm - 8pm', route: 'Harris Teeter & Whole Foods', status: 'coming' },
+                    ].map((schedule, i) => (
+                      <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="font-semibold text-[#f0f6fc]">{schedule.day}</h4>
+                            <p className="text-sm text-[#8b949e] mt-1">{schedule.route}</p>
+                            <p className="text-xs text-[#6e7681] font-mono mt-1">{schedule.time}</p>
+                          </div>
+                          <span className={`px-2 py-1 rounded text-xs font-mono ${
+                            schedule.status === 'active' ? 'bg-[#3fb950]/10 text-[#3fb950] border border-[#3fb950]' :
+                            'bg-[#d29922]/10 text-[#d29922] border border-[#d29922]'
+                          }`}>
+                            {schedule.status === 'active' ? 'RUNNING' : 'COMING SOON'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Reserve Spot */}
+                <div className="bg-[#161b22] border border-[#d29922] rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-[#f0f6fc] mb-4">Reserve Your Spot</h3>
+                  <p className="text-sm text-[#8b949e] mb-6">Reservations recommended but walk-ons welcome if space allows. Shuttle departs from the Student Union.</p>
+
+                  <div className="space-y-4 mb-6">
+                    {['Free for all UNC students', 'Bring your One Card', '1-2 hours shopping time', 'Help with groceries available'].map((item, i) => (
+                      <div key={i} className="flex items-center gap-2 text-sm text-[#8b949e]">
+                        <span className="text-[#3fb950]">✓</span> {item}
+                      </div>
+                    ))}
+                  </div>
+
+                  <button onClick={() => setShowShuttleReservation(true)}
+                    className="w-full bg-[#d29922] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#e5ac30] transition-colors">
+                    Reserve a Spot
+                  </button>
+                </div>
+              </div>
+
+              {/* How-To Guide */}
+              {shuttleGuide && (
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-[#f0f6fc] mb-5">{shuttleGuide.title}</h3>
+                  <div className="grid md:grid-cols-4 gap-4">
+                    {shuttleGuide.steps.map(step => (
+                      <div key={step.step} className="relative">
+                        <div className="absolute -top-2 left-3 bg-[#d29922] text-[#0d1117] text-xs font-bold px-2 py-0.5 rounded">
+                          Step {step.step}
+                        </div>
+                        <div className="bg-[#21262d] rounded-lg p-4 pt-5">
+                          <h4 className="font-medium text-[#f0f6fc] text-sm mb-1">{step.title}</h4>
+                          <p className="text-xs text-[#8b949e]">{step.description}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Shuttle Reservation Modal */}
+              {showShuttleReservation && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg max-w-md w-full p-6">
+                    <h3 className="text-xl font-bold text-[#f0f6fc] mb-6">Reserve Shuttle Spot</h3>
+                    <form onSubmit={handleFormSubmit('shuttle')} className="space-y-4">
+                      <Input label="Your Name" required />
+                      <Input label="Email" type="email" required />
+                      <Select label="Select Day" required
                         options={[
-                          { value: 'laptop-windows', label: 'Laptop (Windows)' },
-                          { value: 'laptop-mac', label: 'Laptop (Mac)' },
-                          { value: 'hotspot', label: 'Wi-Fi Hotspot' },
+                          { value: 'saturday', label: 'Saturday (Trader Joe\'s & Harris Teeter)' },
+                          { value: 'sunday', label: 'Sunday (Walmart & Aldi)' },
                         ]}
                       />
-                      <Select label="Loan Duration" name="duration" value={techForm.duration} onChange={e => setTechForm({...techForm, duration: e.target.value})} required
+                      <Select label="Departure Time" required
                         options={[
-                          { value: 'semester', label: 'Full Semester' },
-                          { value: 'month', label: '1 Month' },
-                          { value: 'week', label: '1 Week' },
+                          { value: '10am', label: '10:00 AM' },
+                          { value: '12pm', label: '12:00 PM' },
+                          { value: '2pm', label: '2:00 PM' },
                         ]}
                       />
-                      <Textarea label="Reason for Request" name="reason" value={techForm.reason} onChange={e => setTechForm({...techForm, reason: e.target.value})} required />
                       <div className="flex gap-3 pt-2">
-                        <button type="submit" className="px-4 py-2 bg-[#d29922] text-[#0a0e14] rounded text-sm font-medium hover:bg-[#e5a526] transition">Submit Request</button>
-                        <button type="button" onClick={() => setShowTechForm(false)} className="px-4 py-2 bg-transparent border border-[#30363d] text-[#8b949e] rounded text-sm font-medium hover:border-[#6e7681] transition">Cancel</button>
+                        <button type="submit" className="flex-1 bg-[#d29922] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#e5ac30]">
+                          Confirm Reservation
+                        </button>
+                        <button type="button" onClick={() => setShowShuttleReservation(false)} className="px-6 py-3 rounded text-[#8b949e] border border-[#30363d] hover:bg-[#21262d]">
+                          Cancel
+                        </button>
                       </div>
                     </form>
                   </div>
@@ -422,52 +544,70 @@ export default function BasicNeedsPage() {
             </div>
           )}
 
-          {/* Financial Literacy Tab */}
-          {activeTab === 'financial' && (
-            <div className="space-y-8">
-              <div>
-                <p className="text-[#d29922] text-xs font-mono uppercase tracking-widest mb-2">Financial Education</p>
-                <h2 className="text-3xl font-semibold text-[#f0f6fc] tracking-tight">Financial Literacy Program</h2>
-              </div>
+          {/* Off-Campus Living Tab - Policy 5 */}
+          {activeTab === 'offcampus-living' && (
+            <div>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">Off-Campus Living Education</h2>
+              <p className="text-[#8b949e] mb-6">Leases, Budgeting, and Housing Resources</p>
 
-              <div>
-                <h3 className="text-lg font-semibold text-[#f0f6fc] mb-4 flex items-center gap-2">
-                  <span className="w-1 h-4 bg-[#d29922] rounded-full" />
-                  Upcoming Workshops
-                </h3>
-                <div className="space-y-3">
-                  {[
-                    { title: 'Budgeting 101', date: 'Feb 5, 2026', time: '5:00 PM', location: 'Student Union 2510' },
-                    { title: 'Understanding Student Loans', date: 'Feb 12, 2026', time: '5:00 PM', location: 'Virtual' },
-                    { title: 'Building Credit', date: 'Feb 19, 2026', time: '5:00 PM', location: 'Student Union 2510' },
-                    { title: 'Taxes for Students', date: 'Mar 5, 2026', time: '5:00 PM', location: 'Virtual' },
-                  ].map((workshop, i) => (
-                    <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 flex items-center justify-between">
-                      <div>
-                        <h4 className="font-semibold text-[#f0f6fc]">{workshop.title}</h4>
-                        <p className="text-sm text-[#6e7681] mt-0.5 font-mono">{workshop.date} at {workshop.time} | {workshop.location}</p>
-                      </div>
-                      <button className="px-4 py-2 bg-transparent border border-[#30363d] text-[#8b949e] rounded text-sm font-medium hover:border-[#d29922] hover:text-[#d29922] transition">Register</button>
+              <PolicyProgress policy={getPolicy('offcampus-education')} />
+
+              {/* Upcoming Workshops */}
+              <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Upcoming Workshops</h3>
+              <div className="grid md:grid-cols-2 gap-4 mb-10">
+                {[
+                  { title: 'Understanding Your Lease', date: 'Feb 15, 2026', time: '5pm', location: 'Union 3201', spots: 25 },
+                  { title: 'Budgeting for Off-Campus Life', date: 'Feb 22, 2026', time: '4pm', location: 'Union 3205', spots: 30 },
+                  { title: 'Finding Roommates & Housing', date: 'Mar 1, 2026', time: '5pm', location: 'Union 3201', spots: 25 },
+                  { title: 'Utilities & Bills 101', date: 'Mar 8, 2026', time: '4pm', location: 'Union 3205', spots: 30 },
+                ].map((workshop, i) => (
+                  <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
+                    <div className="flex items-start justify-between mb-3">
+                      <h4 className="font-semibold text-[#f0f6fc]">{workshop.title}</h4>
+                      <span className="px-2 py-0.5 rounded text-xs bg-[#d29922]/10 text-[#d29922] border border-[#d29922]">
+                        {workshop.spots} spots
+                      </span>
                     </div>
-                  ))}
-                </div>
+                    <p className="text-sm text-[#8b949e]">{workshop.date} at {workshop.time}</p>
+                    <p className="text-xs text-[#6e7681] mt-1">{workshop.location}</p>
+                    <button className="mt-4 text-[#58a6ff] text-sm font-medium hover:underline">Register →</button>
+                  </div>
+                ))}
               </div>
 
-              <div>
-                <h3 className="text-lg font-semibold text-[#f0f6fc] mb-4 flex items-center gap-2">
-                  <span className="w-1 h-4 bg-[#d29922] rounded-full" />
-                  Resources
-                </h3>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                    <h4 className="font-semibold text-[#f0f6fc]">Budget Template</h4>
-                    <p className="text-sm text-[#6e7681] my-3">Download our student budget spreadsheet</p>
-                    <button className="px-4 py-2 bg-transparent border border-[#30363d] text-[#8b949e] rounded text-sm font-medium hover:border-[#d29922] hover:text-[#d29922] transition">Download</button>
-                  </div>
-                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                    <h4 className="font-semibold text-[#f0f6fc]">Financial Aid Office</h4>
-                    <p className="text-sm text-[#6e7681] my-3">Schedule a one-on-one advising session</p>
-                    <button className="px-4 py-2 bg-transparent border border-[#30363d] text-[#8b949e] rounded text-sm font-medium hover:border-[#d29922] hover:text-[#d29922] transition">Schedule</button>
+              {/* Resources */}
+              <div className="grid lg:grid-cols-2 gap-8">
+                {/* Peer Financial Coaches */}
+                <div className="bg-[#161b22] border border-[#58a6ff] rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-[#f0f6fc] mb-4">Meet with a Peer Financial Coach</h3>
+                  <p className="text-sm text-[#8b949e] mb-4">Our coaches are now trained in housing-related budgeting and can help you plan for off-campus expenses.</p>
+                  <ul className="space-y-2 mb-6">
+                    {['One-on-one appointments', 'Help with lease review', 'Budget planning', 'Financial aid questions'].map((item, i) => (
+                      <li key={i} className="flex items-center gap-2 text-sm text-[#8b949e]">
+                        <span className="text-[#58a6ff]">✓</span> {item}
+                      </li>
+                    ))}
+                  </ul>
+                  <button className="bg-[#58a6ff] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#79b8ff] transition-colors">
+                    Schedule Appointment
+                  </button>
+                </div>
+
+                {/* Quick Resources */}
+                <div>
+                  <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Quick Resources</h3>
+                  <div className="space-y-3">
+                    {[
+                      { title: 'Lease Checklist', desc: 'What to look for before signing' },
+                      { title: 'Budget Template', desc: 'Excel template for monthly expenses' },
+                      { title: 'Housing Search Guide', desc: 'Tips for finding apartments' },
+                      { title: 'Roommate Agreement', desc: 'Template for living arrangements' },
+                    ].map((resource, i) => (
+                      <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 hover:border-[#d29922] transition-colors cursor-pointer">
+                        <h4 className="font-semibold text-[#f0f6fc]">{resource.title}</h4>
+                        <p className="text-sm text-[#8b949e] mt-1">{resource.desc}</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -476,14 +616,14 @@ export default function BasicNeedsPage() {
 
           {/* FAQ & Contact Tab */}
           {activeTab === 'faq' && (
-            <div className="space-y-8">
-              <div className="grid lg:grid-cols-2 gap-8">
+            <div>
+              <div className="grid lg:grid-cols-2 gap-8 mb-12">
                 {/* Contact Info */}
                 <div>
-                  <h2 className="text-2xl font-semibold text-[#f0f6fc] tracking-tight mb-6">Contact Us</h2>
+                  <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-6">Contact Us</h2>
                   <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
                     <div className="flex items-center gap-4 mb-4">
-                      <div className="w-12 h-12 bg-[#d29922]/20 border border-[#d29922]/40 rounded-full flex items-center justify-center">
+                      <div className="w-12 h-12 bg-[#d29922]/10 border border-[#d29922]/30 rounded-full flex items-center justify-center">
                         <span className="text-xl">👤</span>
                       </div>
                       <div>
@@ -511,12 +651,12 @@ export default function BasicNeedsPage() {
                     </div>
                   </div>
 
-                  {/* Feedback Form */}
+                  {/* Quick Feedback Form */}
                   <div className="mt-6 bg-[#161b22] border border-[#30363d] rounded-lg p-6">
                     <h3 className="font-semibold text-[#f0f6fc] mb-4">Send Feedback</h3>
                     {feedbackSubmitted ? (
                       <div className="text-center py-4">
-                        <div className="w-12 h-12 bg-[#d29922]/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <div className="w-12 h-12 bg-[#d29922]/10 rounded-full flex items-center justify-center mx-auto mb-3">
                           <span className="text-2xl">✓</span>
                         </div>
                         <p className="text-[#d29922] font-medium">Thanks for your feedback!</p>
@@ -524,17 +664,17 @@ export default function BasicNeedsPage() {
                       </div>
                     ) : (
                       <form onSubmit={handleFeedbackSubmit} className="space-y-4">
-                        <Select label="Topic" name="topic" value={feedbackForm.topic} onChange={e => setFeedbackForm({...feedbackForm, topic: e.target.value})} required
+                        <Select label="Topic" value={feedbackForm.topic} onChange={e => setFeedbackForm({...feedbackForm, topic: e.target.value})} required
                           options={[
-                            { value: 'food-pantry', label: 'Food Pantry' },
-                            { value: 'housing', label: 'Emergency Housing' },
-                            { value: 'tech-loaner', label: 'Tech Loaner' },
-                            { value: 'other', label: 'Other' },
+                            { value: 'suggestion', label: 'Suggestion' },
+                            { value: 'question', label: 'Question' },
+                            { value: 'concern', label: 'Concern' },
+                            { value: 'compliment', label: 'Compliment' },
                           ]}
                         />
-                        <Textarea label="Message" name="message" value={feedbackForm.message} onChange={e => setFeedbackForm({...feedbackForm, message: e.target.value})} required rows={3} />
-                        <Input label="Email (optional)" type="email" name="email" value={feedbackForm.email} onChange={e => setFeedbackForm({...feedbackForm, email: e.target.value})} />
-                        <button type="submit" className="w-full bg-[#d29922] text-[#0a0e14] px-4 py-2.5 rounded font-semibold hover:bg-[#e5a526] transition-colors">
+                        <Textarea label="Message" value={feedbackForm.message} onChange={e => setFeedbackForm({...feedbackForm, message: e.target.value})} required rows={3} />
+                        <Input label="Email (optional)" type="email" value={feedbackForm.email} onChange={e => setFeedbackForm({...feedbackForm, email: e.target.value})} />
+                        <button type="submit" className="w-full bg-[#d29922] text-[#0d1117] px-4 py-2.5 rounded font-semibold hover:bg-[#e5ac30] transition-colors">
                           Submit Feedback
                         </button>
                       </form>
@@ -544,7 +684,7 @@ export default function BasicNeedsPage() {
 
                 {/* FAQ Section */}
                 <div>
-                  <h2 className="text-2xl font-semibold text-[#f0f6fc] tracking-tight mb-6">Frequently Asked Questions</h2>
+                  <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-6">Frequently Asked Questions</h2>
                   <div className="space-y-3">
                     {faqs.map((faq, i) => (
                       <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
@@ -566,52 +706,16 @@ export default function BasicNeedsPage() {
                 </div>
               </div>
 
-              {/* How-To Guides */}
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-[#f0f6fc] tracking-tight mb-4">{pantryGuide.title}</h3>
-                  <div className="space-y-3">
-                    {pantryGuide.steps.map((step) => (
-                      <div key={step.step} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 flex gap-4">
-                        <div className="w-8 h-8 bg-[#d29922]/20 border border-[#d29922]/40 text-[#d29922] rounded flex items-center justify-center font-mono font-semibold shrink-0 text-sm">
-                          {step.step}
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-[#f0f6fc] text-sm">{step.title}</h4>
-                          <p className="text-xs text-[#8b949e] mt-0.5">{step.description}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-[#f0f6fc] tracking-tight mb-4">{techGuide.title}</h3>
-                  <div className="space-y-3">
-                    {techGuide.steps.map((step) => (
-                      <div key={step.step} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 flex gap-4">
-                        <div className="w-8 h-8 bg-[#d29922]/20 border border-[#d29922]/40 text-[#d29922] rounded flex items-center justify-center font-mono font-semibold shrink-0 text-sm">
-                          {step.step}
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-[#f0f6fc] text-sm">{step.title}</h4>
-                          <p className="text-xs text-[#8b949e] mt-0.5">{step.description}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
               {/* Announcements */}
               <div>
-                <h3 className="text-lg font-semibold text-[#f0f6fc] tracking-tight mb-4">Recent Updates</h3>
+                <h3 className="text-lg font-semibold text-[#f0f6fc] tracking-tight mb-5">Recent Updates</h3>
                 <div className="space-y-3">
                   {announcements.map(ann => (
                     <div key={ann.id} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 flex items-start gap-4">
                       <div className={`px-2 py-1 rounded text-xs font-mono ${
                         ann.type === 'event' ? 'bg-[#58a6ff]/10 text-[#58a6ff] border border-[#58a6ff]' :
                         ann.type === 'deadline' ? 'bg-[#d29922]/10 text-[#d29922] border border-[#d29922]' :
-                        'bg-green-500/10 text-green-400 border border-green-500'
+                        'bg-[#3fb950]/10 text-[#3fb950] border border-[#3fb950]'
                       }`}>
                         {ann.type.toUpperCase()}
                       </div>
@@ -625,40 +729,6 @@ export default function BasicNeedsPage() {
                     </div>
                   ))}
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* All Policies Tab */}
-          {activeTab === 'policies' && (
-            <div className="space-y-8">
-              <div>
-                <p className="text-[#d29922] text-xs font-mono uppercase tracking-widest mb-2">Policy Tracking</p>
-                <h2 className="text-3xl font-semibold text-[#f0f6fc] tracking-tight">Basic Needs Department Policies</h2>
-              </div>
-              <div className="space-y-4">
-                {deptPolicies.map(policy => (
-                  <div key={policy.id} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="font-semibold text-[#f0f6fc]">{policy.title}</h3>
-                      <span className={`px-2.5 py-1 rounded text-xs font-mono uppercase border ${
-                        policy.status === 'completed' ? 'border-green-500/30 text-green-400 bg-green-500/10' :
-                        policy.status === 'in_progress' ? 'border-blue-500/30 text-blue-400 bg-blue-500/10' :
-                        'border-[#30363d] text-[#6e7681] bg-[#21262d]'
-                      }`}>
-                        {policy.status === 'in_progress' ? 'In Progress' : policy.status}
-                      </span>
-                    </div>
-                    <p className="text-sm text-[#8b949e] mb-4">{policy.description}</p>
-                    <div className="flex justify-between text-xs text-[#6e7681] mb-1.5 font-mono">
-                      <span>Progress</span>
-                      <span>{policy.progress}%</span>
-                    </div>
-                    <div className="h-1.5 bg-[#21262d] rounded-full overflow-hidden">
-                      <div className="h-full bg-[#d29922] rounded-full" style={{ width: `${policy.progress}%` }} />
-                    </div>
-                  </div>
-                ))}
               </div>
             </div>
           )}
