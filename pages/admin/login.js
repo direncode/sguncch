@@ -19,10 +19,11 @@ export default function AdminLogin() {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (loginAdmin(key)) {
+    const result = loginAdmin(key)
+    if (result.success) {
       router.push('/admin')
     } else {
-      setError('Invalid admin key')
+      setError(result.error || 'Invalid admin key')
     }
   }
 
@@ -62,12 +63,6 @@ export default function AdminLogin() {
             <Link href="/" className="text-[#4B9CD3] text-sm hover:underline">
               Back to Home
             </Link>
-          </div>
-
-          <div className="mt-4 p-4 bg-amber-50 rounded-lg">
-            <p className="text-amber-800 text-sm">
-              <strong>Demo Mode:</strong> The admin key is <code className="bg-amber-100 px-1 rounded">projectbold2026</code>
-            </p>
           </div>
         </div>
       </div>
