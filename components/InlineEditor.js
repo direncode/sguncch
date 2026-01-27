@@ -10,7 +10,7 @@ export function EditableText({
   multiline = false,
   placeholder = 'Click to edit...',
 }) {
-  const { isAdmin } = useApp()
+  const { editMode } = useApp()
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(value)
   const inputRef = useRef(null)
@@ -44,7 +44,7 @@ export function EditableText({
     }
   }, [multiline, handleSave, value])
 
-  if (!isAdmin) {
+  if (!editMode) {
     const Tag = as
     return <Tag className={className}>{value || placeholder}</Tag>
   }
@@ -104,7 +104,7 @@ export function EditableNumber({
   min,
   max,
 }) {
-  const { isAdmin } = useApp()
+  const { editMode } = useApp()
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState(value)
   const inputRef = useRef(null)
@@ -139,7 +139,7 @@ export function EditableNumber({
     }
   }, [handleSave, value])
 
-  if (!isAdmin) {
+  if (!editMode) {
     return <span className={className}>{prefix}{value}{suffix}</span>
   }
 
@@ -187,9 +187,9 @@ export function EditableToggle({
   activeColor = '#3fb950',
   inactiveColor = '#6e7681',
 }) {
-  const { isAdmin } = useApp()
+  const { editMode } = useApp()
 
-  if (!isAdmin) {
+  if (!editMode) {
     if (!value) return null
     return (
       <span
@@ -232,7 +232,7 @@ export function EditableSelect({
   options,
   className = '',
 }) {
-  const { isAdmin } = useApp()
+  const { editMode } = useApp()
   const [isEditing, setIsEditing] = useState(false)
   const selectRef = useRef(null)
 
@@ -244,7 +244,7 @@ export function EditableSelect({
 
   const selectedOption = options.find(o => o.value === value) || options[0]
 
-  if (!isAdmin) {
+  if (!editMode) {
     return <span className={className}>{selectedOption?.label || value}</span>
   }
 
@@ -289,7 +289,7 @@ export function EditableListItem({
   onDelete,
   className = '',
 }) {
-  const { isAdmin } = useApp()
+  const { editMode } = useApp()
   const [showDelete, setShowDelete] = useState(false)
 
   return (
@@ -299,7 +299,7 @@ export function EditableListItem({
       onMouseLeave={() => setShowDelete(false)}
     >
       {children}
-      {isAdmin && showDelete && (
+      {editMode && showDelete && (
         <button
           onClick={(e) => {
             e.stopPropagation()
@@ -323,9 +323,9 @@ export function AddItemButton({
   label = 'Add Item',
   className = '',
 }) {
-  const { isAdmin } = useApp()
+  const { editMode } = useApp()
 
-  if (!isAdmin) return null
+  if (!editMode) return null
 
   return (
     <button
@@ -346,7 +346,7 @@ export function EditableBulletList({
   onChange,
   className = '',
 }) {
-  const { isAdmin } = useApp()
+  const { editMode } = useApp()
   const [editingIndex, setEditingIndex] = useState(null)
   const [editValue, setEditValue] = useState('')
   const inputRef = useRef(null)
@@ -397,9 +397,9 @@ export function EditableBulletList({
             />
           ) : (
             <span
-              className={isAdmin ? 'cursor-pointer hover:text-[#f0f6fc] flex-1' : 'flex-1'}
+              className={editMode ? 'cursor-pointer hover:text-[#f0f6fc] flex-1' : 'flex-1'}
               onClick={() => {
-                if (isAdmin) {
+                if (editMode) {
                   setEditingIndex(i)
                   setEditValue(item)
                 }
@@ -408,7 +408,7 @@ export function EditableBulletList({
               {item}
             </span>
           )}
-          {isAdmin && editingIndex !== i && (
+          {editMode && editingIndex !== i && (
             <button
               onClick={() => handleDelete(i)}
               className="opacity-0 group-hover:opacity-100 text-[#f85149] hover:text-[#da3633] transition-opacity"
@@ -421,7 +421,7 @@ export function EditableBulletList({
           )}
         </li>
       ))}
-      {isAdmin && (
+      {editMode && (
         <li>
           <button
             onClick={handleAdd}
@@ -446,8 +446,6 @@ export function EditableLocationCard({
   showPlanB = true,
   showNarcan = true,
 }) {
-  const { isAdmin } = useApp()
-
   return (
     <EditableListItem onDelete={onDelete} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
       <h4 className="font-semibold text-[#f0f6fc] mb-1">
@@ -501,21 +499,108 @@ export function EditableLocationCard({
   )
 }
 
-// Admin mode indicator that shows when content is editable
+// DEPRECATED: Use EditModeToggle instead
 export function AdminEditBanner() {
-  const { isAdmin } = useApp()
+  const { editMode } = useApp()
 
-  if (!isAdmin) return null
+  if (!editMode) return null
 
   return (
     <div className="bg-[#00d4ff]/10 border-b border-[#00d4ff]/30 px-4 py-2">
       <div className="max-w-6xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-2 h-2 bg-[#00d4ff] rounded-full animate-pulse" />
-          <span className="text-xs text-[#00d4ff] font-medium">EDIT MODE</span>
-          <span className="text-xs text-[#8b949e]">Click on any text to edit. Changes save automatically.</span>
+          <span className="text-xs text-[#00d4ff] font-medium">EDIT MODE ACTIVE</span>
+          <span className="text-xs text-[#8b949e]">Click on any highlighted text to edit. Changes save automatically.</span>
         </div>
       </div>
+    </div>
+  )
+}
+
+// Floating Edit Mode Toggle - appears at bottom of screen for admins
+export function EditModeToggle() {
+  const { isAdmin, editMode, toggleEditMode } = useApp()
+  const [isHovered, setIsHovered] = useState(false)
+
+  if (!isAdmin) return null
+
+  return (
+    <div
+      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div className={`flex items-center gap-4 bg-[#161b22] border rounded-full shadow-2xl transition-all duration-300 ${
+        editMode
+          ? 'border-[#00d4ff] shadow-[#00d4ff]/20'
+          : 'border-[#30363d] shadow-black/30'
+      } ${isHovered ? 'px-6 py-3' : 'px-4 py-2.5'}`}>
+        {/* Toggle Switch */}
+        <button
+          onClick={toggleEditMode}
+          className="relative flex items-center"
+        >
+          {/* Track */}
+          <div className={`w-14 h-7 rounded-full transition-all duration-300 ${
+            editMode
+              ? 'bg-[#00d4ff]/20 border border-[#00d4ff]'
+              : 'bg-[#21262d] border border-[#30363d]'
+          }`}>
+            {/* Thumb */}
+            <div className={`absolute top-0.5 w-6 h-6 rounded-full transition-all duration-300 flex items-center justify-center ${
+              editMode
+                ? 'left-7 bg-[#00d4ff] shadow-[0_0_12px_#00d4ff]'
+                : 'left-0.5 bg-[#6e7681]'
+            }`}>
+              {editMode ? (
+                <svg className="w-3.5 h-3.5 text-[#0d1117]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+              ) : (
+                <svg className="w-3.5 h-3.5 text-[#21262d]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                </svg>
+              )}
+            </div>
+          </div>
+        </button>
+
+        {/* Label */}
+        <div className={`transition-all duration-300 ${isHovered ? 'opacity-100 max-w-[200px]' : 'opacity-100 max-w-[100px]'} overflow-hidden`}>
+          <p className={`text-sm font-medium whitespace-nowrap ${editMode ? 'text-[#00d4ff]' : 'text-[#8b949e]'}`}>
+            {editMode ? 'Edit Mode ON' : 'Edit Mode'}
+          </p>
+          {isHovered && (
+            <p className="text-[10px] text-[#6e7681] whitespace-nowrap animate-[fadeIn_0.2s]">
+              {editMode ? 'Click text to edit' : 'Toggle to edit content'}
+            </p>
+          )}
+        </div>
+
+        {/* Status Indicator */}
+        {editMode && (
+          <div className="flex items-center gap-2 pl-2 border-l border-[#30363d]">
+            <div className="w-2 h-2 bg-[#00d4ff] rounded-full animate-pulse" />
+            <span className="text-[10px] text-[#00d4ff] font-mono uppercase tracking-wider">Active</span>
+          </div>
+        )}
+      </div>
+
+      {/* Keyboard shortcut hint */}
+      {isHovered && !editMode && (
+        <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-[10px] text-[#6e7681] whitespace-nowrap">
+          Admin Only
+        </div>
+      )}
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+      `}</style>
     </div>
   )
 }

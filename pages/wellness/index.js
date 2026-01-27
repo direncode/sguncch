@@ -12,6 +12,7 @@ import {
   EditableLocationCard,
   AddItemButton,
   AdminEditBanner,
+  EditModeToggle,
 } from '../../components/InlineEditor'
 
 export default function WellnessPage() {
@@ -875,6 +876,9 @@ export default function WellnessPage() {
           )}
         </div>
       </main>
+
+      {/* Floating Edit Mode Toggle */}
+      <EditModeToggle />
     </Layout>
   )
 }
