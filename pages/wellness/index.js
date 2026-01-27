@@ -5,6 +5,8 @@ import { Input, Select, Textarea } from '../../components/FormInput'
 import { useApp } from '../../lib/store'
 import { wellnessResources, departmentContacts, departmentFAQs, departmentAnnouncements, serviceGuides } from '../../lib/data'
 import {
+  Editable,
+  EditableNum,
   EditableText,
   EditableNumber,
   EditableToggle,
@@ -111,13 +113,14 @@ export default function WellnessPage() {
         </div>
         <div className="absolute top-0 right-0 w-96 h-96 bg-[#3fb950]/10 blur-3xl rounded-full" />
         <div className="relative max-w-6xl mx-auto px-6 py-16">
-          <p className="text-[#3fb950] text-xs font-medium tracking-widest uppercase mb-4">Student Wellness</p>
+          <p className="text-[#3fb950] text-xs font-medium tracking-widest uppercase mb-4">
+            <Editable k="wellness.hero.label">Student Wellness</Editable>
+          </p>
           <h1 className="text-4xl md:text-5xl font-bold text-[#f0f6fc] tracking-tight mb-4">
-            Your Health Matters
+            <Editable k="wellness.hero.title">Your Health Matters</Editable>
           </h1>
           <p className="text-[#8b949e] text-lg max-w-2xl leading-relaxed">
-            Mental health, safety, and holistic student wellbeing. Access CAPS, crisis support,
-            wellness resources, and safety programs.
+            <Editable k="wellness.hero.description" multiline>Mental health, safety, and holistic student wellbeing. Access CAPS, crisis support, wellness resources, and safety programs.</Editable>
           </p>
         </div>
       </div>
@@ -127,7 +130,9 @@ export default function WellnessPage() {
         <div className="max-w-6xl mx-auto px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-            <p className="font-semibold text-white uppercase text-sm tracking-wide">In Crisis? Get immediate help:</p>
+            <p className="font-semibold text-white uppercase text-sm tracking-wide">
+              <Editable k="wellness.crisis.label">In Crisis? Get immediate help:</Editable>
+            </p>
           </div>
           <div className="flex flex-wrap gap-3 text-sm">
             <a href={`tel:${content.crisisHotlines?.national || '988'}`} className="bg-white text-[#b62324] px-4 py-2 rounded font-mono font-bold hover:bg-[#f0f6fc] transition-colors">
@@ -185,7 +190,9 @@ export default function WellnessPage() {
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div>
-              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-8">Wellness Initiatives Overview</h2>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-8">
+                <Editable k="wellness.overview.title">Wellness Initiatives Overview</Editable>
+              </h2>
 
               {/* Policy Cards */}
               <div className="grid md:grid-cols-2 gap-5 mb-12">
@@ -216,7 +223,9 @@ export default function WellnessPage() {
               </div>
 
               {/* Quick Resources */}
-              <h3 className="text-lg font-semibold text-[#f0f6fc] mb-5">Quick Resources</h3>
+              <h3 className="text-lg font-semibold text-[#f0f6fc] mb-5">
+                <Editable k="wellness.overview.resourcesTitle">Quick Resources</Editable>
+              </h3>
               <div className="grid md:grid-cols-3 gap-4">
                 {wellnessResources.slice(0, 3).map(resource => (
                   <a key={resource.id} href={resource.url} target="_blank" rel="noopener noreferrer"
@@ -233,15 +242,21 @@ export default function WellnessPage() {
           {/* CAPS Access Tab - Policy 1 */}
           {activeTab === 'caps-access' && (
             <div>
-              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">Expand CAPS Access</h2>
-              <p className="text-[#8b949e] mb-6">Drop-In Hours and More Locations Across Campus</p>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">
+                <Editable k="wellness.caps.title">Expand CAPS Access</Editable>
+              </h2>
+              <p className="text-[#8b949e] mb-6">
+                <Editable k="wellness.caps.subtitle">Drop-In Hours and More Locations Across Campus</Editable>
+              </p>
 
               <PolicyProgress policy={getPolicy('caps-expansion')} />
 
               <div className="grid lg:grid-cols-2 gap-8 mb-10">
                 {/* Drop-In Locations */}
                 <div>
-                  <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Drop-In Locations</h3>
+                  <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">
+                    <Editable k="wellness.caps.locationsTitle">Drop-In Locations</Editable>
+                  </h3>
                   <div className="space-y-4">
                     {(content.capsLocations || []).map((loc) => (
                       <EditableLocationCard
@@ -309,16 +324,24 @@ export default function WellnessPage() {
           {/* Safety Task Force & Rides Tab - Policy 2 */}
           {activeTab === 'safety-rides' && (
             <div>
-              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">Off-Campus Safety Task Force</h2>
-              <p className="text-[#8b949e] mb-6">Late-Night Ride Programs and SafeWalk Expansion</p>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">
+                <Editable k="wellness.rides.title">Off-Campus Safety Task Force</Editable>
+              </h2>
+              <p className="text-[#8b949e] mb-6">
+                <Editable k="wellness.rides.subtitle">Late-Night Ride Programs and SafeWalk Expansion</Editable>
+              </p>
 
               <PolicyProgress policy={getPolicy('safety-taskforce')} />
 
               <div className="grid lg:grid-cols-2 gap-8 mb-10">
                 {/* Request a Ride */}
                 <div className="bg-[#161b22] border border-[#3fb950] rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-[#f0f6fc] mb-4">Request a Late-Night Ride</h3>
-                  <p className="text-sm text-[#8b949e] mb-6">Safe, peer-driven transportation home from off-campus locations. Available Thu-Sat 10pm-3am.</p>
+                  <h3 className="text-lg font-semibold text-[#f0f6fc] mb-4">
+                    <Editable k="wellness.rides.requestTitle">Request a Late-Night Ride</Editable>
+                  </h3>
+                  <p className="text-sm text-[#8b949e] mb-6">
+                    <Editable k="wellness.rides.requestDesc">Safe, peer-driven transportation home from off-campus locations. Available Thu-Sat 10pm-3am.</Editable>
+                  </p>
 
                   <div className="grid grid-cols-3 gap-4 mb-6">
                     <div className="text-center">
@@ -461,13 +484,19 @@ export default function WellnessPage() {
           {/* Plan B & Narcan Tab - Policy 3 */}
           {activeTab === 'planb-narcan' && (
             <div>
-              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">Plan B & Narcan Distribution</h2>
-              <p className="text-[#8b949e] mb-6">Increased Access to Life-Saving Resources Across Campus</p>
+              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">
+                <Editable k="wellness.planb.title">Plan B & Narcan Distribution</Editable>
+              </h2>
+              <p className="text-[#8b949e] mb-6">
+                <Editable k="wellness.planb.subtitle">Increased Access to Life-Saving Resources Across Campus</Editable>
+              </p>
 
               <PolicyProgress policy={getPolicy('planb-narcan')} />
 
               {/* Location Map */}
-              <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Distribution Locations</h3>
+              <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">
+                <Editable k="wellness.planb.locationsTitle">Distribution Locations</Editable>
+              </h3>
               <div className="grid md:grid-cols-3 gap-4 mb-10">
                 {(content.distributionLocations || []).map((loc) => (
                   <EditableLocationCard

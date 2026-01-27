@@ -5,7 +5,7 @@ import Layout from '../components/Layout'
 import { useApp } from '../lib/store'
 import { departments, getOverallProgress, getStatusCounts } from '../lib/data'
 import { DonutChart, StatusBadge, LiveIndicator } from '../components/FormInput'
-import { EditModeToggle } from '../components/InlineEditor'
+import { Editable, EditModeToggle } from '../components/InlineEditor'
 
 // Live Clock Component
 const LiveClock = () => {

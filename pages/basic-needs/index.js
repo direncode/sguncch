@@ -4,7 +4,7 @@ import Layout from '../../components/Layout'
 import { Input, Select, Textarea } from '../../components/FormInput'
 import { useApp } from '../../lib/store'
 import { departmentContacts, departmentFAQs, departmentAnnouncements, serviceGuides } from '../../lib/data'
-import { EditModeToggle } from '../../components/InlineEditor'
+import { Editable, EditModeToggle } from '../../components/InlineEditor'
 
 export default function BasicNeedsPage() {
   const [activeTab, setActiveTab] = useState('overview')
@@ -83,13 +83,14 @@ export default function BasicNeedsPage() {
         </div>
         <div className="absolute top-0 right-0 w-96 h-96 bg-[#d29922]/10 blur-3xl rounded-full" />
         <div className="relative max-w-6xl mx-auto px-6 py-16">
-          <p className="text-[#d29922] text-xs font-medium tracking-widest uppercase mb-4">Basic Needs</p>
+          <p className="text-[#d29922] text-xs font-medium tracking-widest uppercase mb-4">
+            <Editable k="basicneeds.hero.label">Basic Needs</Editable>
+          </p>
           <h1 className="text-4xl md:text-5xl font-bold text-[#f0f6fc] tracking-tight mb-4">
-            Supporting Every Tar Heel
+            <Editable k="basicneeds.hero.title">Supporting Every Tar Heel</Editable>
           </h1>
           <p className="text-[#8b949e] text-lg max-w-2xl leading-relaxed">
-            Food security, grocery access, affordable dining, and housing education.
-            No student should struggle to meet basic needs.
+            <Editable k="basicneeds.hero.description" multiline>Food security, grocery access, affordable dining, and housing education. No student should struggle to meet basic needs.</Editable>
           </p>
         </div>
       </div>

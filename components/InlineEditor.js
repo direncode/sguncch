@@ -1,6 +1,230 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useApp } from '../lib/store'
 
+// ============================================
+// UNIVERSAL EDITABLE COMPONENT
+// Wraps ANY text and makes it editable in edit mode
+// Usage: <Editable k="page.section.element">Default text here</Editable>
+// ============================================
+export function Editable({
+  k, // content key like "wellness.hero.title"
+  children, // default text/content
+  as = 'span',
+  className = '',
+  multiline = false,
+  placeholder = 'Click to edit...',
+}) {
+  const { editMode, getSiteContent, setSiteContentValue } = useApp()
+  const [isEditing, setIsEditing] = useState(false)
+  const inputRef = useRef(null)
+
+  // Get the current value - either from stored content or children (default)
+  const defaultValue = typeof children === 'string' ? children : ''
+  const storedValue = getSiteContent(k, undefined)
+  const currentValue = storedValue !== undefined ? storedValue : defaultValue
+
+  const [editValue, setEditValue] = useState(currentValue)
+
+  useEffect(() => {
+    setEditValue(currentValue)
+  }, [currentValue])
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus()
+      if (inputRef.current.select) {
+        inputRef.current.select()
+      }
+    }
+  }, [isEditing])
+
+  const handleSave = useCallback(() => {
+    setIsEditing(false)
+    if (editValue !== currentValue) {
+      // Only store if different from default
+      if (editValue !== defaultValue) {
+        setSiteContentValue(k, editValue)
+      } else {
+        // If reset to default, remove the override
+        setSiteContentValue(k, undefined)
+      }
+    }
+  }, [editValue, currentValue, defaultValue, k, setSiteContentValue])
+
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === 'Enter' && !multiline) {
+      e.preventDefault()
+      handleSave()
+    }
+    if (e.key === 'Escape') {
+      setEditValue(currentValue)
+      setIsEditing(false)
+    }
+  }, [multiline, handleSave, currentValue])
+
+  // Not in edit mode - render normally
+  if (!editMode) {
+    const Tag = as
+    return <Tag className={className}>{currentValue || children}</Tag>
+  }
+
+  // Editing - show input
+  if (isEditing) {
+    if (multiline) {
+      return (
+        <textarea
+          ref={inputRef}
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onBlur={handleSave}
+          onKeyDown={handleKeyDown}
+          className={`bg-[#0d1117] border border-[#00d4ff] rounded px-2 py-1 text-[#f0f6fc] focus:outline-none focus:ring-2 focus:ring-[#00d4ff]/50 resize-none w-full ${className}`}
+          rows={3}
+        />
+      )
+    }
+    return (
+      <input
+        ref={inputRef}
+        type="text"
+        value={editValue}
+        onChange={(e) => setEditValue(e.target.value)}
+        onBlur={handleSave}
+        onKeyDown={handleKeyDown}
+        className={`bg-[#0d1117] border border-[#00d4ff] rounded px-2 py-0.5 text-[#f0f6fc] focus:outline-none focus:ring-2 focus:ring-[#00d4ff]/50`}
+        style={{ width: `${Math.max((editValue?.length || 10) * 8, 60)}px`, minWidth: '100px' }}
+      />
+    )
+  }
+
+  // Edit mode but not actively editing - show clickable
+  const Tag = as
+  const isModified = storedValue !== undefined
+  return (
+    <Tag
+      className={`${className} cursor-pointer hover:bg-[#00d4ff]/10 hover:outline hover:outline-1 hover:outline-[#00d4ff]/50 rounded px-1 -mx-1 transition-all group relative ${isModified ? 'bg-[#00d4ff]/5' : ''}`}
+      onClick={() => setIsEditing(true)}
+      title={isModified ? 'Modified - Click to edit' : 'Click to edit'}
+    >
+      {currentValue || <span className="text-[#6e7681] italic">{placeholder}</span>}
+      <span className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <svg className="w-3 h-3 text-[#00d4ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+        </svg>
+      </span>
+      {isModified && (
+        <span className="absolute -top-1 -left-1 w-2 h-2 bg-[#00d4ff] rounded-full opacity-60" title="Modified from default" />
+      )}
+    </Tag>
+  )
+}
+
+// ============================================
+// EDITABLE NUMBER - for stats and numbers
+// Usage: <EditableNum k="wellness.stats.rides">247</EditableNum>
+// ============================================
+export function EditableNum({
+  k,
+  children,
+  className = '',
+  prefix = '',
+  suffix = '',
+  min,
+  max,
+}) {
+  const { editMode, getSiteContent, setSiteContentValue } = useApp()
+  const [isEditing, setIsEditing] = useState(false)
+  const inputRef = useRef(null)
+
+  const defaultValue = typeof children === 'number' ? children : parseFloat(children) || 0
+  const storedValue = getSiteContent(k, undefined)
+  const currentValue = storedValue !== undefined ? storedValue : defaultValue
+
+  const [editValue, setEditValue] = useState(currentValue)
+
+  useEffect(() => {
+    setEditValue(currentValue)
+  }, [currentValue])
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [isEditing])
+
+  const handleSave = useCallback(() => {
+    setIsEditing(false)
+    const numValue = parseFloat(editValue)
+    if (!isNaN(numValue) && numValue !== currentValue) {
+      if (numValue !== defaultValue) {
+        setSiteContentValue(k, numValue)
+      } else {
+        setSiteContentValue(k, undefined)
+      }
+    }
+  }, [editValue, currentValue, defaultValue, k, setSiteContentValue])
+
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleSave()
+    }
+    if (e.key === 'Escape') {
+      setEditValue(currentValue)
+      setIsEditing(false)
+    }
+  }, [handleSave, currentValue])
+
+  if (!editMode) {
+    return <span className={className}>{prefix}{currentValue}{suffix}</span>
+  }
+
+  if (isEditing) {
+    return (
+      <span className={className}>
+        {prefix}
+        <input
+          ref={inputRef}
+          type="number"
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onBlur={handleSave}
+          onKeyDown={handleKeyDown}
+          min={min}
+          max={max}
+          className="bg-[#0d1117] border border-[#00d4ff] rounded px-2 py-0.5 text-[#f0f6fc] focus:outline-none focus:ring-2 focus:ring-[#00d4ff]/50 w-24"
+        />
+        {suffix}
+      </span>
+    )
+  }
+
+  const isModified = storedValue !== undefined
+  return (
+    <span
+      className={`${className} cursor-pointer hover:bg-[#00d4ff]/10 hover:outline hover:outline-1 hover:outline-[#00d4ff]/50 rounded px-1 -mx-1 transition-all group relative inline-flex items-center ${isModified ? 'bg-[#00d4ff]/5' : ''}`}
+      onClick={() => setIsEditing(true)}
+      title={isModified ? 'Modified - Click to edit' : 'Click to edit'}
+    >
+      {prefix}{currentValue}{suffix}
+      <span className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <svg className="w-3 h-3 text-[#00d4ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+        </svg>
+      </span>
+      {isModified && (
+        <span className="absolute -top-1 -left-1 w-2 h-2 bg-[#00d4ff] rounded-full opacity-60" />
+      )}
+    </span>
+  )
+}
+
+// ============================================
+// LEGACY COMPONENTS BELOW
+// (keeping for backwards compatibility)
+// ============================================
+
 // Inline editable text - click to edit, auto-saves on blur
 export function EditableText({
   value,
