@@ -5,12 +5,22 @@ import { Input, Select, Textarea } from '../../components/FormInput'
 import { useApp } from '../../lib/store'
 import { departmentContacts, departmentFAQs, departmentAnnouncements, serviceGuides } from '../../lib/data'
 import { Editable, EditModeToggle } from '../../components/InlineEditor'
+import {
+  submitForm,
+  calendarEvents,
+  templates,
+  externalLinks,
+  campusLocations,
+} from '../../lib/integrations'
 
 export default function BasicNeedsPage() {
   const [activeTab, setActiveTab] = useState('overview')
   const [showShuttleReservation, setShowShuttleReservation] = useState(false)
   const [showSwipeShare, setShowSwipeShare] = useState(false)
   const [submitted, setSubmitted] = useState(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [shuttleFormData, setShuttleFormData] = useState({ name: '', email: '', day: '', time: '' })
+  const [swipeFormData, setSwipeFormData] = useState({ action: '', name: '', email: '', swipes: '', message: '' })
   const { policies } = useApp()
 
   const deptPolicies = policies.filter(p => p.department === 'basic-needs')
@@ -34,17 +44,73 @@ export default function BasicNeedsPage() {
   const [feedbackForm, setFeedbackForm] = useState({ topic: '', message: '', email: '' })
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
 
-  const handleFeedbackSubmit = (e) => {
+  const handleFeedbackSubmit = async (e) => {
     e.preventDefault()
-    setFeedbackSubmitted(true)
-    setFeedbackForm({ topic: '', message: '', email: '' })
+    setIsSubmitting(true)
+    try {
+      await submitForm('basicneeds-feedback', {
+        ...feedbackForm,
+        department: 'basic-needs',
+        timestamp: new Date().toISOString(),
+      })
+      setFeedbackSubmitted(true)
+      setFeedbackForm({ topic: '', message: '', email: '' })
+    } catch (error) {
+      console.error('Feedback submission error:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  const handleFormSubmit = (type) => (e) => {
+  const handleFormSubmit = (type, formData) => async (e) => {
     e.preventDefault()
-    setSubmitted(type)
-    setShowShuttleReservation(false)
-    setShowSwipeShare(false)
+    setIsSubmitting(true)
+    try {
+      const result = await submitForm(`basicneeds-${type}`, {
+        ...formData,
+        formType: type,
+        department: 'basic-needs',
+        timestamp: new Date().toISOString(),
+      })
+      if (result.success) {
+        setSubmitted(type)
+        setShowShuttleReservation(false)
+        setShowSwipeShare(false)
+        if (type === 'shuttle') setShuttleFormData({ name: '', email: '', day: '', time: '' })
+        if (type === 'swipe') setSwipeFormData({ action: '', name: '', email: '', swipes: '', message: '' })
+      }
+    } catch (error) {
+      console.error('Form submission error:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // Download templates
+  const downloadRoommateAgreement = () => {
+    const content = templates.roomateAgreementTemplate()
+    const blob = new Blob([content], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'roommate-agreement-template.txt'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const downloadBudgetTemplate = () => {
+    const content = templates.budgetTemplate()
+    const blob = new Blob([content], { type: 'text/plain' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'budget-template.txt'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   const getPolicy = (id) => deptPolicies.find(p => p.id === id)
@@ -398,20 +464,20 @@ export default function BasicNeedsPage() {
                 <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                   <div className="bg-[#161b22] border border-[#30363d] rounded-lg max-w-md w-full p-6">
                     <h3 className="text-xl font-bold text-[#f0f6fc] mb-6"><Editable k="basicneeds.hub.modal.title">Meal Swipe Exchange</Editable></h3>
-                    <form onSubmit={handleFormSubmit('swipe')} className="space-y-4">
-                      <Select label="I want to..." required
+                    <form onSubmit={handleFormSubmit('swipe', swipeFormData)} className="space-y-4">
+                      <Select label="I want to..." required value={swipeFormData.action} onChange={e => setSwipeFormData({...swipeFormData, action: e.target.value})}
                         options={[
                           { value: 'share', label: 'Share my extra swipes' },
                           { value: 'request', label: 'Request meal swipes' },
                         ]}
                       />
-                      <Input label="Your Name" required />
-                      <Input label="Email" type="email" required />
-                      <Input label="Number of Swipes" type="number" required />
-                      <Textarea label="Message (optional)" rows={2} />
+                      <Input label="Your Name" required value={swipeFormData.name} onChange={e => setSwipeFormData({...swipeFormData, name: e.target.value})} />
+                      <Input label="Email" type="email" required value={swipeFormData.email} onChange={e => setSwipeFormData({...swipeFormData, email: e.target.value})} />
+                      <Input label="Number of Swipes" type="number" required value={swipeFormData.swipes} onChange={e => setSwipeFormData({...swipeFormData, swipes: e.target.value})} />
+                      <Textarea label="Message (optional)" rows={2} value={swipeFormData.message} onChange={e => setSwipeFormData({...swipeFormData, message: e.target.value})} />
                       <div className="flex gap-3 pt-2">
-                        <button type="submit" className="flex-1 bg-[#58a6ff] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#79b8ff]">
-                          <Editable k="basicneeds.hub.modal.submit">Submit</Editable>
+                        <button type="submit" disabled={isSubmitting} className="flex-1 bg-[#58a6ff] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#79b8ff] disabled:opacity-50 disabled:cursor-not-allowed">
+                          {isSubmitting ? 'Submitting...' : <Editable k="basicneeds.hub.modal.submit">Submit</Editable>}
                         </button>
                         <button type="button" onClick={() => setShowSwipeShare(false)} className="px-6 py-3 rounded text-[#8b949e] border border-[#30363d] hover:bg-[#21262d]">
                           <Editable k="basicneeds.hub.modal.cancel">Cancel</Editable>
@@ -632,16 +698,16 @@ export default function BasicNeedsPage() {
                 <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                   <div className="bg-[#161b22] border border-[#30363d] rounded-lg max-w-md w-full p-6">
                     <h3 className="text-xl font-bold text-[#f0f6fc] mb-6"><Editable k="basicneeds.shuttle.modal.title">Reserve Shuttle Spot</Editable></h3>
-                    <form onSubmit={handleFormSubmit('shuttle')} className="space-y-4">
-                      <Input label="Your Name" required />
-                      <Input label="Email" type="email" required />
-                      <Select label="Select Day" required
+                    <form onSubmit={handleFormSubmit('shuttle', shuttleFormData)} className="space-y-4">
+                      <Input label="Your Name" required value={shuttleFormData.name} onChange={e => setShuttleFormData({...shuttleFormData, name: e.target.value})} />
+                      <Input label="Email" type="email" required value={shuttleFormData.email} onChange={e => setShuttleFormData({...shuttleFormData, email: e.target.value})} />
+                      <Select label="Select Day" required value={shuttleFormData.day} onChange={e => setShuttleFormData({...shuttleFormData, day: e.target.value})}
                         options={[
                           { value: 'saturday', label: 'Saturday (Trader Joe\'s & Harris Teeter)' },
                           { value: 'sunday', label: 'Sunday (Walmart & Aldi)' },
                         ]}
                       />
-                      <Select label="Departure Time" required
+                      <Select label="Departure Time" required value={shuttleFormData.time} onChange={e => setShuttleFormData({...shuttleFormData, time: e.target.value})}
                         options={[
                           { value: '10am', label: '10:00 AM' },
                           { value: '12pm', label: '12:00 PM' },
@@ -649,8 +715,8 @@ export default function BasicNeedsPage() {
                         ]}
                       />
                       <div className="flex gap-3 pt-2">
-                        <button type="submit" className="flex-1 bg-[#d29922] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#e5ac30]">
-                          <Editable k="basicneeds.shuttle.modal.confirm">Confirm Reservation</Editable>
+                        <button type="submit" disabled={isSubmitting} className="flex-1 bg-[#d29922] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#e5ac30] disabled:opacity-50 disabled:cursor-not-allowed">
+                          {isSubmitting ? 'Reserving...' : <Editable k="basicneeds.shuttle.modal.confirm">Confirm Reservation</Editable>}
                         </button>
                         <button type="button" onClick={() => setShowShuttleReservation(false)} className="px-6 py-3 rounded text-[#8b949e] border border-[#30363d] hover:bg-[#21262d]">
                           <Editable k="basicneeds.shuttle.modal.cancel">Cancel</Editable>
@@ -683,7 +749,9 @@ export default function BasicNeedsPage() {
                   </div>
                   <p className="text-sm text-[#8b949e]"><Editable k="basicneeds.offcampus.workshop1.datetime">Feb 15, 2026 at 5pm</Editable></p>
                   <p className="text-xs text-[#6e7681] mt-1"><Editable k="basicneeds.offcampus.workshop1.location">Union 3201</Editable></p>
-                  <button className="mt-4 text-[#58a6ff] text-sm font-medium hover:underline"><Editable k="basicneeds.offcampus.registerlink1">Register →</Editable></button>
+                  <div className="flex items-center gap-4 mt-4">
+                    <a href={calendarEvents.leaseWorkshop} target="_blank" rel="noopener noreferrer" className="text-[#58a6ff] text-sm font-medium hover:underline">📅 Add to Calendar</a>
+                  </div>
                 </div>
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
                   <div className="flex items-start justify-between mb-3">
@@ -694,7 +762,9 @@ export default function BasicNeedsPage() {
                   </div>
                   <p className="text-sm text-[#8b949e]"><Editable k="basicneeds.offcampus.workshop2.datetime">Feb 22, 2026 at 4pm</Editable></p>
                   <p className="text-xs text-[#6e7681] mt-1"><Editable k="basicneeds.offcampus.workshop2.location">Union 3205</Editable></p>
-                  <button className="mt-4 text-[#58a6ff] text-sm font-medium hover:underline"><Editable k="basicneeds.offcampus.registerlink2">Register →</Editable></button>
+                  <div className="flex items-center gap-4 mt-4">
+                    <a href={calendarEvents.budgetingWorkshop} target="_blank" rel="noopener noreferrer" className="text-[#58a6ff] text-sm font-medium hover:underline">📅 Add to Calendar</a>
+                  </div>
                 </div>
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
                   <div className="flex items-start justify-between mb-3">
@@ -749,22 +819,22 @@ export default function BasicNeedsPage() {
                 <div>
                   <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5"><Editable k="basicneeds.offcampus.resources.heading">Quick Resources</Editable></h3>
                   <div className="space-y-3">
-                    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 hover:border-[#d29922] transition-colors cursor-pointer">
+                    <a href={externalLinks.offCampusHousing} target="_blank" rel="noopener noreferrer" className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 hover:border-[#d29922] transition-colors cursor-pointer block">
                       <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.offcampus.resource1.title">Lease Checklist</Editable></h4>
                       <p className="text-sm text-[#8b949e] mt-1"><Editable k="basicneeds.offcampus.resource1.desc">What to look for before signing</Editable></p>
-                    </div>
-                    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 hover:border-[#d29922] transition-colors cursor-pointer">
+                    </a>
+                    <button onClick={downloadBudgetTemplate} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 hover:border-[#d29922] transition-colors cursor-pointer text-left w-full">
                       <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.offcampus.resource2.title">Budget Template</Editable></h4>
-                      <p className="text-sm text-[#8b949e] mt-1"><Editable k="basicneeds.offcampus.resource2.desc">Excel template for monthly expenses</Editable></p>
-                    </div>
-                    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 hover:border-[#d29922] transition-colors cursor-pointer">
+                      <p className="text-sm text-[#8b949e] mt-1"><Editable k="basicneeds.offcampus.resource2.desc">Download budget planning template</Editable></p>
+                    </button>
+                    <a href={externalLinks.offCampusHousing} target="_blank" rel="noopener noreferrer" className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 hover:border-[#d29922] transition-colors cursor-pointer block">
                       <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.offcampus.resource3.title">Housing Search Guide</Editable></h4>
                       <p className="text-sm text-[#8b949e] mt-1"><Editable k="basicneeds.offcampus.resource3.desc">Tips for finding apartments</Editable></p>
-                    </div>
-                    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 hover:border-[#d29922] transition-colors cursor-pointer">
+                    </a>
+                    <button onClick={downloadRoommateAgreement} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 hover:border-[#d29922] transition-colors cursor-pointer text-left w-full">
                       <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.offcampus.resource4.title">Roommate Agreement</Editable></h4>
-                      <p className="text-sm text-[#8b949e] mt-1"><Editable k="basicneeds.offcampus.resource4.desc">Template for living arrangements</Editable></p>
-                    </div>
+                      <p className="text-sm text-[#8b949e] mt-1"><Editable k="basicneeds.offcampus.resource4.desc">Download roommate agreement template</Editable></p>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -831,8 +901,8 @@ export default function BasicNeedsPage() {
                         />
                         <Textarea label="Message" value={feedbackForm.message} onChange={e => setFeedbackForm({...feedbackForm, message: e.target.value})} required rows={3} />
                         <Input label="Email (optional)" type="email" value={feedbackForm.email} onChange={e => setFeedbackForm({...feedbackForm, email: e.target.value})} />
-                        <button type="submit" className="w-full bg-[#d29922] text-[#0d1117] px-4 py-2.5 rounded font-semibold hover:bg-[#e5ac30] transition-colors">
-                          <Editable k="basicneeds.faq.submitfeedback">Submit Feedback</Editable>
+                        <button type="submit" disabled={isSubmitting} className="w-full bg-[#d29922] text-[#0d1117] px-4 py-2.5 rounded font-semibold hover:bg-[#e5ac30] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                          {isSubmitting ? 'Submitting...' : <Editable k="basicneeds.faq.submitfeedback">Submit Feedback</Editable>}
                         </button>
                       </form>
                     )}

@@ -5,6 +5,11 @@ import { Input, Select, Textarea } from '../../components/FormInput'
 import { useApp } from '../../lib/store'
 import { departmentContacts, departmentFAQs, departmentAnnouncements, serviceGuides } from '../../lib/data'
 import { Editable, EditModeToggle } from '../../components/InlineEditor'
+import {
+  submitForm,
+  emailTemplates,
+  externalLinks,
+} from '../../lib/integrations'
 
 export default function AcademicPage() {
   const [activeTab, setActiveTab] = useState('overview')
@@ -35,11 +40,24 @@ export default function AcademicPage() {
   const [expandedFaq, setExpandedFaq] = useState(null)
   const [feedbackForm, setFeedbackForm] = useState({ topic: '', message: '', email: '' })
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleFeedbackSubmit = (e) => {
+  const handleFeedbackSubmit = async (e) => {
     e.preventDefault()
-    setFeedbackSubmitted(true)
-    setFeedbackForm({ topic: '', message: '', email: '' })
+    setIsSubmitting(true)
+    try {
+      await submitForm('academic-feedback', {
+        ...feedbackForm,
+        department: 'academic',
+        timestamp: new Date().toISOString(),
+      })
+      setFeedbackSubmitted(true)
+      setFeedbackForm({ topic: '', message: '', email: '' })
+    } catch (error) {
+      console.error('Feedback submission error:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleMentorSubmit = (e) => {
@@ -239,12 +257,12 @@ export default function AcademicPage() {
                   </div>
                   <h3 className="font-semibold text-[#f0f6fc] text-lg mb-2"><Editable k="academic.mentorship.findMentor.title">Find a Mentor</Editable></h3>
                   <p className="text-sm text-[#8b949e] mb-4"><Editable k="academic.mentorship.findMentor.description" multiline>Connect with trained peer mentors across all subjects. Get personalized guidance and support for your academic journey.</Editable></p>
-                  <button
-                    onClick={() => setShowMentorModal(true)}
-                    className="px-5 py-2.5 bg-[#388bfd] text-white rounded text-sm font-medium hover:bg-[#58a6ff] transition-colors"
+                  <a
+                    href={emailTemplates.mentorRequest}
+                    className="inline-block px-5 py-2.5 bg-[#388bfd] text-white rounded text-sm font-medium hover:bg-[#58a6ff] transition-colors"
                   >
                     <Editable k="academic.mentorship.findMentor.button">Request a Mentor</Editable>
-                  </button>
+                  </a>
                 </div>
 
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
@@ -695,8 +713,8 @@ export default function AcademicPage() {
                         />
                         <Textarea label="Message" name="message" value={feedbackForm.message} onChange={e => setFeedbackForm({...feedbackForm, message: e.target.value})} required rows={3} />
                         <Input label="Email (optional)" type="email" name="email" value={feedbackForm.email} onChange={e => setFeedbackForm({...feedbackForm, email: e.target.value})} />
-                        <button type="submit" className="w-full bg-[#388bfd] text-white px-4 py-2.5 rounded font-semibold hover:bg-[#58a6ff] transition-colors">
-                          <Editable k="academic.faq.feedback.submit">Submit Feedback</Editable>
+                        <button type="submit" disabled={isSubmitting} className="w-full bg-[#a371f7] text-[#0d1117] px-4 py-2.5 rounded font-semibold hover:bg-[#b381f8] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                          {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
                         </button>
                       </form>
                     )}

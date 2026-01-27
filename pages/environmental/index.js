@@ -5,6 +5,11 @@ import { Input, Select, Textarea } from '../../components/FormInput'
 import { useApp } from '../../lib/store'
 import { departmentContacts, departmentFAQs, departmentAnnouncements, serviceGuides } from '../../lib/data'
 import { Editable, EditModeToggle } from '../../components/InlineEditor'
+import {
+  submitForm,
+  calendarEvents,
+  externalLinks,
+} from '../../lib/integrations'
 
 export default function EnvironmentalPage() {
   const [activeTab, setActiveTab] = useState('overview')
@@ -36,25 +41,64 @@ export default function EnvironmentalPage() {
   const [expandedFaq, setExpandedFaq] = useState(null)
   const [feedbackForm, setFeedbackForm] = useState({ topic: '', message: '', email: '' })
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isAdoptSubmitting, setIsAdoptSubmitting] = useState(false)
+  const [isDonateSubmitting, setIsDonateSubmitting] = useState(false)
 
-  const handleFeedbackSubmit = (e) => {
+  const handleFeedbackSubmit = async (e) => {
     e.preventDefault()
-    setFeedbackSubmitted(true)
-    setFeedbackForm({ topic: '', message: '', email: '' })
+    setIsSubmitting(true)
+    try {
+      await submitForm('environmental-feedback', {
+        ...feedbackForm,
+        department: 'environmental',
+        timestamp: new Date().toISOString(),
+      })
+      setFeedbackSubmitted(true)
+      setFeedbackForm({ topic: '', message: '', email: '' })
+    } catch (error) {
+      console.error('Feedback submission error:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  const handleAdoptSubmit = (e) => {
+  const handleAdoptSubmit = async (e) => {
     e.preventDefault()
-    setFormSubmitted(true)
-    setShowAdoptModal(false)
-    setAdoptForm({ orgName: '', contact: '', email: '', space: '' })
+    setIsAdoptSubmitting(true)
+    try {
+      await submitForm('adopt-a-space', {
+        ...adoptForm,
+        department: 'environmental',
+        timestamp: new Date().toISOString(),
+      })
+      setFormSubmitted(true)
+      setShowAdoptModal(false)
+      setAdoptForm({ orgName: '', contact: '', email: '', space: '' })
+    } catch (error) {
+      console.error('Adopt submission error:', error)
+    } finally {
+      setIsAdoptSubmitting(false)
+    }
   }
 
-  const handleDonateSubmit = (e) => {
+  const handleDonateSubmit = async (e) => {
     e.preventDefault()
-    setFormSubmitted(true)
-    setShowDonateModal(false)
-    setDonateForm({ name: '', email: '', items: '', pickupDate: '' })
+    setIsDonateSubmitting(true)
+    try {
+      await submitForm('donation-schedule', {
+        ...donateForm,
+        department: 'environmental',
+        timestamp: new Date().toISOString(),
+      })
+      setFormSubmitted(true)
+      setShowDonateModal(false)
+      setDonateForm({ name: '', email: '', items: '', pickupDate: '' })
+    } catch (error) {
+      console.error('Donation submission error:', error)
+    } finally {
+      setIsDonateSubmitting(false)
+    }
   }
 
   const PolicyProgress = ({ policy }) => (
@@ -318,9 +362,20 @@ export default function EnvironmentalPage() {
                 <p className="text-[#8b949e] mb-4">
                   <Editable k="environmental.sustainWeek.getInvolvedDescription">Want to host an event or partner with Sustain Carolina Week? Let us know!</Editable>
                 </p>
-                <button className="px-6 py-3 bg-[#238636] text-white rounded font-medium hover:bg-[#2ea043] transition-colors">
-                  <Editable k="environmental.sustainWeek.partnerButton">Partner With Us</Editable>
-                </button>
+                <div className="flex flex-wrap gap-3">
+                  <button className="px-6 py-3 bg-[#238636] text-white rounded font-medium hover:bg-[#2ea043] transition-colors">
+                    <Editable k="environmental.sustainWeek.partnerButton">Partner With Us</Editable>
+                  </button>
+                  <a
+                    href={calendarEvents.sustainCarolinaWeek}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-6 py-3 bg-[#21262d] border border-[#30363d] text-[#f0f6fc] rounded font-medium hover:bg-[#30363d] transition-colors inline-flex items-center gap-2"
+                  >
+                    <span>📅</span>
+                    <Editable k="environmental.sustainWeek.addToCalendar">Add to Calendar</Editable>
+                  </a>
+                </div>
               </div>
             </div>
           )}
@@ -718,8 +773,12 @@ export default function EnvironmentalPage() {
                         />
                         <Textarea label="Message" name="message" value={feedbackForm.message} onChange={e => setFeedbackForm({...feedbackForm, message: e.target.value})} required rows={3} />
                         <Input label="Email (optional)" type="email" name="email" value={feedbackForm.email} onChange={e => setFeedbackForm({...feedbackForm, email: e.target.value})} />
-                        <button type="submit" className="w-full bg-[#238636] text-white px-4 py-2.5 rounded font-semibold hover:bg-[#2ea043] transition-colors">
-                          <Editable k="environmental.faq.submitFeedbackButton">Submit Feedback</Editable>
+                        <button
+                          type="submit"
+                          disabled={isSubmitting}
+                          className="w-full bg-[#238636] text-white px-4 py-2.5 rounded font-semibold hover:bg-[#2ea043] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isSubmitting ? 'Submitting...' : <Editable k="environmental.faq.submitFeedbackButton">Submit Feedback</Editable>}
                         </button>
                       </form>
                     )}
@@ -800,13 +859,18 @@ export default function EnvironmentalPage() {
                 className="bg-[#0d1117] border-[#30363d] text-[#f0f6fc]"
               />
               <div className="flex gap-3 pt-2">
-                <button type="submit" className="px-6 py-3 bg-[#238636] text-white rounded font-medium hover:bg-[#2ea043] transition-colors">
-                  <Editable k="environmental.adoptModal.registerButton">Register</Editable>
+                <button
+                  type="submit"
+                  disabled={isAdoptSubmitting}
+                  className="px-6 py-3 bg-[#238636] text-white rounded font-medium hover:bg-[#2ea043] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isAdoptSubmitting ? 'Submitting...' : <Editable k="environmental.adoptModal.registerButton">Register</Editable>}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAdoptModal(false)}
-                  className="px-6 py-3 bg-[#21262d] border border-[#30363d] text-[#f0f6fc] rounded font-medium hover:bg-[#30363d] transition-colors"
+                  disabled={isAdoptSubmitting}
+                  className="px-6 py-3 bg-[#21262d] border border-[#30363d] text-[#f0f6fc] rounded font-medium hover:bg-[#30363d] transition-colors disabled:opacity-50"
                 >
                   <Editable k="environmental.adoptModal.cancelButton">Cancel</Editable>
                 </button>
@@ -827,13 +891,18 @@ export default function EnvironmentalPage() {
               <Textarea label="Items to Donate" name="items" value={donateForm.items} onChange={e => setDonateForm({...donateForm, items: e.target.value})} required rows={3} placeholder="List the items you'd like to donate..." className="bg-[#0d1117] border-[#30363d] text-[#f0f6fc]" />
               <Input label="Preferred Pickup Date" type="date" name="pickupDate" value={donateForm.pickupDate} onChange={e => setDonateForm({...donateForm, pickupDate: e.target.value})} required className="bg-[#0d1117] border-[#30363d] text-[#f0f6fc]" />
               <div className="flex gap-3 pt-2">
-                <button type="submit" className="px-6 py-3 bg-[#238636] text-white rounded font-medium hover:bg-[#2ea043] transition-colors">
-                  <Editable k="environmental.donateModal.scheduleButton">Schedule</Editable>
+                <button
+                  type="submit"
+                  disabled={isDonateSubmitting}
+                  className="px-6 py-3 bg-[#238636] text-white rounded font-medium hover:bg-[#2ea043] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isDonateSubmitting ? 'Submitting...' : <Editable k="environmental.donateModal.scheduleButton">Schedule</Editable>}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowDonateModal(false)}
-                  className="px-6 py-3 bg-[#21262d] border border-[#30363d] text-[#f0f6fc] rounded font-medium hover:bg-[#30363d] transition-colors"
+                  disabled={isDonateSubmitting}
+                  className="px-6 py-3 bg-[#21262d] border border-[#30363d] text-[#f0f6fc] rounded font-medium hover:bg-[#30363d] transition-colors disabled:opacity-50"
                 >
                   <Editable k="environmental.donateModal.cancelButton">Cancel</Editable>
                 </button>

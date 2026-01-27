@@ -5,14 +5,22 @@ import { Input, Select, Textarea } from '../../components/FormInput'
 import { useApp } from '../../lib/store'
 import { getOverallProgress, getStatusCounts, departmentContacts, departmentFAQs, departmentAnnouncements } from '../../lib/data'
 import { Editable, EditModeToggle } from '../../components/InlineEditor'
+import {
+  submitForm,
+  createShareLinks,
+  externalLinks,
+} from '../../lib/integrations'
 
 export default function CommunicationsPage() {
   const [activeTab, setActiveTab] = useState('overview')
   const [email, setEmail] = useState('')
   const [subscribed, setSubscribed] = useState(false)
   const [showSubmitModal, setShowSubmitModal] = useState(false)
-  const [submitForm, setSubmitForm] = useState({ name: '', email: '', type: '', description: '' })
+  const [modalFormData, setModalFormData] = useState({ name: '', email: '', type: '', description: '' })
   const [formSubmitted, setFormSubmitted] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isModalSubmitting, setIsModalSubmitting] = useState(false)
+  const [isSubscribing, setIsSubscribing] = useState(false)
   const { policies, budgetData } = useApp()
 
   const deptPolicies = policies.filter(p => p.department === 'communications')
@@ -37,17 +45,59 @@ export default function CommunicationsPage() {
   const [feedbackForm, setFeedbackForm] = useState({ topic: '', message: '', feedbackEmail: '' })
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
 
-  const handleFeedbackSubmit = (e) => {
+  const handleFeedbackSubmit = async (e) => {
     e.preventDefault()
-    setFeedbackSubmitted(true)
-    setFeedbackForm({ topic: '', message: '', feedbackEmail: '' })
+    setIsSubmitting(true)
+    try {
+      await submitForm('communications-feedback', {
+        ...feedbackForm,
+        department: 'communications',
+        timestamp: new Date().toISOString(),
+      })
+      setFeedbackSubmitted(true)
+      setFeedbackForm({ topic: '', message: '', feedbackEmail: '' })
+    } catch (error) {
+      console.error('Feedback submission error:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  const handleSubmitForm = (e) => {
+  const handleModalSubmit = async (e) => {
     e.preventDefault()
-    setFormSubmitted(true)
-    setShowSubmitModal(false)
-    setSubmitForm({ name: '', email: '', type: '', description: '' })
+    setIsModalSubmitting(true)
+    try {
+      await submitForm(`communications-${modalFormData.type}`, {
+        ...modalFormData,
+        department: 'communications',
+        timestamp: new Date().toISOString(),
+      })
+      setFormSubmitted(true)
+      setShowSubmitModal(false)
+      setModalFormData({ name: '', email: '', type: '', description: '' })
+    } catch (error) {
+      console.error('Modal form submission error:', error)
+    } finally {
+      setIsModalSubmitting(false)
+    }
+  }
+
+  const handleSubscribe = async () => {
+    if (!email) return
+    setIsSubscribing(true)
+    try {
+      await submitForm('communications-podcast-subscribe', {
+        email,
+        department: 'communications',
+        timestamp: new Date().toISOString(),
+      })
+      setSubscribed(true)
+      setEmail('')
+    } catch (error) {
+      console.error('Subscription error:', error)
+    } finally {
+      setIsSubscribing(false)
+    }
   }
 
   const PolicyProgress = ({ policy }) => (
@@ -279,7 +329,7 @@ export default function CommunicationsPage() {
                   <h3 className="font-semibold text-[#f0f6fc] text-lg mb-2"><Editable k="communications.whoIsCarolina.shareStory.title">Share Your Story</Editable></h3>
                   <p className="text-sm text-[#8b949e] mb-4"><Editable k="communications.whoIsCarolina.shareStory.description">Be featured in our campaign! Share what makes your Carolina experience unique.</Editable></p>
                   <button
-                    onClick={() => { setSubmitForm({...submitForm, type: 'story'}); setShowSubmitModal(true) }}
+                    onClick={() => { setModalFormData({...modalFormData, type: 'story'}); setShowSubmitModal(true) }}
                     className="px-5 py-2.5 bg-[#00d4ff] text-[#0a0e14] rounded text-sm font-bold hover:bg-[#00a8cc] transition-colors"
                   >
                     <Editable k="communications.whoIsCarolina.shareStory.button">Submit Your Story</Editable>
@@ -293,7 +343,7 @@ export default function CommunicationsPage() {
                   <h3 className="font-semibold text-[#f0f6fc] text-lg mb-2"><Editable k="communications.whoIsCarolina.nominate.title">Nominate Someone</Editable></h3>
                   <p className="text-sm text-[#8b949e] mb-4"><Editable k="communications.whoIsCarolina.nominate.description">Know someone with an inspiring story? Nominate them to be featured!</Editable></p>
                   <button
-                    onClick={() => { setSubmitForm({...submitForm, type: 'nomination'}); setShowSubmitModal(true) }}
+                    onClick={() => { setModalFormData({...modalFormData, type: 'nomination'}); setShowSubmitModal(true) }}
                     className="px-5 py-2.5 bg-[#21262d] border border-[#30363d] text-[#f0f6fc] rounded text-sm font-medium hover:bg-[#30363d] transition-colors"
                   >
                     <Editable k="communications.whoIsCarolina.nominate.button">Nominate a Student</Editable>
@@ -464,7 +514,7 @@ export default function CommunicationsPage() {
                   <h3 className="font-semibold text-[#f0f6fc] text-lg mb-2"><Editable k="communications.podcast.beGuest.title">Be a Guest</Editable></h3>
                   <p className="text-sm text-[#8b949e] mb-4"><Editable k="communications.podcast.beGuest.description">Share your Carolina story and inspire other students. We're always looking for interesting guests!</Editable></p>
                   <button
-                    onClick={() => { setSubmitForm({...submitForm, type: 'podcast-guest'}); setShowSubmitModal(true) }}
+                    onClick={() => { setModalFormData({...modalFormData, type: 'podcast-guest'}); setShowSubmitModal(true) }}
                     className="px-5 py-2.5 bg-[#00d4ff] text-[#0a0e14] rounded text-sm font-bold hover:bg-[#00a8cc] transition-colors"
                   >
                     <Editable k="communications.podcast.beGuest.button">Apply to Be a Guest</Editable>
@@ -478,7 +528,7 @@ export default function CommunicationsPage() {
                   <h3 className="font-semibold text-[#f0f6fc] text-lg mb-2"><Editable k="communications.podcast.nominateGuest.title">Nominate a Guest</Editable></h3>
                   <p className="text-sm text-[#8b949e] mb-4"><Editable k="communications.podcast.nominateGuest.description">Know someone with an amazing story? Let us know who you'd like to hear from!</Editable></p>
                   <button
-                    onClick={() => { setSubmitForm({...submitForm, type: 'podcast-nomination'}); setShowSubmitModal(true) }}
+                    onClick={() => { setModalFormData({...modalFormData, type: 'podcast-nomination'}); setShowSubmitModal(true) }}
                     className="px-5 py-2.5 bg-[#21262d] border border-[#30363d] text-[#f0f6fc] rounded text-sm font-medium hover:bg-[#30363d] transition-colors"
                   >
                     <Editable k="communications.podcast.nominateGuest.button">Nominate Someone</Editable>
@@ -497,13 +547,15 @@ export default function CommunicationsPage() {
                       placeholder="your.email@unc.edu"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="flex-1 px-4 py-3 bg-[#0d1117] border border-[#30363d] rounded text-[#f0f6fc] placeholder-[#6e7681] focus:outline-none focus:ring-2 focus:ring-[#00d4ff]"
+                      disabled={isSubscribing}
+                      className="flex-1 px-4 py-3 bg-[#0d1117] border border-[#30363d] rounded text-[#f0f6fc] placeholder-[#6e7681] focus:outline-none focus:ring-2 focus:ring-[#00d4ff] disabled:opacity-50"
                     />
                     <button
-                      onClick={() => setSubscribed(true)}
-                      className="px-6 py-3 bg-[#00d4ff] text-[#0a0e14] font-bold rounded hover:bg-[#00a8cc] transition-colors"
+                      onClick={handleSubscribe}
+                      disabled={isSubscribing || !email}
+                      className="px-6 py-3 bg-[#00d4ff] text-[#0a0e14] font-bold rounded hover:bg-[#00a8cc] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Editable k="communications.podcast.subscribe.button">Subscribe</Editable>
+                      {isSubscribing ? 'Subscribing...' : <Editable k="communications.podcast.subscribe.button">Subscribe</Editable>}
                     </button>
                   </div>
                 ) : (
@@ -557,7 +609,7 @@ export default function CommunicationsPage() {
                   <Editable k="communications.talent.submit.description">Have an upcoming performance, exhibition, or creative project? Let us help promote it!</Editable>
                 </p>
                 <button
-                  onClick={() => { setSubmitForm({...submitForm, type: 'talent'}); setShowSubmitModal(true) }}
+                  onClick={() => { setModalFormData({...modalFormData, type: 'talent'}); setShowSubmitModal(true) }}
                   className="px-6 py-3 bg-[#00d4ff] text-[#0a0e14] font-bold rounded hover:bg-[#00a8cc] transition-colors"
                 >
                   <Editable k="communications.talent.submit.button">Submit for Spotlight</Editable>
@@ -699,8 +751,12 @@ export default function CommunicationsPage() {
                         />
                         <Textarea label="Message" name="message" value={feedbackForm.message} onChange={e => setFeedbackForm({...feedbackForm, message: e.target.value})} required rows={3} />
                         <Input label="Email (optional)" type="email" name="feedbackEmail" value={feedbackForm.feedbackEmail} onChange={e => setFeedbackForm({...feedbackForm, feedbackEmail: e.target.value})} />
-                        <button type="submit" className="w-full bg-[#00d4ff] text-[#0a0e14] px-4 py-2.5 rounded font-bold hover:bg-[#00a8cc] transition-colors">
-                          <Editable k="communications.faq.feedback.button">Submit Feedback</Editable>
+                        <button
+                          type="submit"
+                          disabled={isSubmitting}
+                          className="w-full bg-[#00d4ff] text-[#0a0e14] px-4 py-2.5 rounded font-bold hover:bg-[#00a8cc] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isSubmitting ? 'Submitting...' : <Editable k="communications.faq.feedback.button">Submit Feedback</Editable>}
                         </button>
                       </form>
                     )}
@@ -765,32 +821,55 @@ export default function CommunicationsPage() {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-[#161b22] border border-[#30363d] rounded-lg max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-semibold text-[#f0f6fc] mb-5">
-              {submitForm.type === 'story' && <Editable k="communications.modal.story.title">Share Your Story</Editable>}
-              {submitForm.type === 'nomination' && <Editable k="communications.modal.nomination.title">Nominate a Student</Editable>}
-              {submitForm.type === 'podcast-guest' && <Editable k="communications.modal.podcastGuest.title">Apply to Be a Guest</Editable>}
-              {submitForm.type === 'podcast-nomination' && <Editable k="communications.modal.podcastNomination.title">Nominate a Guest</Editable>}
-              {submitForm.type === 'talent' && <Editable k="communications.modal.talent.title">Submit for Spotlight</Editable>}
+              {modalFormData.type === 'story' && <Editable k="communications.modal.story.title">Share Your Story</Editable>}
+              {modalFormData.type === 'nomination' && <Editable k="communications.modal.nomination.title">Nominate a Student</Editable>}
+              {modalFormData.type === 'podcast-guest' && <Editable k="communications.modal.podcastGuest.title">Apply to Be a Guest</Editable>}
+              {modalFormData.type === 'podcast-nomination' && <Editable k="communications.modal.podcastNomination.title">Nominate a Guest</Editable>}
+              {modalFormData.type === 'talent' && <Editable k="communications.modal.talent.title">Submit for Spotlight</Editable>}
             </h3>
-            <form onSubmit={handleSubmitForm} className="space-y-5">
-              <Input label="Your Name" name="name" value={submitForm.name} onChange={e => setSubmitForm({...submitForm, name: e.target.value})} required className="bg-[#0d1117] border-[#30363d] text-[#f0f6fc]" />
-              <Input label="Email" type="email" name="email" value={submitForm.email} onChange={e => setSubmitForm({...submitForm, email: e.target.value})} required className="bg-[#0d1117] border-[#30363d] text-[#f0f6fc]" />
+            <form onSubmit={handleModalSubmit} className="space-y-5">
+              <Input
+                label="Your Name"
+                name="name"
+                value={modalFormData.name}
+                onChange={e => setModalFormData({...modalFormData, name: e.target.value})}
+                required
+                disabled={isModalSubmitting}
+                className="bg-[#0d1117] border-[#30363d] text-[#f0f6fc]"
+              />
+              <Input
+                label="Email"
+                type="email"
+                name="email"
+                value={modalFormData.email}
+                onChange={e => setModalFormData({...modalFormData, email: e.target.value})}
+                required
+                disabled={isModalSubmitting}
+                className="bg-[#0d1117] border-[#30363d] text-[#f0f6fc]"
+              />
               <Textarea
-                label={submitForm.type.includes('nomination') ? 'Tell us about who you\'re nominating' : 'Tell us about yourself/your work'}
+                label={modalFormData.type.includes('nomination') ? 'Tell us about who you\'re nominating' : 'Tell us about yourself/your work'}
                 name="description"
-                value={submitForm.description}
-                onChange={e => setSubmitForm({...submitForm, description: e.target.value})}
+                value={modalFormData.description}
+                onChange={e => setModalFormData({...modalFormData, description: e.target.value})}
                 required
                 rows={4}
+                disabled={isModalSubmitting}
                 className="bg-[#0d1117] border-[#30363d] text-[#f0f6fc]"
               />
               <div className="flex gap-3 pt-2">
-                <button type="submit" className="px-6 py-3 bg-[#00d4ff] text-[#0a0e14] rounded font-bold hover:bg-[#00a8cc] transition-colors">
-                  <Editable k="communications.modal.submit">Submit</Editable>
+                <button
+                  type="submit"
+                  disabled={isModalSubmitting}
+                  className="px-6 py-3 bg-[#00d4ff] text-[#0a0e14] rounded font-bold hover:bg-[#00a8cc] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isModalSubmitting ? 'Submitting...' : <Editable k="communications.modal.submit">Submit</Editable>}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowSubmitModal(false)}
-                  className="px-6 py-3 bg-[#21262d] border border-[#30363d] text-[#f0f6fc] rounded font-medium hover:bg-[#30363d] transition-colors"
+                  disabled={isModalSubmitting}
+                  className="px-6 py-3 bg-[#21262d] border border-[#30363d] text-[#f0f6fc] rounded font-medium hover:bg-[#30363d] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Editable k="communications.modal.cancel">Cancel</Editable>
                 </button>
