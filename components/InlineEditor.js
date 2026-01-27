@@ -1,0 +1,521 @@
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useApp } from '../lib/store'
+
+// Inline editable text - click to edit, auto-saves on blur
+export function EditableText({
+  value,
+  onChange,
+  className = '',
+  as = 'span',
+  multiline = false,
+  placeholder = 'Click to edit...',
+}) {
+  const { isAdmin } = useApp()
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState(value)
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    setEditValue(value)
+  }, [value])
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [isEditing])
+
+  const handleSave = useCallback(() => {
+    setIsEditing(false)
+    if (editValue !== value) {
+      onChange(editValue)
+    }
+  }, [editValue, value, onChange])
+
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === 'Enter' && !multiline) {
+      e.preventDefault()
+      handleSave()
+    }
+    if (e.key === 'Escape') {
+      setEditValue(value)
+      setIsEditing(false)
+    }
+  }, [multiline, handleSave, value])
+
+  if (!isAdmin) {
+    const Tag = as
+    return <Tag className={className}>{value || placeholder}</Tag>
+  }
+
+  if (isEditing) {
+    if (multiline) {
+      return (
+        <textarea
+          ref={inputRef}
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onBlur={handleSave}
+          onKeyDown={handleKeyDown}
+          className={`bg-[#0d1117] border border-[#00d4ff] rounded px-2 py-1 text-[#f0f6fc] focus:outline-none focus:ring-2 focus:ring-[#00d4ff]/50 resize-none w-full ${className}`}
+          rows={3}
+        />
+      )
+    }
+    return (
+      <input
+        ref={inputRef}
+        type="text"
+        value={editValue}
+        onChange={(e) => setEditValue(e.target.value)}
+        onBlur={handleSave}
+        onKeyDown={handleKeyDown}
+        className={`bg-[#0d1117] border border-[#00d4ff] rounded px-2 py-0.5 text-[#f0f6fc] focus:outline-none focus:ring-2 focus:ring-[#00d4ff]/50 ${className}`}
+        style={{ width: `${Math.max(editValue.length * 8, 60)}px` }}
+      />
+    )
+  }
+
+  const Tag = as
+  return (
+    <Tag
+      className={`${className} cursor-pointer hover:bg-[#00d4ff]/10 hover:outline hover:outline-1 hover:outline-[#00d4ff]/50 rounded px-1 -mx-1 transition-all group relative`}
+      onClick={() => setIsEditing(true)}
+      title="Click to edit"
+    >
+      {value || <span className="text-[#6e7681] italic">{placeholder}</span>}
+      <span className="absolute -top-1 -right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <svg className="w-3 h-3 text-[#00d4ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+        </svg>
+      </span>
+    </Tag>
+  )
+}
+
+// Editable number input
+export function EditableNumber({
+  value,
+  onChange,
+  className = '',
+  prefix = '',
+  suffix = '',
+  min,
+  max,
+}) {
+  const { isAdmin } = useApp()
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState(value)
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    setEditValue(value)
+  }, [value])
+
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus()
+      inputRef.current.select()
+    }
+  }, [isEditing])
+
+  const handleSave = useCallback(() => {
+    setIsEditing(false)
+    const numValue = parseFloat(editValue)
+    if (!isNaN(numValue) && numValue !== value) {
+      onChange(numValue)
+    }
+  }, [editValue, value, onChange])
+
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleSave()
+    }
+    if (e.key === 'Escape') {
+      setEditValue(value)
+      setIsEditing(false)
+    }
+  }, [handleSave, value])
+
+  if (!isAdmin) {
+    return <span className={className}>{prefix}{value}{suffix}</span>
+  }
+
+  if (isEditing) {
+    return (
+      <span className={className}>
+        {prefix}
+        <input
+          ref={inputRef}
+          type="number"
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onBlur={handleSave}
+          onKeyDown={handleKeyDown}
+          min={min}
+          max={max}
+          className="bg-[#0d1117] border border-[#00d4ff] rounded px-2 py-0.5 text-[#f0f6fc] focus:outline-none focus:ring-2 focus:ring-[#00d4ff]/50 w-20"
+        />
+        {suffix}
+      </span>
+    )
+  }
+
+  return (
+    <span
+      className={`${className} cursor-pointer hover:bg-[#00d4ff]/10 hover:outline hover:outline-1 hover:outline-[#00d4ff]/50 rounded px-1 -mx-1 transition-all group relative inline-flex items-center`}
+      onClick={() => setIsEditing(true)}
+      title="Click to edit"
+    >
+      {prefix}{value}{suffix}
+      <span className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <svg className="w-3 h-3 text-[#00d4ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+        </svg>
+      </span>
+    </span>
+  )
+}
+
+// Editable toggle for boolean values like planb/narcan availability
+export function EditableToggle({
+  value,
+  onChange,
+  label,
+  activeColor = '#3fb950',
+  inactiveColor = '#6e7681',
+}) {
+  const { isAdmin } = useApp()
+
+  if (!isAdmin) {
+    if (!value) return null
+    return (
+      <span
+        className="px-2 py-0.5 rounded text-xs border"
+        style={{
+          backgroundColor: `${activeColor}10`,
+          color: activeColor,
+          borderColor: activeColor,
+        }}
+      >
+        {label}
+      </span>
+    )
+  }
+
+  return (
+    <button
+      onClick={() => onChange(!value)}
+      className={`px-2 py-0.5 rounded text-xs border transition-all ${
+        value
+          ? 'hover:opacity-70'
+          : 'opacity-50 hover:opacity-100'
+      }`}
+      style={{
+        backgroundColor: value ? `${activeColor}10` : `${inactiveColor}10`,
+        color: value ? activeColor : inactiveColor,
+        borderColor: value ? activeColor : inactiveColor,
+      }}
+      title={`Click to ${value ? 'disable' : 'enable'} ${label}`}
+    >
+      {label}
+    </button>
+  )
+}
+
+// Editable select dropdown
+export function EditableSelect({
+  value,
+  onChange,
+  options,
+  className = '',
+}) {
+  const { isAdmin } = useApp()
+  const [isEditing, setIsEditing] = useState(false)
+  const selectRef = useRef(null)
+
+  useEffect(() => {
+    if (isEditing && selectRef.current) {
+      selectRef.current.focus()
+    }
+  }, [isEditing])
+
+  const selectedOption = options.find(o => o.value === value) || options[0]
+
+  if (!isAdmin) {
+    return <span className={className}>{selectedOption?.label || value}</span>
+  }
+
+  if (isEditing) {
+    return (
+      <select
+        ref={selectRef}
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value)
+          setIsEditing(false)
+        }}
+        onBlur={() => setIsEditing(false)}
+        className={`bg-[#0d1117] border border-[#00d4ff] rounded px-2 py-0.5 text-[#f0f6fc] focus:outline-none focus:ring-2 focus:ring-[#00d4ff]/50 ${className}`}
+      >
+        {options.map(opt => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+    )
+  }
+
+  return (
+    <span
+      className={`${className} cursor-pointer hover:bg-[#00d4ff]/10 hover:outline hover:outline-1 hover:outline-[#00d4ff]/50 rounded px-1 -mx-1 transition-all group relative inline-flex items-center`}
+      onClick={() => setIsEditing(true)}
+      title="Click to change"
+    >
+      {selectedOption?.label || value}
+      <span className="ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <svg className="w-3 h-3 text-[#00d4ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </span>
+    </span>
+  )
+}
+
+// Editable list item with delete button
+export function EditableListItem({
+  children,
+  onDelete,
+  className = '',
+}) {
+  const { isAdmin } = useApp()
+  const [showDelete, setShowDelete] = useState(false)
+
+  return (
+    <div
+      className={`relative group ${className}`}
+      onMouseEnter={() => setShowDelete(true)}
+      onMouseLeave={() => setShowDelete(false)}
+    >
+      {children}
+      {isAdmin && showDelete && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            if (confirm('Delete this item?')) {
+              onDelete()
+            }
+          }}
+          className="absolute -top-2 -right-2 w-5 h-5 bg-[#f85149] text-white rounded-full flex items-center justify-center text-xs hover:bg-[#da3633] transition-colors shadow-lg z-10"
+          title="Delete"
+        >
+          x
+        </button>
+      )}
+    </div>
+  )
+}
+
+// Add new item button
+export function AddItemButton({
+  onClick,
+  label = 'Add Item',
+  className = '',
+}) {
+  const { isAdmin } = useApp()
+
+  if (!isAdmin) return null
+
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-2 px-4 py-2 border border-dashed border-[#00d4ff]/50 rounded-lg text-[#00d4ff] text-sm hover:bg-[#00d4ff]/10 hover:border-[#00d4ff] transition-all ${className}`}
+    >
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+      </svg>
+      {label}
+    </button>
+  )
+}
+
+// Editable bullet list
+export function EditableBulletList({
+  items,
+  onChange,
+  className = '',
+}) {
+  const { isAdmin } = useApp()
+  const [editingIndex, setEditingIndex] = useState(null)
+  const [editValue, setEditValue] = useState('')
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    if (editingIndex !== null && inputRef.current) {
+      inputRef.current.focus()
+    }
+  }, [editingIndex])
+
+  const handleSave = (index) => {
+    if (editValue.trim()) {
+      const newItems = [...items]
+      newItems[index] = editValue
+      onChange(newItems)
+    }
+    setEditingIndex(null)
+  }
+
+  const handleDelete = (index) => {
+    const newItems = items.filter((_, i) => i !== index)
+    onChange(newItems)
+  }
+
+  const handleAdd = () => {
+    onChange([...items, 'New item'])
+    setEditingIndex(items.length)
+    setEditValue('New item')
+  }
+
+  return (
+    <ul className={`space-y-2 ${className}`}>
+      {items.map((item, i) => (
+        <li key={i} className="flex items-start gap-2 text-sm text-[#8b949e] group">
+          <span className="text-[#3fb950] mt-0.5">•</span>
+          {editingIndex === i ? (
+            <input
+              ref={inputRef}
+              type="text"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              onBlur={() => handleSave(i)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSave(i)
+                if (e.key === 'Escape') setEditingIndex(null)
+              }}
+              className="flex-1 bg-[#0d1117] border border-[#00d4ff] rounded px-2 py-0.5 text-[#f0f6fc] focus:outline-none text-sm"
+            />
+          ) : (
+            <span
+              className={isAdmin ? 'cursor-pointer hover:text-[#f0f6fc] flex-1' : 'flex-1'}
+              onClick={() => {
+                if (isAdmin) {
+                  setEditingIndex(i)
+                  setEditValue(item)
+                }
+              }}
+            >
+              {item}
+            </span>
+          )}
+          {isAdmin && editingIndex !== i && (
+            <button
+              onClick={() => handleDelete(i)}
+              className="opacity-0 group-hover:opacity-100 text-[#f85149] hover:text-[#da3633] transition-opacity"
+              title="Delete"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </li>
+      ))}
+      {isAdmin && (
+        <li>
+          <button
+            onClick={handleAdd}
+            className="flex items-center gap-1 text-sm text-[#00d4ff] hover:text-[#58a6ff] transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add bullet
+          </button>
+        </li>
+      )}
+    </ul>
+  )
+}
+
+// Location card component specifically for distribution locations
+export function EditableLocationCard({
+  location,
+  onUpdate,
+  onDelete,
+  showPlanB = true,
+  showNarcan = true,
+}) {
+  const { isAdmin } = useApp()
+
+  return (
+    <EditableListItem onDelete={onDelete} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+      <h4 className="font-semibold text-[#f0f6fc] mb-1">
+        <EditableText
+          value={location.name}
+          onChange={(val) => onUpdate({ ...location, name: val })}
+        />
+      </h4>
+      <p className="text-sm text-[#8b949e] mb-2">
+        <EditableText
+          value={location.address || location.location}
+          onChange={(val) => onUpdate({ ...location, address: val, location: val })}
+        />
+      </p>
+      <p className="text-xs text-[#6e7681] font-mono mb-3">
+        <EditableText
+          value={location.hours}
+          onChange={(val) => onUpdate({ ...location, hours: val })}
+        />
+      </p>
+      <div className="flex gap-2">
+        {showPlanB && (
+          <EditableToggle
+            value={location.planb}
+            onChange={(val) => onUpdate({ ...location, planb: val })}
+            label="Plan B"
+            activeColor="#a371f7"
+          />
+        )}
+        {showNarcan && (
+          <EditableToggle
+            value={location.narcan}
+            onChange={(val) => onUpdate({ ...location, narcan: val })}
+            label="Narcan"
+            activeColor="#3fb950"
+          />
+        )}
+        {location.status !== undefined && (
+          <EditableSelect
+            value={location.status}
+            onChange={(val) => onUpdate({ ...location, status: val })}
+            options={[
+              { value: 'active', label: 'ACTIVE' },
+              { value: 'coming', label: 'COMING SOON' },
+            ]}
+            className="text-xs"
+          />
+        )}
+      </div>
+    </EditableListItem>
+  )
+}
+
+// Admin mode indicator that shows when content is editable
+export function AdminEditBanner() {
+  const { isAdmin } = useApp()
+
+  if (!isAdmin) return null
+
+  return (
+    <div className="bg-[#00d4ff]/10 border-b border-[#00d4ff]/30 px-4 py-2">
+      <div className="max-w-6xl mx-auto flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-2 h-2 bg-[#00d4ff] rounded-full animate-pulse" />
+          <span className="text-xs text-[#00d4ff] font-medium">EDIT MODE</span>
+          <span className="text-xs text-[#8b949e]">Click on any text to edit. Changes save automatically.</span>
+        </div>
+      </div>
+    </div>
+  )
+}

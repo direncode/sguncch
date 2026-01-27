@@ -1,31 +1,10 @@
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import Layout from '../components/Layout'
 import { useApp } from '../lib/store'
 import { departments, getOverallProgress, getStatusCounts } from '../lib/data'
-import { MetricCard, DonutChart, StatusBadge, LiveIndicator, Button } from '../components/FormInput'
-import { EditWindow, PolicyEditor, AnnouncementEditor, QuickStatsEditor, BudgetEditor } from '../components/EditWindow'
-
-// Edit Button Component - only shows for admins
-const EditButton = ({ onClick, className = '', size = 'sm' }) => {
-  const sizes = {
-    sm: 'w-6 h-6',
-    md: 'w-8 h-8',
-    lg: 'w-10 h-10'
-  }
-  return (
-    <button
-      onClick={onClick}
-      className={`${sizes[size]} rounded-lg bg-[#00d4ff]/10 border border-[#00d4ff]/30 flex items-center justify-center hover:bg-[#00d4ff]/20 hover:border-[#00d4ff] transition-all opacity-0 group-hover:opacity-100 ${className}`}
-      title="Edit"
-    >
-      <svg className="w-3.5 h-3.5 text-[#00d4ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-      </svg>
-    </button>
-  )
-}
+import { DonutChart, StatusBadge, LiveIndicator } from '../components/FormInput'
 
 // Live Clock Component
 const LiveClock = () => {
@@ -67,23 +46,7 @@ const AnimatedCounter = ({ value, duration = 1000 }) => {
 export default function Home() {
   const [selectedDept, setSelectedDept] = useState(null)
   const [hoveredPolicy, setHoveredPolicy] = useState(null)
-  const {
-    isAdmin, policies, budgetData, announcements, activityLog, quickStats, feedback,
-    updatePolicy, updatePolicyMetrics, logPolicyProgress,
-    updateQuickStats, updateBudget, updateBudgetCategory,
-    deleteAnnouncement, addAnnouncement, pinAnnouncement
-  } = useApp()
-
-  // Edit Window State
-  const [editWindow, setEditWindow] = useState({
-    isOpen: false,
-    type: null,
-    data: null,
-    title: '',
-    subtitle: ''
-  })
-
-  const [toast, setToast] = useState(null)
+  const { isAdmin, policies, budgetData, announcements, activityLog, quickStats, feedback } = useApp()
 
   const overallProgress = useMemo(() => getOverallProgress(policies), [policies])
   const statusCounts = useMemo(() => getStatusCounts(policies), [policies])
@@ -111,38 +74,6 @@ export default function Home() {
     return { ...dept, progress, completed, total: deptPolicies.length }
   }), [policies])
 
-  // Edit Window Helpers
-  const openEditWindow = useCallback((type, data, title, subtitle) => {
-    setEditWindow({ isOpen: true, type, data, title, subtitle })
-  }, [])
-
-  const closeEditWindow = useCallback(() => {
-    setEditWindow({ isOpen: false, type: null, data: null, title: '', subtitle: '' })
-    setToast({ message: 'Changes committed', type: 'success' })
-    setTimeout(() => setToast(null), 3000)
-  }, [])
-
-  const handleEditWindowSave = useCallback(async (updatedData) => {
-    switch (editWindow.type) {
-      case 'policy':
-        updatePolicy(updatedData.id, updatedData)
-        if (updatedData.metrics) {
-          updatePolicyMetrics(updatedData.id, updatedData.metrics)
-        }
-        break
-      case 'announcement':
-        deleteAnnouncement(updatedData.id)
-        addAnnouncement({ ...updatedData, id: updatedData.id })
-        break
-      case 'quickStats':
-        updateQuickStats(updatedData)
-        break
-      case 'budget':
-        updateBudget(updatedData)
-        break
-    }
-  }, [editWindow.type, updatePolicy, updatePolicyMetrics, deleteAnnouncement, addAnnouncement, updateQuickStats, updateBudget])
-
   return (
     <Layout>
       <Head>
@@ -150,22 +81,15 @@ export default function Home() {
         <meta name="description" content="Project Bold Operations Platform - UNC Student Government - Real-time tracking of all 40 policy initiatives" />
       </Head>
 
-      {/* Toast Notification */}
-      {toast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-lg shadow-lg text-sm font-mono bg-[#161b22] border border-[#00d4ff]/50 text-[#00d4ff] shadow-[#00d4ff]/10 animate-[fadeIn_0.2s]">
-          {toast.message}
-        </div>
-      )}
-
-      {/* Admin Edit Mode Banner */}
+      {/* Admin Quick Access Banner */}
       {isAdmin && (
-        <div className="bg-[#00d4ff]/10 border-b border-[#00d4ff]/30 px-6 py-2">
+        <div className="bg-[#161b22] border-b border-[#30363d] px-6 py-2">
           <div className="max-w-[1600px] mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <LiveIndicator label="Edit Mode" variant="success" />
-              <span className="text-xs text-[#00d4ff]">Hover over elements to edit. Changes auto-commit when closed.</span>
+              <LiveIndicator label="Admin" variant="success" />
+              <span className="text-xs text-[#8b949e]">Logged in as administrator</span>
             </div>
-            <Link href="/admin" className="text-xs text-[#8b949e] hover:text-[#00d4ff] transition">
+            <Link href="/admin" className="text-xs text-[#00d4ff] hover:text-[#58a6ff] transition">
               Open Admin Dashboard →
             </Link>
           </div>
@@ -201,17 +125,6 @@ export default function Home() {
               </p>
             </div>
             <div className="hidden lg:flex items-start gap-3">
-              {isAdmin && (
-                <button
-                  onClick={() => openEditWindow('quickStats', quickStats, 'Edit Platform Metrics', 'Homepage Statistics')}
-                  className="px-4 py-2 bg-[#00d4ff]/10 border border-[#00d4ff]/30 rounded-lg text-xs text-[#00d4ff] hover:bg-[#00d4ff]/20 hover:border-[#00d4ff] transition-all flex items-center gap-2"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                  Edit Metrics
-                </button>
-              )}
               <div className="inline-block bg-[#161b22]/80 backdrop-blur border border-[#30363d] rounded-xl p-5">
                 <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-2">Session</p>
                 <p className="text-2xl font-mono font-bold text-[#00d4ff] tracking-wide">SG-2026</p>
@@ -224,7 +137,6 @@ export default function Home() {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <div className="bg-[#161b22]/80 backdrop-blur border border-[#00d4ff]/30 rounded-xl p-5 relative overflow-hidden group hover:border-[#00d4ff]/60 transition-all">
               <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#00d4ff] to-transparent" />
-              {isAdmin && <EditButton onClick={() => openEditWindow('quickStats', quickStats, 'Edit Metrics', 'Overall Progress')} className="absolute top-2 right-2" />}
               <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-3">Overall Progress</p>
               <p className="text-4xl font-bold font-mono text-[#00d4ff]"><AnimatedCounter value={overallProgress} />%</p>
               <div className="mt-3 h-1.5 bg-[#21262d] rounded-full overflow-hidden">
@@ -248,7 +160,6 @@ export default function Home() {
 
             <div className="bg-[#161b22]/80 backdrop-blur border border-[#a371f7]/30 rounded-xl p-5 relative overflow-hidden group hover:border-[#a371f7]/60 transition-all">
               <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#a371f7] to-transparent" />
-              {isAdmin && <EditButton onClick={() => openEditWindow('quickStats', quickStats, 'Edit Metrics', 'Students Reached')} className="absolute top-2 right-2" />}
               <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-3">Students Reached</p>
               <p className="text-4xl font-bold font-mono text-[#a371f7]"><AnimatedCounter value={quickStats?.totalStudentsReached || 0} /></p>
               <p className="text-xs text-[#6e7681] mt-1">this semester</p>
@@ -256,7 +167,6 @@ export default function Home() {
 
             <div className="bg-[#161b22]/80 backdrop-blur border border-[#f85149]/30 rounded-xl p-5 relative overflow-hidden group hover:border-[#f85149]/60 transition-all">
               <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#f85149] to-transparent" />
-              {isAdmin && <EditButton onClick={() => openEditWindow('quickStats', quickStats, 'Edit Metrics', 'Events')} className="absolute top-2 right-2" />}
               <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-3">Events</p>
               <p className="text-4xl font-bold font-mono text-[#f85149]"><AnimatedCounter value={quickStats?.eventsThisMonth || 0} /></p>
               <p className="text-xs text-[#6e7681] mt-1">this month</p>
@@ -290,12 +200,6 @@ export default function Home() {
             <div className="grid md:grid-cols-2 gap-4">
               {pinnedAnnouncements.slice(0, 2).map(a => (
                 <div key={a.id} className="bg-gradient-to-br from-[#161b22] to-[#0d1117] border border-[#d29922]/30 rounded-xl p-6 hover:border-[#d29922]/60 transition-all group relative">
-                  {isAdmin && (
-                    <EditButton
-                      onClick={() => openEditWindow('announcement', a, `Edit: ${a.title}`, 'Announcement')}
-                      className="absolute top-3 right-3"
-                    />
-                  )}
                   <div className="flex items-start justify-between mb-3">
                     <StatusBadge status={
                       a.category === 'urgent' ? 'danger' :
@@ -412,13 +316,6 @@ export default function Home() {
                       onMouseEnter={() => setHoveredPolicy(policy.id)}
                       onMouseLeave={() => setHoveredPolicy(null)}
                     >
-                      {isAdmin && (
-                        <EditButton
-                          onClick={() => openEditWindow('policy', policy, `Edit: ${policy.title}`, `${dept?.name} Department`)}
-                          className="absolute top-3 right-3"
-                          size="md"
-                        />
-                      )}
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
                           <span className="text-xl">{dept?.icon}</span>
@@ -510,13 +407,6 @@ export default function Home() {
 
             {/* Budget Overview */}
             <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-6 group relative">
-              {isAdmin && (
-                <EditButton
-                  onClick={() => openEditWindow('budget', budgetData, 'Edit Budget', 'Financial Overview')}
-                  className="absolute top-3 right-3"
-                  size="md"
-                />
-              )}
               <h3 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-widest mb-5">Budget Allocation</h3>
               <div className="grid grid-cols-3 gap-4 mb-5">
                 <div className="text-center">
@@ -603,41 +493,6 @@ export default function Home() {
           </div>
         </div>
       </main>
-
-      {/* EDIT WINDOW */}
-      <EditWindow
-        isOpen={editWindow.isOpen}
-        onClose={closeEditWindow}
-        title={editWindow.title}
-        subtitle={editWindow.subtitle}
-        type={editWindow.type}
-        data={editWindow.data}
-        onSave={handleEditWindowSave}
-      >
-        {({ data, onChange, isDirty }) => {
-          if (!data) return null
-
-          switch (editWindow.type) {
-            case 'policy':
-              return <PolicyEditor data={data} onChange={onChange} departments={departments} />
-            case 'announcement':
-              return <AnnouncementEditor data={data} onChange={onChange} />
-            case 'quickStats':
-              return <QuickStatsEditor data={data} onChange={onChange} />
-            case 'budget':
-              return <BudgetEditor data={data} onChange={onChange} />
-            default:
-              return null
-          }
-        }}
-      </EditWindow>
-
-      <style jsx global>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </Layout>
   )
 }

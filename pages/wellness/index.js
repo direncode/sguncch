@@ -4,6 +4,15 @@ import Layout from '../../components/Layout'
 import { Input, Select, Textarea } from '../../components/FormInput'
 import { useApp } from '../../lib/store'
 import { wellnessResources, departmentContacts, departmentFAQs, departmentAnnouncements, serviceGuides } from '../../lib/data'
+import {
+  EditableText,
+  EditableNumber,
+  EditableToggle,
+  EditableBulletList,
+  EditableLocationCard,
+  AddItemButton,
+  AdminEditBanner,
+} from '../../components/InlineEditor'
 
 export default function WellnessPage() {
   const [activeTab, setActiveTab] = useState('overview')
@@ -11,7 +20,18 @@ export default function WellnessPage() {
   const [showSafetyPlanForm, setShowSafetyPlanForm] = useState(false)
   const [showVolunteerForm, setShowVolunteerForm] = useState(false)
   const [submitted, setSubmitted] = useState(null)
-  const { policies } = useApp()
+  const {
+    policies,
+    isAdmin,
+    pageContent,
+    updatePageContent,
+    updatePageContentItem,
+    addPageContentItem,
+    deletePageContentItem,
+  } = useApp()
+
+  // Get wellness page content
+  const content = pageContent?.wellness || {}
 
   const deptPolicies = policies.filter(p => p.department === 'wellness')
 
@@ -109,18 +129,21 @@ export default function WellnessPage() {
             <p className="font-semibold text-white uppercase text-sm tracking-wide">In Crisis? Get immediate help:</p>
           </div>
           <div className="flex flex-wrap gap-3 text-sm">
-            <a href="tel:988" className="bg-white text-[#b62324] px-4 py-2 rounded font-mono font-bold hover:bg-[#f0f6fc] transition-colors">
-              CALL 988
+            <a href={`tel:${content.crisisHotlines?.national || '988'}`} className="bg-white text-[#b62324] px-4 py-2 rounded font-mono font-bold hover:bg-[#f0f6fc] transition-colors">
+              CALL {content.crisisHotlines?.national || '988'}
             </a>
-            <a href="sms:741741" className="bg-white/10 border border-white/30 text-white px-4 py-2 rounded font-mono hover:bg-white/20 transition-colors">
-              TEXT 741741
+            <a href={`sms:${content.crisisHotlines?.textLine || '741741'}`} className="bg-white/10 border border-white/30 text-white px-4 py-2 rounded font-mono hover:bg-white/20 transition-colors">
+              TEXT {content.crisisHotlines?.textLine || '741741'}
             </a>
-            <a href="tel:919-966-3658" className="bg-white/10 border border-white/30 text-white px-4 py-2 rounded font-mono hover:bg-white/20 transition-colors">
-              CAPS: 919-966-3658
+            <a href={`tel:${content.crisisHotlines?.caps || '919-966-3658'}`} className="bg-white/10 border border-white/30 text-white px-4 py-2 rounded font-mono hover:bg-white/20 transition-colors">
+              CAPS: {content.crisisHotlines?.caps || '919-966-3658'}
             </a>
           </div>
         </div>
       </div>
+
+      {/* Admin Edit Banner */}
+      <AdminEditBanner />
 
       {/* Tabs */}
       <div className="bg-[#0d1117] sticky top-16 z-40 border-b border-[#30363d]">
@@ -219,27 +242,25 @@ export default function WellnessPage() {
                 <div>
                   <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Drop-In Locations</h3>
                   <div className="space-y-4">
-                    {[
-                      { name: 'CAPS Main Office', location: 'Campus Health Building', hours: 'Mon-Wed 2-4pm', status: 'active' },
-                      { name: 'Student Union', location: 'Room 3205', hours: 'Tue-Thu 1-3pm', status: 'active' },
-                      { name: 'South Campus Hub', location: 'Ram Village Community Center', hours: 'Wed-Fri 3-5pm', status: 'coming' },
-                    ].map((loc, i) => (
-                      <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h4 className="font-semibold text-[#f0f6fc]">{loc.name}</h4>
-                            <p className="text-sm text-[#8b949e] mt-1">{loc.location}</p>
-                            <p className="text-sm text-[#6e7681] font-mono mt-1">{loc.hours}</p>
-                          </div>
-                          <span className={`px-2 py-1 rounded text-xs font-mono ${
-                            loc.status === 'active' ? 'bg-[#3fb950]/10 text-[#3fb950] border border-[#3fb950]' :
-                            'bg-[#d29922]/10 text-[#d29922] border border-[#d29922]'
-                          }`}>
-                            {loc.status === 'active' ? 'ACTIVE' : 'COMING SOON'}
-                          </span>
-                        </div>
-                      </div>
+                    {(content.capsLocations || []).map((loc) => (
+                      <EditableLocationCard
+                        key={loc.id}
+                        location={loc}
+                        onUpdate={(updated) => updatePageContentItem('wellness', 'capsLocations', loc.id, updated)}
+                        onDelete={() => deletePageContentItem('wellness', 'capsLocations', loc.id)}
+                        showPlanB={false}
+                        showNarcan={false}
+                      />
                     ))}
+                    <AddItemButton
+                      onClick={() => addPageContentItem('wellness', 'capsLocations', {
+                        name: 'New Location',
+                        location: 'Building Name',
+                        hours: 'Hours TBD',
+                        status: 'coming',
+                      })}
+                      label="Add Location"
+                    />
                   </div>
                 </div>
 
@@ -300,15 +321,30 @@ export default function WellnessPage() {
 
                   <div className="grid grid-cols-3 gap-4 mb-6">
                     <div className="text-center">
-                      <p className="text-2xl font-mono font-bold text-[#3fb950]">247</p>
+                      <p className="text-2xl font-mono font-bold text-[#3fb950]">
+                        <EditableNumber
+                          value={content.rideStats?.ridesGiven || 247}
+                          onChange={(val) => updatePageContent('wellness', 'rideStats', { ...content.rideStats, ridesGiven: val })}
+                        />
+                      </p>
                       <p className="text-xs text-[#6e7681] uppercase">Rides Given</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-2xl font-mono font-bold text-[#58a6ff]">32</p>
+                      <p className="text-2xl font-mono font-bold text-[#58a6ff]">
+                        <EditableNumber
+                          value={content.rideStats?.volunteers || 32}
+                          onChange={(val) => updatePageContent('wellness', 'rideStats', { ...content.rideStats, volunteers: val })}
+                        />
+                      </p>
                       <p className="text-xs text-[#6e7681] uppercase">Volunteers</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-2xl font-mono font-bold text-[#a371f7]">4.9</p>
+                      <p className="text-2xl font-mono font-bold text-[#a371f7]">
+                        <EditableNumber
+                          value={content.rideStats?.avgRating || 4.9}
+                          onChange={(val) => updatePageContent('wellness', 'rideStats', { ...content.rideStats, avgRating: val })}
+                        />
+                      </p>
                       <p className="text-xs text-[#6e7681] uppercase">Avg Rating</p>
                     </div>
                   </div>
@@ -432,46 +468,77 @@ export default function WellnessPage() {
               {/* Location Map */}
               <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5">Distribution Locations</h3>
               <div className="grid md:grid-cols-3 gap-4 mb-10">
-                {[
-                  { name: 'Campus Health', address: 'James A. Taylor Building', planb: true, narcan: true, hours: 'M-F 8am-5pm' },
-                  { name: 'Student Union', address: 'Room 1301 (Info Desk)', planb: true, narcan: true, hours: 'Daily 8am-10pm' },
-                  { name: 'Hinton James', address: 'Front Desk', planb: false, narcan: true, hours: '24/7' },
-                  { name: 'Granville Towers', address: 'RA Office', planb: false, narcan: true, hours: '24/7' },
-                  { name: 'Morrison Residence', address: 'Community Office', planb: false, narcan: true, hours: 'M-F 9am-5pm' },
-                  { name: 'Rams Head', address: 'Recreation Desk', planb: true, narcan: true, hours: 'Daily 6am-11pm' },
-                ].map((loc, i) => (
-                  <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                    <h4 className="font-semibold text-[#f0f6fc] mb-1">{loc.name}</h4>
-                    <p className="text-sm text-[#8b949e] mb-2">{loc.address}</p>
-                    <p className="text-xs text-[#6e7681] font-mono mb-3">{loc.hours}</p>
-                    <div className="flex gap-2">
-                      {loc.planb && <span className="px-2 py-0.5 rounded text-xs bg-[#a371f7]/10 text-[#a371f7] border border-[#a371f7]">Plan B</span>}
-                      {loc.narcan && <span className="px-2 py-0.5 rounded text-xs bg-[#3fb950]/10 text-[#3fb950] border border-[#3fb950]">Narcan</span>}
-                    </div>
-                  </div>
+                {(content.distributionLocations || []).map((loc) => (
+                  <EditableLocationCard
+                    key={loc.id}
+                    location={loc}
+                    onUpdate={(updated) => updatePageContentItem('wellness', 'distributionLocations', loc.id, updated)}
+                    onDelete={() => deletePageContentItem('wellness', 'distributionLocations', loc.id)}
+                    showPlanB={true}
+                    showNarcan={true}
+                  />
                 ))}
+                <AddItemButton
+                  onClick={() => addPageContentItem('wellness', 'distributionLocations', {
+                    name: 'New Location',
+                    address: 'Building/Room',
+                    hours: 'Hours TBD',
+                    planb: false,
+                    narcan: true,
+                  })}
+                  label="Add Location"
+                  className="h-full min-h-[120px] flex items-center justify-center"
+                />
               </div>
 
               {/* Education Section */}
               <div className="grid lg:grid-cols-2 gap-8">
                 <div className="bg-[#161b22] border border-[#a371f7] rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-[#f0f6fc] mb-4">About Plan B</h3>
-                  <p className="text-sm text-[#8b949e] mb-4">Plan B (levonorgestrel) is emergency contraception that can prevent pregnancy when taken within 72 hours of unprotected sex. It's most effective when taken as soon as possible.</p>
-                  <ul className="space-y-2 text-sm text-[#8b949e]">
-                    <li>• Available free to all UNC students</li>
-                    <li>• No appointment or ID needed at most locations</li>
-                    <li>• Confidential - no questions asked</li>
-                  </ul>
+                  <h3 className="text-lg font-semibold text-[#f0f6fc] mb-4">
+                    <EditableText
+                      value={content.aboutPlanB?.title || 'About Plan B'}
+                      onChange={(val) => updatePageContent('wellness', 'aboutPlanB', { ...content.aboutPlanB, title: val })}
+                    />
+                  </h3>
+                  <p className="text-sm text-[#8b949e] mb-4">
+                    <EditableText
+                      value={content.aboutPlanB?.description || "Plan B (levonorgestrel) is emergency contraception that can prevent pregnancy when taken within 72 hours of unprotected sex. It's most effective when taken as soon as possible."}
+                      onChange={(val) => updatePageContent('wellness', 'aboutPlanB', { ...content.aboutPlanB, description: val })}
+                      multiline
+                    />
+                  </p>
+                  <EditableBulletList
+                    items={content.aboutPlanB?.bullets || [
+                      'Available free to all UNC students',
+                      'No appointment or ID needed at most locations',
+                      'Confidential - no questions asked',
+                    ]}
+                    onChange={(items) => updatePageContent('wellness', 'aboutPlanB', { ...content.aboutPlanB, bullets: items })}
+                  />
                 </div>
 
                 <div className="bg-[#161b22] border border-[#3fb950] rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-[#f0f6fc] mb-4">About Narcan (Naloxone)</h3>
-                  <p className="text-sm text-[#8b949e] mb-4">Narcan is a life-saving medication that can reverse an opioid overdose. It's safe, easy to use, and can be the difference between life and death.</p>
-                  <ul className="space-y-2 text-sm text-[#8b949e]">
-                    <li>• Free training available monthly</li>
-                    <li>• Nasal spray - no needles required</li>
-                    <li>• Good Samaritan law protects you</li>
-                  </ul>
+                  <h3 className="text-lg font-semibold text-[#f0f6fc] mb-4">
+                    <EditableText
+                      value={content.aboutNarcan?.title || 'About Narcan (Naloxone)'}
+                      onChange={(val) => updatePageContent('wellness', 'aboutNarcan', { ...content.aboutNarcan, title: val })}
+                    />
+                  </h3>
+                  <p className="text-sm text-[#8b949e] mb-4">
+                    <EditableText
+                      value={content.aboutNarcan?.description || "Narcan is a life-saving medication that can reverse an opioid overdose. It's safe, easy to use, and can be the difference between life and death."}
+                      onChange={(val) => updatePageContent('wellness', 'aboutNarcan', { ...content.aboutNarcan, description: val })}
+                      multiline
+                    />
+                  </p>
+                  <EditableBulletList
+                    items={content.aboutNarcan?.bullets || [
+                      'Free training available monthly',
+                      'Nasal spray - no needles required',
+                      'Good Samaritan law protects you',
+                    ]}
+                    onChange={(items) => updatePageContent('wellness', 'aboutNarcan', { ...content.aboutNarcan, bullets: items })}
+                  />
                   <button className="mt-4 bg-[#3fb950] text-[#0d1117] px-5 py-2.5 rounded font-semibold hover:bg-[#46c356] transition-colors text-sm">
                     Sign Up for Training
                   </button>
