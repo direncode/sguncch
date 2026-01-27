@@ -22,7 +22,7 @@ export default function AdminDashboard() {
   const {
     isAdmin, isLoaded, policies, operationalData, budgetData, announcements,
     activityLog, feedback, quickStats,
-    updatePolicy, updatePolicyMetrics,
+    updatePolicy, updatePolicyMetrics, logPolicyProgress,
     addAnnouncement, deleteAnnouncement, pinAnnouncement,
     updateFeedbackStatus,
     addTechDevice, updateTechDevice, deleteTechDevice, addTechLoan, updateTechLoan,
@@ -41,6 +41,7 @@ export default function AdminDashboard() {
   const [loanForm, setLoanForm] = useState({ studentName: '', studentEmail: '', deviceType: '', dueDate: '' })
   const [trainingForm, setTrainingForm] = useState({ type: 'mentalHealthFirstAid', title: '', date: '', location: '', capacity: 0 })
   const [transactionForm, setTransactionForm] = useState({ type: 'expense', amount: 0, description: '', category: '' })
+  const [progressLogForm, setProgressLogForm] = useState({ policyId: null, progress: 0, note: '' })
   const [toast, setToast] = useState(null)
 
   useEffect(() => {
@@ -306,15 +307,29 @@ export default function AdminDashboard() {
                 <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Recent Activity</span>
               </div>
               <div className="space-y-1">
-                {activityLog.slice(0, 8).map(entry => (
-                  <div key={entry.id} className="flex items-center gap-4 py-3 px-3 rounded-lg hover:bg-[#21262d] transition-colors">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#00d4ff]" />
-                    <div className="flex-1">
-                      <p className="text-sm text-[#f0f6fc]">{entry.details}</p>
-                      <p className="text-xs font-mono text-[#6e7681]">{formatDate(entry.timestamp)} at {formatTime(entry.timestamp)}</p>
+                {activityLog.slice(0, 8).map(entry => {
+                  const dept = departments.find(d => d.id === entry.category)
+                  const hasProgress = entry.metadata?.progress !== undefined
+                  return (
+                    <div key={entry.id} className="flex items-center gap-4 py-3 px-3 rounded-lg hover:bg-[#21262d] transition-colors">
+                      <div className={`w-1.5 h-1.5 rounded-full ${hasProgress ? 'bg-[#3fb950]' : 'bg-[#00d4ff]'}`} />
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          {dept && <span className="text-sm">{dept.icon}</span>}
+                          <p className="text-sm text-[#f0f6fc]">{entry.details}</p>
+                          {hasProgress && (
+                            <span className="px-2 py-0.5 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded text-[10px] font-mono text-[#3fb950]">
+                              {entry.metadata.progress}%
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs font-mono text-[#6e7681]">
+                          {dept ? dept.name : entry.category} &middot; {formatDate(entry.timestamp)} at {formatTime(entry.timestamp)}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
                 {activityLog.length === 0 && <p className="text-[#6e7681] text-sm py-4">No activity yet</p>}
               </div>
             </div>
@@ -441,7 +456,15 @@ export default function AdminDashboard() {
                       </select>
                     </div>
                     <div>
-                      <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Progress <span className="text-[#00d4ff] font-mono">{policy.progress}%</span></label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Progress <span className="text-[#00d4ff] font-mono">{policy.progress}%</span></label>
+                        <button
+                          onClick={() => { setProgressLogForm({ policyId: policy.id, progress: policy.progress, note: '' }); setShowModal('progressLog') }}
+                          className="text-[10px] font-semibold text-[#00d4ff] uppercase tracking-widest hover:text-[#00d4ff]/80 transition flex items-center gap-1"
+                        >
+                          <span>+</span> Log
+                        </button>
+                      </div>
                       <input type="range" min="0" max="100" value={policy.progress} onChange={(e) => updatePolicy(policy.id, { progress: parseInt(e.target.value) })} className="w-full mt-4 accent-[#00d4ff]" />
                     </div>
                     <div>
@@ -477,6 +500,67 @@ export default function AdminDashboard() {
                 </div>
               ))}
             </div>
+
+            {showModal === 'progressLog' && progressLogForm.policyId && (
+              <Modal title="Log Progress Update" onClose={() => setShowModal(null)}>
+                {(() => {
+                  const policy = policies.find(p => p.id === progressLogForm.policyId)
+                  const dept = departments.find(d => d.id === policy?.department)
+                  return (
+                    <form onSubmit={(e) => {
+                      e.preventDefault()
+                      logPolicyProgress(progressLogForm.policyId, progressLogForm.progress, progressLogForm.note)
+                      setProgressLogForm({ policyId: null, progress: 0, note: '' })
+                      setShowModal(null)
+                      notify('Progress logged')
+                    }} className="space-y-4">
+                      <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
+                        <div className="flex items-center gap-3 mb-2">
+                          <span className="text-xl">{dept?.icon}</span>
+                          <div>
+                            <p className="font-semibold text-[#f0f6fc]">{policy?.title}</p>
+                            <p className="text-xs text-[#6e7681] font-mono uppercase">{dept?.name}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Progress</label>
+                          <span className="text-lg font-mono font-semibold text-[#00d4ff]">{progressLogForm.progress}%</span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={progressLogForm.progress}
+                          onChange={(e) => setProgressLogForm({ ...progressLogForm, progress: parseInt(e.target.value) })}
+                          className="w-full accent-[#00d4ff]"
+                        />
+                        <div className="flex justify-between text-[10px] text-[#6e7681] mt-1 font-mono">
+                          <span>0%</span>
+                          <span>50%</span>
+                          <span>100%</span>
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-2">Update Note</label>
+                        <textarea
+                          value={progressLogForm.note}
+                          onChange={(e) => setProgressLogForm({ ...progressLogForm, note: e.target.value })}
+                          placeholder="Describe what was accomplished..."
+                          rows={3}
+                          className="w-full px-4 py-3 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] placeholder-[#6e7681] resize-none focus:ring-1 focus:ring-[#00d4ff] focus:border-[#00d4ff] text-sm"
+                        />
+                      </div>
+                      <div className="flex gap-3 pt-2">
+                        <Button type="submit">Log Progress</Button>
+                        <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
+                      </div>
+                    </form>
+                  )
+                })()}
+              </Modal>
+            )}
           </div>
         )}
 
@@ -869,16 +953,42 @@ export default function AdminDashboard() {
 
             <div className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
               <div className="max-h-[600px] overflow-y-auto">
-                {activityLog.map(entry => (
-                  <div key={entry.id} className="flex items-center gap-4 px-6 py-4 border-b border-[#21262d] hover:bg-[#21262d]/50 transition-colors">
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#00d4ff]" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-[#f0f6fc] truncate">{entry.details}</p>
-                      <p className="text-xs font-mono text-[#6e7681]">{entry.category} &middot; {entry.action}</p>
+                {activityLog.map(entry => {
+                  const dept = departments.find(d => d.id === entry.category)
+                  const hasProgress = entry.metadata?.progress !== undefined
+                  return (
+                    <div key={entry.id} className="flex items-center gap-4 px-6 py-4 border-b border-[#21262d] hover:bg-[#21262d]/50 transition-colors">
+                      <div className="flex items-center gap-3 min-w-[40px]">
+                        {dept && <span className="text-lg">{dept.icon}</span>}
+                        {!dept && <div className={`w-1.5 h-1.5 rounded-full ${hasProgress ? 'bg-[#3fb950]' : 'bg-[#00d4ff]'}`} />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm text-[#f0f6fc]">{entry.details}</p>
+                          {hasProgress && (
+                            <span className="px-2 py-0.5 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded text-[10px] font-mono font-semibold text-[#3fb950]">
+                              {entry.metadata.progress}%
+                            </span>
+                          )}
+                          {entry.metadata?.previousProgress !== undefined && hasProgress && (
+                            <span className="text-[10px] font-mono text-[#6e7681]">
+                              (was {entry.metadata.previousProgress}%)
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono uppercase ${
+                            dept ? 'bg-[#00d4ff]/10 text-[#00d4ff]' : 'bg-[#21262d] text-[#6e7681]'
+                          }`}>
+                            {dept ? dept.name : entry.category}
+                          </span>
+                          <span className="text-[10px] font-mono text-[#6e7681]">{entry.action}</span>
+                        </div>
+                      </div>
+                      <span className="text-xs font-mono text-[#6e7681] whitespace-nowrap">{formatDate(entry.timestamp)} {formatTime(entry.timestamp)}</span>
                     </div>
-                    <span className="text-xs font-mono text-[#6e7681] whitespace-nowrap">{formatDate(entry.timestamp)} {formatTime(entry.timestamp)}</span>
-                  </div>
-                ))}
+                  )
+                })}
                 {activityLog.length === 0 && (
                   <div className="p-12 text-center text-[#6e7681]">No activity yet</div>
                 )}
