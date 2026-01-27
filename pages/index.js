@@ -27,9 +27,7 @@ export default function Home() {
     'academic': '/academic',
     'civic': '/civic',
     'communications': '/communications',
-    'dei': '/dei',
     'environmental': '/environmental',
-    'external': '/external',
   }
 
   const recentActivity = activityLog?.slice(0, 5) || []

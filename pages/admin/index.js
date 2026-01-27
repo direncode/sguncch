@@ -696,16 +696,11 @@ export default function AdminDashboard() {
                 <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Training Programs</span>
                 <Button variant="secondary" onClick={() => setShowModal('training')}>Add Session</Button>
               </div>
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid md:grid-cols-1 gap-4">
                 <div className="bg-[#0d1117] border border-[#a371f7]/30 rounded-lg p-6">
                   <h4 className="font-medium text-[#f0f6fc]">Mental Health First Aid</h4>
                   <p className="text-3xl font-mono font-semibold text-[#a371f7] mt-3">{operationalData.trainings.mentalHealthFirstAid.totalTrained}</p>
                   <p className="text-sm text-[#8b949e] mt-1">trained &middot; {operationalData.trainings.mentalHealthFirstAid.sessions.length} sessions</p>
-                </div>
-                <div className="bg-[#0d1117] border border-[#d29922]/30 rounded-lg p-6">
-                  <h4 className="font-medium text-[#f0f6fc]">Bias Response</h4>
-                  <p className="text-3xl font-mono font-semibold text-[#d29922] mt-3">{operationalData.trainings.biasResponse.totalTrained}</p>
-                  <p className="text-sm text-[#8b949e] mt-1">trained &middot; {operationalData.trainings.biasResponse.sessions.length} sessions</p>
                 </div>
               </div>
             </div>
@@ -752,7 +747,6 @@ export default function AdminDashboard() {
                 <form onSubmit={(e) => { e.preventDefault(); addTrainingSession(trainingForm.type, trainingForm); setTrainingForm({ type: 'mentalHealthFirstAid', title: '', date: '', location: '', capacity: 0 }); setShowModal(null); notify('Session added') }} className="space-y-4">
                   <Select label="Type" value={trainingForm.type} onChange={(e) => setTrainingForm({ ...trainingForm, type: e.target.value })} options={[
                     { value: 'mentalHealthFirstAid', label: 'Mental Health First Aid' },
-                    { value: 'biasResponse', label: 'Bias Response' },
                   ]} />
                   <Input label="Title" value={trainingForm.title} onChange={(e) => setTrainingForm({ ...trainingForm, title: e.target.value })} required />
                   <Input label="Date" type="date" value={trainingForm.date} onChange={(e) => setTrainingForm({ ...trainingForm, date: e.target.value })} required />

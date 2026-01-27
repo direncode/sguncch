@@ -277,7 +277,7 @@ ON CONFLICT (id) DO NOTHING;
 -- ============================================
 CREATE TABLE IF NOT EXISTS training_sessions (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  type TEXT NOT NULL CHECK (type IN ('mentalHealthFirstAid', 'biasResponse')),
+  type TEXT NOT NULL CHECK (type IN ('mentalHealthFirstAid')),
   title TEXT,
   date DATE,
   location TEXT,
@@ -300,7 +300,6 @@ CREATE POLICY "Admins can manage training" ON training_sessions
 CREATE TABLE IF NOT EXISTS training_stats (
   id INTEGER PRIMARY KEY DEFAULT 1,
   mental_health_trained INTEGER DEFAULT 0,
-  bias_response_trained INTEGER DEFAULT 0,
   CONSTRAINT single_training_stats CHECK (id = 1)
 );
 
@@ -312,8 +311,8 @@ CREATE POLICY "Anyone can read training stats" ON training_stats
 CREATE POLICY "Admins can update training stats" ON training_stats
   FOR UPDATE USING (true);
 
-INSERT INTO training_stats (id, mental_health_trained, bias_response_trained)
-VALUES (1, 0, 0)
+INSERT INTO training_stats (id, mental_health_trained)
+VALUES (1, 0)
 ON CONFLICT (id) DO NOTHING;
 
 -- ============================================
