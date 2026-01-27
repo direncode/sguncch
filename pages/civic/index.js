@@ -2,7 +2,7 @@ import { useState } from 'react'
 import Head from 'next/head'
 import Layout from '../../components/Layout'
 import { Input, Select, Textarea, Button, Checkbox } from '../../components/FormInput'
-import { policies } from '../../lib/data'
+import { useApp } from '../../lib/store'
 
 export default function CivicPage() {
   const [activeTab, setActiveTab] = useState('voter')
@@ -10,6 +10,7 @@ export default function CivicPage() {
   const [showFellowsForm, setShowFellowsForm] = useState(false)
   const [registrationForm, setRegistrationForm] = useState({ name: '', email: '', dob: '', address: '', county: '' })
   const [submitted, setSubmitted] = useState(null)
+  const { policies } = useApp()
 
   const deptPolicies = policies.filter(p => p.department === 'civic')
 

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import Head from 'next/head'
 import Layout from '../../components/Layout'
 import { Input, Select, Textarea, Button, Checkbox } from '../../components/FormInput'
-import { policies, pantryLocations } from '../../lib/data'
+import { useApp } from '../../lib/store'
 
 export default function BasicNeedsPage() {
   const [activeTab, setActiveTab] = useState('food')
@@ -11,7 +11,9 @@ export default function BasicNeedsPage() {
   const [housingForm, setHousingForm] = useState({ name: '', email: '', pid: '', situation: '', urgency: '', amount: '' })
   const [techForm, setTechForm] = useState({ name: '', email: '', pid: '', device: '', reason: '', duration: '' })
   const [submitted, setSubmitted] = useState(null)
+  const { policies, operationalData } = useApp()
 
+  const pantryLocations = operationalData?.foodPantry?.locations || []
   const deptPolicies = policies.filter(p => p.department === 'basic-needs')
 
   return (

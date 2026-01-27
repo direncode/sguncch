@@ -2,7 +2,8 @@ import { useState } from 'react'
 import Head from 'next/head'
 import Layout from '../../components/Layout'
 import { Input, Select, Textarea, Button } from '../../components/FormInput'
-import { policies, culturalCenters } from '../../lib/data'
+import { useApp } from '../../lib/store'
+import { culturalCenters } from '../../lib/data'
 
 export default function DEIPage() {
   const [activeTab, setActiveTab] = useState('centers')
@@ -10,6 +11,7 @@ export default function DEIPage() {
   const [showNominationForm, setShowNominationForm] = useState(false)
   const [showReportForm, setShowReportForm] = useState(false)
   const [submitted, setSubmitted] = useState(null)
+  const { policies } = useApp()
 
   const deptPolicies = policies.filter(p => p.department === 'dei')
 

@@ -2,16 +2,19 @@ import { useState } from 'react'
 import Head from 'next/head'
 import Layout from '../../components/Layout'
 import { Input, Button } from '../../components/FormInput'
-import { policies, budgetData, townHallEvents, getOverallProgress, getStatusCounts } from '../../lib/data'
+import { useApp } from '../../lib/store'
+import { getOverallProgress, getStatusCounts } from '../../lib/data'
 
 export default function CommunicationsPage() {
   const [activeTab, setActiveTab] = useState('transparency')
   const [email, setEmail] = useState('')
   const [subscribed, setSubscribed] = useState(false)
+  const { policies, budgetData, operationalData } = useApp()
 
+  const townHallEvents = operationalData?.events?.townHalls || []
   const deptPolicies = policies.filter(p => p.department === 'communications')
-  const overallProgress = getOverallProgress()
-  const statusCounts = getStatusCounts()
+  const overallProgress = getOverallProgress(policies)
+  const statusCounts = getStatusCounts(policies)
 
   return (
     <Layout>

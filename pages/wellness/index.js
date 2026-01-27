@@ -3,7 +3,8 @@ import Head from 'next/head'
 import Link from 'next/link'
 import Layout from '../../components/Layout'
 import { Input, Select, Textarea, Button, Checkbox } from '../../components/FormInput'
-import { policies, wellnessResources } from '../../lib/data'
+import { useApp } from '../../lib/store'
+import { wellnessResources } from '../../lib/data'
 
 export default function WellnessPage() {
   const [activeTab, setActiveTab] = useState('resources')
@@ -12,6 +13,7 @@ export default function WellnessPage() {
   const [trainingForm, setTrainingForm] = useState({ name: '', email: '', pid: '', role: '', experience: '' })
   const [ambassadorForm, setAmbassadorForm] = useState({ name: '', email: '', pid: '', year: '', major: '', motivation: '' })
   const [submitted, setSubmitted] = useState(null)
+  const { policies } = useApp()
 
   const deptPolicies = policies.filter(p => p.department === 'wellness')
 

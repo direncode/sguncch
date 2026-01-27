@@ -2,13 +2,14 @@ import { useState } from 'react'
 import Head from 'next/head'
 import Layout from '../../components/Layout'
 import { Input, Select, Textarea, Button } from '../../components/FormInput'
-import { policies } from '../../lib/data'
+import { useApp } from '../../lib/store'
 
 export default function EnvironmentalPage() {
   const [activeTab, setActiveTab] = useState('carbon')
   const [showProjectForm, setShowProjectForm] = useState(false)
   const [showCommitteeForm, setShowCommitteeForm] = useState(false)
   const [submitted, setSubmitted] = useState(null)
+  const { policies } = useApp()
 
   const deptPolicies = policies.filter(p => p.department === 'environmental')
 

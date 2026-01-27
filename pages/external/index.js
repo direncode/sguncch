@@ -2,12 +2,13 @@ import { useState } from 'react'
 import Head from 'next/head'
 import Layout from '../../components/Layout'
 import { Input, Select, Textarea, Button, Checkbox } from '../../components/FormInput'
-import { policies } from '../../lib/data'
+import { useApp } from '../../lib/store'
 
 export default function ExternalPage() {
   const [activeTab, setActiveTab] = useState('tuition')
   const [showLobbyForm, setShowLobbyForm] = useState(false)
   const [submitted, setSubmitted] = useState(null)
+  const { policies } = useApp()
 
   const deptPolicies = policies.filter(p => p.department === 'external')
 

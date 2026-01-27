@@ -2,12 +2,14 @@ import { useState } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import Layout from '../components/Layout'
-import { departments, policies, getOverallProgress, getStatusCounts, budgetData } from '../lib/data'
+import { useApp } from '../lib/store'
+import { departments, getOverallProgress, getStatusCounts } from '../lib/data'
 
 export default function Home() {
   const [selectedDept, setSelectedDept] = useState(null)
-  const overallProgress = getOverallProgress()
-  const statusCounts = getStatusCounts()
+  const { policies, budgetData } = useApp()
+  const overallProgress = getOverallProgress(policies)
+  const statusCounts = getStatusCounts(policies)
 
   const filteredPolicies = selectedDept
     ? policies.filter(p => p.department === selectedDept)

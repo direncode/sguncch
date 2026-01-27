@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { useRouter } from 'next/router'
+import DemoBanner from './DemoBanner'
 
 const navigation = [
   { name: 'Home', href: '/' },
@@ -18,6 +19,9 @@ export default function Layout({ children }) {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Demo Banner - Always visible at top */}
+      <DemoBanner />
+
       {/* Header */}
       <header className="bg-[#13294B] text-white sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4">

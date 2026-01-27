@@ -2,7 +2,7 @@ import { useState } from 'react'
 import Head from 'next/head'
 import Layout from '../../components/Layout'
 import { Input, Select, Textarea, Button } from '../../components/FormInput'
-import { policies, researchPositions } from '../../lib/data'
+import { useApp } from '../../lib/store'
 
 export default function AcademicPage() {
   const [activeTab, setActiveTab] = useState('research')
@@ -10,11 +10,13 @@ export default function AcademicPage() {
   const [showFeedbackForm, setShowFeedbackForm] = useState(false)
   const [feedbackForm, setFeedbackForm] = useState({ name: '', email: '', type: '', issue: '', details: '' })
   const [submitted, setSubmitted] = useState(false)
+  const { policies, operationalData } = useApp()
 
+  const researchPositions = operationalData?.research?.positions || []
   const deptPolicies = policies.filter(p => p.department === 'academic')
   const filteredPositions = researchPositions.filter(p =>
-    p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    p.department.toLowerCase().includes(searchTerm.toLowerCase())
+    p.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.department?.toLowerCase().includes(searchTerm.toLowerCase())
   )
 
   return (
