@@ -1,10 +1,17 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
 import Link from 'next/link'
 import { useApp } from '../../lib/store'
 import { departments, getOverallProgress, getStatusCounts } from '../../lib/data'
+import {
+  MetricCard, StatusBadge, DonutChart, HorizontalBarChart, ProgressBar,
+  LiveIndicator, Panel, AlertBanner, SearchInput, TabNav, Button
+} from '../../components/FormInput'
 
+// ==========================================
+// UTILITY FUNCTIONS
+// ==========================================
 const formatDate = (dateString) => {
   if (!dateString) return ''
   const date = new Date(dateString)
@@ -17,7 +24,23 @@ const formatTime = (dateString) => {
   return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
 }
 
-// Live clock component
+const formatRelativeTime = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  const now = new Date()
+  const diff = now - date
+  const minutes = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+  if (minutes < 1) return 'Just now'
+  if (minutes < 60) return `${minutes}m ago`
+  if (hours < 24) return `${hours}h ago`
+  return `${days}d ago`
+}
+
+// ==========================================
+// LIVE CLOCK COMPONENT
+// ==========================================
 const LiveClock = () => {
   const [time, setTime] = useState(new Date())
   useEffect(() => {
@@ -25,17 +48,287 @@ const LiveClock = () => {
     return () => clearInterval(interval)
   }, [])
   return (
-    <div className="font-mono text-xs text-[#6e7681]">
-      {time.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} {time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+    <div className="flex items-center gap-3">
+      <div className="text-right">
+        <div className="text-[#f0f6fc] font-mono text-sm tracking-wide">
+          {time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+        </div>
+        <div className="text-[10px] text-[#6e7681] uppercase tracking-widest">
+          {time.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+        </div>
+      </div>
     </div>
   )
 }
 
+// ==========================================
+// SYSTEM HEALTH MONITOR
+// ==========================================
+const SystemHealthMonitor = ({ policies, feedback, activityLog }) => {
+  const overallProgress = getOverallProgress(policies)
+  const statusCounts = getStatusCounts(policies)
+  const newFeedback = feedback.filter(f => f.status === 'new').length
+  const recentActivity = activityLog.filter(a => {
+    const diff = Date.now() - new Date(a.timestamp).getTime()
+    return diff < 3600000 // Last hour
+  }).length
+
+  const healthScore = Math.round(
+    (overallProgress * 0.4) +
+    ((statusCounts.completed / policies.length) * 100 * 0.3) +
+    (Math.min(recentActivity, 10) * 3)
+  )
+
+  const getHealthStatus = (score) => {
+    if (score >= 80) return { label: 'Excellent', color: 'green', variant: 'success' }
+    if (score >= 60) return { label: 'Good', color: 'cyan', variant: 'info' }
+    if (score >= 40) return { label: 'Fair', color: 'yellow', variant: 'warning' }
+    return { label: 'Needs Attention', color: 'red', variant: 'danger' }
+  }
+
+  const health = getHealthStatus(healthScore)
+
+  return (
+    <div className="bg-gradient-to-br from-[#161b22] to-[#0d1117] border border-[#30363d] rounded-xl p-6 relative overflow-hidden">
+      <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#00d4ff]/10 to-transparent rounded-full -translate-y-1/2 translate-x-1/2" />
+      <div className="relative">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">System Health</span>
+              <LiveIndicator label="Live" variant={health.variant} />
+            </div>
+            <div className="flex items-baseline gap-2">
+              <span className={`text-5xl font-bold font-mono text-[#${health.color === 'green' ? '3fb950' : health.color === 'cyan' ? '00d4ff' : health.color === 'yellow' ? 'd29922' : 'f85149'}]`}>
+                {healthScore}
+              </span>
+              <span className="text-xl text-[#6e7681]">/100</span>
+            </div>
+            <StatusBadge status={health.variant}>{health.label}</StatusBadge>
+          </div>
+          <DonutChart
+            data={[
+              { value: statusCounts.completed, color: '#3fb950' },
+              { value: statusCounts.in_progress, color: '#d29922' },
+              { value: statusCounts.planned, color: '#30363d' },
+            ]}
+            size={100}
+            thickness={14}
+            centerValue={`${overallProgress}%`}
+            centerLabel="Progress"
+          />
+        </div>
+        <div className="grid grid-cols-4 gap-3 mt-6 pt-4 border-t border-[#30363d]">
+          <div className="text-center">
+            <p className="text-2xl font-bold font-mono text-[#3fb950]">{statusCounts.completed}</p>
+            <p className="text-[10px] text-[#6e7681] uppercase">Done</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold font-mono text-[#d29922]">{statusCounts.in_progress}</p>
+            <p className="text-[10px] text-[#6e7681] uppercase">Active</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold font-mono text-[#6e7681]">{statusCounts.planned}</p>
+            <p className="text-[10px] text-[#6e7681] uppercase">Planned</p>
+          </div>
+          <div className="text-center">
+            <p className="text-2xl font-bold font-mono text-[#a371f7]">{newFeedback}</p>
+            <p className="text-[10px] text-[#6e7681] uppercase">New</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ==========================================
+// DEPARTMENT HEATMAP
+// ==========================================
+const DepartmentHeatmap = ({ policies, onDeptClick }) => {
+  return (
+    <div className="grid grid-cols-5 gap-2">
+      {departments.map(dept => {
+        const deptPolicies = policies.filter(p => p.department === dept.id)
+        const progress = getOverallProgress(deptPolicies)
+        const getHeatColor = (p) => {
+          if (p >= 80) return 'bg-[#3fb950]/30 border-[#3fb950]/50 hover:bg-[#3fb950]/40'
+          if (p >= 60) return 'bg-[#00d4ff]/30 border-[#00d4ff]/50 hover:bg-[#00d4ff]/40'
+          if (p >= 40) return 'bg-[#d29922]/30 border-[#d29922]/50 hover:bg-[#d29922]/40'
+          if (p >= 20) return 'bg-[#db6d28]/30 border-[#db6d28]/50 hover:bg-[#db6d28]/40'
+          return 'bg-[#f85149]/20 border-[#f85149]/40 hover:bg-[#f85149]/30'
+        }
+        return (
+          <button
+            key={dept.id}
+            onClick={() => onDeptClick(dept.id)}
+            className={`${getHeatColor(progress)} border rounded-lg p-3 transition-all hover:scale-105 group`}
+          >
+            <span className="text-2xl block mb-1">{dept.icon}</span>
+            <p className="text-[10px] text-[#f0f6fc] font-medium truncate">{dept.name}</p>
+            <p className="text-lg font-mono font-bold text-[#f0f6fc]">{progress}%</p>
+            <p className="text-[9px] text-[#6e7681]">{deptPolicies.length} policies</p>
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+// ==========================================
+// REAL-TIME ACTIVITY STREAM
+// ==========================================
+const ActivityStream = ({ activityLog, maxItems = 15 }) => {
+  const getActivityColor = (action) => {
+    if (action.includes('PROGRESS') || action.includes('COMPLETE')) return 'bg-[#3fb950]'
+    if (action.includes('UPDATE')) return 'bg-[#00d4ff]'
+    if (action.includes('CREATE') || action.includes('ADD')) return 'bg-[#a371f7]'
+    if (action.includes('DELETE') || action.includes('RESET')) return 'bg-[#f85149]'
+    return 'bg-[#6e7681]'
+  }
+
+  return (
+    <div className="space-y-1 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+      {activityLog.slice(0, maxItems).map((entry, i) => {
+        const dept = departments.find(d => d.id === entry.category)
+        const hasProgress = entry.metadata?.progress !== undefined
+        const progressDelta = hasProgress && entry.metadata?.previousProgress !== undefined
+          ? entry.metadata.progress - entry.metadata.previousProgress
+          : null
+
+        return (
+          <div
+            key={entry.id}
+            className={`flex items-start gap-3 p-3 rounded-lg transition-all hover:bg-[#21262d]/50 ${i === 0 ? 'bg-[#00d4ff]/5 border border-[#00d4ff]/20' : ''}`}
+          >
+            <div className={`w-2 h-2 rounded-full ${getActivityColor(entry.action)} mt-1.5 shrink-0`} />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                {dept && <span className="text-sm">{dept.icon}</span>}
+                <p className="text-sm text-[#f0f6fc] truncate">{entry.details}</p>
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-[9px] font-mono text-[#6e7681] uppercase">{formatRelativeTime(entry.timestamp)}</span>
+                {hasProgress && (
+                  <span className="px-1.5 py-0.5 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded text-[10px] font-mono font-bold text-[#3fb950]">
+                    {entry.metadata.progress}%
+                    {progressDelta !== null && progressDelta !== 0 && (
+                      <span className={`ml-1 ${progressDelta > 0 ? 'text-[#3fb950]' : 'text-[#f85149]'}`}>
+                        ({progressDelta > 0 ? '+' : ''}{progressDelta})
+                      </span>
+                    )}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        )
+      })}
+      {activityLog.length === 0 && (
+        <div className="text-center py-8 text-[#6e7681] text-sm">No activity recorded yet</div>
+      )}
+    </div>
+  )
+}
+
+// ==========================================
+// INSIGHTS ENGINE
+// ==========================================
+const InsightsEngine = ({ policies, feedback, activityLog, budgetData }) => {
+  const insights = useMemo(() => {
+    const results = []
+    const overallProgress = getOverallProgress(policies)
+    const statusCounts = getStatusCounts(policies)
+
+    // Progress insights
+    if (overallProgress >= 75) {
+      results.push({ type: 'success', title: 'Strong Progress', message: `Platform is ${overallProgress}% complete. Excellent momentum!` })
+    } else if (overallProgress < 30) {
+      results.push({ type: 'warning', title: 'Progress Alert', message: 'Overall progress is below 30%. Consider prioritizing key initiatives.' })
+    }
+
+    // Stalled policies
+    const stalledPolicies = policies.filter(p => p.status === 'in_progress' && p.progress < 25)
+    if (stalledPolicies.length > 0) {
+      results.push({ type: 'warning', title: 'Stalled Initiatives', message: `${stalledPolicies.length} active policies have less than 25% progress.` })
+    }
+
+    // Feedback insights
+    const urgentFeedback = feedback.filter(f => f.status === 'new')
+    if (urgentFeedback.length > 5) {
+      results.push({ type: 'danger', title: 'Feedback Backlog', message: `${urgentFeedback.length} feedback items awaiting review.` })
+    }
+
+    // Budget insights
+    const budgetUtilization = (budgetData.spent / budgetData.total) * 100
+    if (budgetUtilization > 80) {
+      results.push({ type: 'warning', title: 'Budget Alert', message: `${budgetUtilization.toFixed(0)}% of budget utilized.` })
+    }
+
+    // Recent activity
+    const recentProgressUpdates = activityLog.filter(a => a.action === 'LOG_PROGRESS' && Date.now() - new Date(a.timestamp).getTime() < 86400000).length
+    if (recentProgressUpdates >= 5) {
+      results.push({ type: 'success', title: 'Active Team', message: `${recentProgressUpdates} progress updates in the last 24 hours.` })
+    }
+
+    // Department performance
+    const deptPerformance = departments.map(d => ({
+      dept: d,
+      progress: getOverallProgress(policies.filter(p => p.department === d.id))
+    })).sort((a, b) => b.progress - a.progress)
+
+    if (deptPerformance[0]?.progress >= 70) {
+      results.push({ type: 'info', title: 'Top Performer', message: `${deptPerformance[0].dept.name} leading with ${deptPerformance[0].progress}% progress.` })
+    }
+
+    return results.slice(0, 4)
+  }, [policies, feedback, activityLog, budgetData])
+
+  if (insights.length === 0) return null
+
+  return (
+    <div className="space-y-2">
+      {insights.map((insight, i) => (
+        <AlertBanner key={i} type={insight.type} title={insight.title} message={insight.message} />
+      ))}
+    </div>
+  )
+}
+
+// ==========================================
+// QUICK ACTIONS PANEL
+// ==========================================
+const QuickActionsPanel = ({ onAction }) => {
+  const actions = [
+    { id: 'announcement', icon: '📢', label: 'New Announcement', color: 'cyan' },
+    { id: 'export', icon: '📦', label: 'Export Data', color: 'green' },
+    { id: 'feedback', icon: '📬', label: 'Review Feedback', color: 'purple' },
+    { id: 'budget', icon: '💰', label: 'Add Transaction', color: 'yellow' },
+  ]
+
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {actions.map(action => (
+        <button
+          key={action.id}
+          onClick={() => onAction(action.id)}
+          className="flex items-center gap-3 p-3 bg-[#0d1117] border border-[#30363d] rounded-lg hover:border-[#00d4ff]/50 hover:bg-[#161b22] transition-all group"
+        >
+          <span className="text-xl group-hover:scale-110 transition-transform">{action.icon}</span>
+          <span className="text-xs text-[#8b949e] group-hover:text-[#f0f6fc] font-medium">{action.label}</span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// ==========================================
+// MAIN ADMIN DASHBOARD COMPONENT
+// ==========================================
 export default function AdminDashboard() {
   const router = useRouter()
   const {
     isAdmin, isLoaded, policies, operationalData, budgetData, announcements,
-    activityLog, feedback, quickStats,
+    activityLog, feedback, quickStats, dataSource,
     updatePolicy, updatePolicyMetrics, logPolicyProgress,
     addAnnouncement, deleteAnnouncement, pinAnnouncement,
     updateFeedbackStatus,
@@ -47,56 +340,61 @@ export default function AdminDashboard() {
     exportAllData, importData, resetAllData, clearActivityLog,
   } = useApp()
 
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState('command')
   const [selectedDept, setSelectedDept] = useState('all')
-  const [announcementForm, setAnnouncementForm] = useState({ title: '', content: '', category: 'general', pinned: false })
+  const [searchQuery, setSearchQuery] = useState('')
   const [showModal, setShowModal] = useState(null)
+  const [toast, setToast] = useState(null)
+
+  // Form states
+  const [announcementForm, setAnnouncementForm] = useState({ title: '', content: '', category: 'general', pinned: false })
   const [deviceForm, setDeviceForm] = useState({ type: 'laptop-windows', name: '', total: 0, available: 0 })
   const [loanForm, setLoanForm] = useState({ studentName: '', studentEmail: '', deviceType: '', dueDate: '' })
   const [trainingForm, setTrainingForm] = useState({ type: 'mentalHealthFirstAid', title: '', date: '', location: '', capacity: 0 })
   const [transactionForm, setTransactionForm] = useState({ type: 'expense', amount: 0, description: '', category: '' })
   const [progressLogForm, setProgressLogForm] = useState({ policyId: null, progress: 0, note: '' })
-  const [quickEditPolicy, setQuickEditPolicy] = useState(null)
-  const [quickEditProgress, setQuickEditProgress] = useState(0)
-  const [toast, setToast] = useState(null)
 
-  // Quick edit progress handler
-  const handleQuickProgressUpdate = (policyId, newProgress) => {
-    const policy = policies.find(p => p.id === policyId)
-    if (!policy) return
-    const clampedProgress = Math.max(0, Math.min(100, newProgress))
-    logPolicyProgress(policyId, clampedProgress, `Progress updated to ${clampedProgress}%`)
-    notify(`${policy.title}: ${clampedProgress}%`)
-  }
+  // Computed values
+  const overallProgress = useMemo(() => getOverallProgress(policies), [policies])
+  const statusCounts = useMemo(() => getStatusCounts(policies), [policies])
 
+  const filteredPolicies = useMemo(() => {
+    let filtered = selectedDept === 'all' ? policies : policies.filter(p => p.department === selectedDept)
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(p =>
+        p.title.toLowerCase().includes(query) ||
+        p.description.toLowerCase().includes(query) ||
+        p.department.toLowerCase().includes(query)
+      )
+    }
+    return filtered
+  }, [policies, selectedDept, searchQuery])
+
+  // Auth check
   useEffect(() => {
     if (isLoaded && !isAdmin) {
       router.push('/admin/login')
     }
   }, [isLoaded, isAdmin, router])
 
-  if (!isLoaded || !isAdmin) {
-    return (
-      <div className="min-h-screen bg-[#0a0e14] flex items-center justify-center">
-        <div className="flex items-center gap-3">
-          <div className="w-2 h-2 bg-[#00d4ff] rounded-full animate-pulse" />
-          <div className="w-2 h-2 bg-[#00d4ff] rounded-full animate-pulse delay-100" />
-          <div className="w-2 h-2 bg-[#00d4ff] rounded-full animate-pulse delay-200" />
-        </div>
-      </div>
-    )
-  }
+  // Notification helper
+  const notify = useCallback((message, type = 'success') => {
+    setToast({ message, type })
+    setTimeout(() => setToast(null), 3000)
+  }, [])
 
-  const notify = (message) => {
-    setToast(message)
-    setTimeout(() => setToast(null), 2500)
-  }
+  // Quick progress update
+  const handleQuickProgressUpdate = useCallback((policyId, newProgress) => {
+    const policy = policies.find(p => p.id === policyId)
+    if (!policy) return
+    const clampedProgress = Math.max(0, Math.min(100, newProgress))
+    logPolicyProgress(policyId, clampedProgress, `Progress updated to ${clampedProgress}%`)
+    notify(`${policy.title}: ${clampedProgress}%`)
+  }, [policies, logPolicyProgress, notify])
 
-  const overallProgress = getOverallProgress(policies)
-  const statusCounts = getStatusCounts(policies)
-  const filteredPolicies = selectedDept === 'all' ? policies : policies.filter(p => p.department === selectedDept)
-
-  const handleExport = () => {
+  // Export handler
+  const handleExport = useCallback(() => {
     const data = exportAllData()
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -104,10 +402,12 @@ export default function AdminDashboard() {
     a.href = url
     a.download = `projectbold-${new Date().toISOString().split('T')[0]}.json`
     a.click()
-    notify('Data exported')
-  }
+    URL.revokeObjectURL(url)
+    notify('Data exported successfully')
+  }, [exportAllData, notify])
 
-  const handleImport = (e) => {
+  // Import handler
+  const handleImport = useCallback((e) => {
     const file = e.target.files[0]
     if (file) {
       const reader = new FileReader()
@@ -115,206 +415,257 @@ export default function AdminDashboard() {
         try {
           const data = JSON.parse(event.target.result)
           importData(data)
-          notify('Data imported')
+          notify('Data imported successfully')
         } catch {
-          notify('Import failed')
+          notify('Import failed - invalid file', 'error')
         }
       }
       reader.readAsText(file)
     }
+  }, [importData, notify])
+
+  // Quick action handler
+  const handleQuickAction = useCallback((actionId) => {
+    switch (actionId) {
+      case 'announcement': setShowModal('announcement'); break
+      case 'export': handleExport(); break
+      case 'feedback': setActiveTab('feedback'); break
+      case 'budget': setShowModal('transaction'); break
+    }
+  }, [handleExport])
+
+  // Loading state
+  if (!isLoaded || !isAdmin) {
+    return (
+      <div className="min-h-screen bg-[#0a0e14] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-3 h-3 bg-[#00d4ff] rounded-full animate-pulse" />
+            <div className="w-3 h-3 bg-[#00d4ff] rounded-full animate-pulse delay-100" />
+            <div className="w-3 h-3 bg-[#00d4ff] rounded-full animate-pulse delay-200" />
+          </div>
+          <p className="text-[#6e7681] text-sm font-mono">Initializing Command Center...</p>
+        </div>
+      </div>
+    )
   }
 
+  // Tab configuration
   const tabs = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'announcements', label: 'Announcements' },
-    { id: 'policies', label: 'Policies' },
-    { id: 'operations', label: 'Operations' },
-    { id: 'budget', label: 'Budget' },
-    { id: 'feedback', label: 'Feedback' },
-    { id: 'activity', label: 'Activity' },
-    { id: 'settings', label: 'Settings' },
+    { id: 'command', label: 'Command Center', icon: '🎯' },
+    { id: 'policies', label: 'Policies', icon: '📋', count: policies.length },
+    { id: 'operations', label: 'Operations', icon: '⚙️' },
+    { id: 'budget', label: 'Budget', icon: '💰' },
+    { id: 'feedback', label: 'Feedback', icon: '📬', count: feedback.filter(f => f.status === 'new').length },
+    { id: 'announcements', label: 'Comms', icon: '📢' },
+    { id: 'analytics', label: 'Analytics', icon: '📊' },
+    { id: 'settings', label: 'Settings', icon: '⚙️' },
   ]
 
   // Modal Component
-  const Modal = ({ title, onClose, children }) => (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[#161b22] border border-[#30363d] rounded-lg max-w-lg w-full shadow-2xl shadow-black/50">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#30363d]">
-          <h3 className="text-base font-semibold text-[#f0f6fc]">{title}</h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-[#21262d] border border-[#30363d] flex items-center justify-center hover:bg-[#30363d] hover:border-[#8b949e] transition-all">
-            <span className="text-[#8b949e] text-lg leading-none">&times;</span>
-          </button>
+  const Modal = ({ title, onClose, children, size = 'md' }) => {
+    const sizes = {
+      sm: 'max-w-md',
+      md: 'max-w-lg',
+      lg: 'max-w-2xl',
+      xl: 'max-w-4xl',
+    }
+    return (
+      <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className={`bg-[#161b22] border border-[#30363d] rounded-xl ${sizes[size]} w-full shadow-2xl shadow-black/50`}>
+          <div className="flex items-center justify-between px-6 py-4 border-b border-[#30363d]">
+            <h3 className="text-lg font-semibold text-[#f0f6fc]">{title}</h3>
+            <button onClick={onClose} className="w-8 h-8 rounded-lg bg-[#21262d] border border-[#30363d] flex items-center justify-center hover:bg-[#30363d] hover:border-[#8b949e] transition-all">
+              <span className="text-[#8b949e] text-lg leading-none">&times;</span>
+            </button>
+          </div>
+          <div className="p-6">{children}</div>
         </div>
-        <div className="p-6">{children}</div>
       </div>
-    </div>
-  )
+    )
+  }
 
-  // Input Component
+  // Input Components
   const Input = ({ label, ...props }) => (
     <div>
       {label && <label className="block text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-2">{label}</label>}
-      <input {...props} className="w-full px-4 py-3 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] placeholder-[#6e7681] focus:ring-1 focus:ring-[#00d4ff] focus:border-[#00d4ff] font-mono text-sm" />
+      <input {...props} className="w-full px-4 py-3 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] placeholder-[#6e7681] focus:ring-1 focus:ring-[#00d4ff] focus:border-[#00d4ff] font-mono text-sm transition" />
     </div>
   )
 
-  // Select Component
   const Select = ({ label, options, ...props }) => (
     <div>
       {label && <label className="block text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-2">{label}</label>}
-      <select {...props} className="w-full px-4 py-3 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] focus:ring-1 focus:ring-[#00d4ff] focus:border-[#00d4ff] text-sm">
+      <select {...props} className="w-full px-4 py-3 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] focus:ring-1 focus:ring-[#00d4ff] focus:border-[#00d4ff] text-sm transition">
         {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
       </select>
     </div>
   )
 
-  // Button Component
-  const Button = ({ variant = 'primary', children, ...props }) => {
-    const base = "px-5 py-2.5 rounded-lg font-medium text-sm transition-all border"
-    const variants = {
-      primary: "bg-[#00d4ff]/10 text-[#00d4ff] border-[#00d4ff]/50 hover:bg-[#00d4ff]/20 hover:border-[#00d4ff] hover:shadow-[0_0_20px_rgba(0,212,255,0.3)] active:scale-[0.98]",
-      secondary: "bg-[#21262d] text-[#8b949e] border-[#30363d] hover:text-[#f0f6fc] hover:bg-[#30363d] hover:border-[#8b949e]",
-      danger: "bg-[#f85149]/10 text-[#f85149] border-[#f85149]/50 hover:bg-[#f85149]/20 hover:border-[#f85149] hover:shadow-[0_0_20px_rgba(248,81,73,0.3)]",
-    }
-    return <button {...props} className={`${base} ${variants[variant]}`}>{children}</button>
-  }
-
-  // Stat Card
-  const StatCard = ({ value, label, color = 'cyan' }) => {
-    const colors = {
-      cyan: 'text-[#00d4ff] border-[#00d4ff]/30',
-      green: 'text-[#3fb950] border-[#3fb950]/30',
-      yellow: 'text-[#d29922] border-[#d29922]/30',
-      purple: 'text-[#a371f7] border-[#a371f7]/30',
-      red: 'text-[#f85149] border-[#f85149]/30',
-    }
-    return (
-      <div className={`bg-[#161b22] border border-[#30363d] rounded-lg p-6 hover:border-l-2 hover:${colors[color].split(' ')[1]} transition-all`}>
-        <p className={`text-3xl font-mono font-semibold ${colors[color].split(' ')[0]} tracking-tight`}>{value}</p>
-        <p className="text-[#6e7681] text-xs uppercase tracking-wider mt-2">{label}</p>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-[#0a0e14]">
       <Head>
-        <title>Admin | Project Bold</title>
+        <title>Command Center | Project Bold Admin</title>
+        <meta name="robots" content="noindex" />
       </Head>
 
-      {/* Toast */}
+      {/* Toast Notification */}
       {toast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-[#161b22] border border-[#00d4ff]/50 text-[#00d4ff] px-6 py-3 rounded-lg shadow-lg shadow-[#00d4ff]/10 text-sm font-mono animate-[fadeIn_0.2s]">
-          {toast}
+        <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-lg shadow-lg text-sm font-mono animate-[fadeIn_0.2s] ${
+          toast.type === 'error' ? 'bg-[#f85149]/20 border border-[#f85149]/50 text-[#f85149]' :
+          'bg-[#161b22] border border-[#00d4ff]/50 text-[#00d4ff] shadow-[#00d4ff]/10'
+        }`}>
+          {toast.message}
         </div>
       )}
 
       {/* Command Center Header */}
       <header className="bg-[#0d1117]/95 backdrop-blur-xl border-b border-[#30363d] sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex items-center justify-between h-14">
+        <div className="max-w-[1800px] mx-auto px-6">
+          <div className="flex items-center justify-between h-16">
+            {/* Left section */}
             <div className="flex items-center gap-6">
-              <Link href="/" className="text-[#8b949e] text-xs font-medium hover:text-[#00d4ff] transition-colors flex items-center gap-1.5">
-                <span>&larr;</span>
-                <span>EXIT</span>
+              <Link href="/" className="flex items-center gap-2 text-[#8b949e] text-xs font-medium hover:text-[#00d4ff] transition-colors">
+                <span className="text-lg">&larr;</span>
+                <span className="uppercase tracking-widest">Exit</span>
               </Link>
-              <div className="h-4 w-px bg-[#30363d]" />
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 bg-[#3fb950] rounded-full animate-pulse" />
-                <h1 className="text-[#f0f6fc] text-sm font-semibold tracking-widest uppercase">Command Center</h1>
+              <div className="h-6 w-px bg-[#30363d]" />
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-[#3fb950] rounded-full animate-pulse shadow-[0_0_8px_#3fb950]" />
+                <h1 className="text-[#f0f6fc] text-base font-bold tracking-wide">
+                  COMMAND CENTER
+                </h1>
+                <span className="px-2 py-0.5 bg-[#00d4ff]/10 border border-[#00d4ff]/30 rounded text-[#00d4ff] text-[9px] font-mono tracking-wider">
+                  v2.0
+                </span>
               </div>
             </div>
-            <div className="flex items-center gap-5">
-              <LiveClock />
-              <div className="h-4 w-px bg-[#30363d]" />
+
+            {/* Center section - Quick Stats */}
+            <div className="hidden lg:flex items-center gap-6">
               <div className="flex items-center gap-2">
-                <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.2em]">Project Bold</span>
-                <div className="px-2 py-0.5 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded text-[#3fb950] text-[9px] font-mono tracking-wider">ONLINE</div>
+                <span className="text-[#6e7681] text-[10px] uppercase tracking-widest">Progress</span>
+                <span className="text-[#00d4ff] font-mono font-bold">{overallProgress}%</span>
               </div>
+              <div className="w-px h-4 bg-[#30363d]" />
+              <div className="flex items-center gap-2">
+                <span className="text-[#6e7681] text-[10px] uppercase tracking-widest">Active</span>
+                <span className="text-[#d29922] font-mono font-bold">{statusCounts.in_progress}</span>
+              </div>
+              <div className="w-px h-4 bg-[#30363d]" />
+              <div className="flex items-center gap-2">
+                <span className="text-[#6e7681] text-[10px] uppercase tracking-widest">Done</span>
+                <span className="text-[#3fb950] font-mono font-bold">{statusCounts.completed}</span>
+              </div>
+            </div>
+
+            {/* Right section */}
+            <div className="flex items-center gap-5">
+              <div className="hidden md:flex items-center gap-2">
+                <span className={`px-2 py-0.5 rounded text-[9px] font-mono ${
+                  dataSource === 'supabase' ? 'bg-[#3fb950]/10 border border-[#3fb950]/30 text-[#3fb950]' : 'bg-[#d29922]/10 border border-[#d29922]/30 text-[#d29922]'
+                }`}>
+                  {dataSource === 'supabase' ? 'CLOUD' : 'LOCAL'}
+                </span>
+              </div>
+              <div className="h-6 w-px bg-[#30363d]" />
+              <LiveClock />
             </div>
           </div>
         </div>
       </header>
 
       {/* Tab Navigation */}
-      <nav className="bg-[#0d1117] border-b border-[#30363d]">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex gap-0 overflow-x-auto">
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-5 py-4 text-sm font-medium whitespace-nowrap transition-all border-b-2 -mb-[1px] ${
-                  activeTab === tab.id
-                    ? 'text-[#00d4ff] border-[#00d4ff]'
-                    : 'text-[#8b949e] border-transparent hover:text-[#f0f6fc] hover:border-[#30363d]'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
+      <nav className="bg-[#0d1117] border-b border-[#30363d] sticky top-16 z-30">
+        <div className="max-w-[1800px] mx-auto px-6">
+          <TabNav tabs={tabs} activeTab={activeTab} onChange={setActiveTab} />
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* OVERVIEW - Command Center */}
-        {activeTab === 'overview' && (
+      {/* Main Content */}
+      <main className="max-w-[1800px] mx-auto px-6 py-6">
+        {/* COMMAND CENTER TAB */}
+        {activeTab === 'command' && (
           <div className="space-y-6">
-            {/* System Status Bar */}
-            <div className="grid grid-cols-4 gap-3">
-              <div className="bg-[#161b22] border border-[#00d4ff]/30 rounded-lg p-4 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#00d4ff] to-[#00d4ff]/0" />
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Overall</span>
-                  <div className="w-1.5 h-1.5 bg-[#00d4ff] rounded-full animate-pulse" />
-                </div>
-                <p className="text-3xl font-mono font-bold text-[#00d4ff] mt-2 tracking-tight">{overallProgress}%</p>
+            {/* Top Row - Health Monitor + Insights */}
+            <div className="grid lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <SystemHealthMonitor policies={policies} feedback={feedback} activityLog={activityLog} />
               </div>
-              <div className="bg-[#161b22] border border-[#3fb950]/30 rounded-lg p-4 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#3fb950] to-[#3fb950]/0" />
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Completed</span>
-                  <div className="w-1.5 h-1.5 bg-[#3fb950] rounded-full" />
-                </div>
-                <p className="text-3xl font-mono font-bold text-[#3fb950] mt-2 tracking-tight">{statusCounts.completed}</p>
-              </div>
-              <div className="bg-[#161b22] border border-[#d29922]/30 rounded-lg p-4 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#d29922] to-[#d29922]/0" />
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Active</span>
-                  <div className="w-1.5 h-1.5 bg-[#d29922] rounded-full animate-pulse" />
-                </div>
-                <p className="text-3xl font-mono font-bold text-[#d29922] mt-2 tracking-tight">{statusCounts.in_progress}</p>
-              </div>
-              <div className="bg-[#161b22] border border-[#a371f7]/30 rounded-lg p-4 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#a371f7] to-[#a371f7]/0" />
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Feedback</span>
-                  {feedback.filter(f => f.status === 'new').length > 0 && <div className="w-1.5 h-1.5 bg-[#a371f7] rounded-full animate-pulse" />}
-                </div>
-                <p className="text-3xl font-mono font-bold text-[#a371f7] mt-2 tracking-tight">{feedback.filter(f => f.status === 'new').length}</p>
+              <div className="space-y-4">
+                <InsightsEngine policies={policies} feedback={feedback} activityLog={activityLog} budgetData={budgetData} />
+                <QuickActionsPanel onAction={handleQuickAction} />
               </div>
             </div>
 
-            {/* Quick Stats - Editable */}
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg">
-              <div className="px-5 py-3 border-b border-[#30363d] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-1 bg-[#00d4ff] rounded-full" />
-                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Platform Metrics</span>
-                </div>
-                <span className="text-[9px] font-mono text-[#6e7681]">Click to edit</span>
+            {/* Middle Row - Department Heatmap + Activity Stream */}
+            <div className="grid lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2">
+                <Panel title="Department Performance Matrix" subtitle="Click to filter policies by department">
+                  <DepartmentHeatmap policies={policies} onDeptClick={(id) => { setSelectedDept(id); setActiveTab('policies'); }} />
+                </Panel>
               </div>
-              <div className="grid grid-cols-4 divide-x divide-[#30363d]">
+              <Panel title="Live Activity Stream" subtitle={`${activityLog.length} total events`} badge={activityLog.length > 0 ? { status: 'success', text: 'Live' } : null}>
+                <ActivityStream activityLog={activityLog} />
+              </Panel>
+            </div>
+
+            {/* Bottom Row - Metrics Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              <MetricCard
+                label="Students Reached"
+                value={quickStats.totalStudentsReached?.toLocaleString() || '0'}
+                color="cyan"
+                icon="👥"
+                sparklineData={[12, 19, 3, 5, 2, 3, 9, 15, 22, 18, 25, 30]}
+              />
+              <MetricCard
+                label="Active Initiatives"
+                value={quickStats.activeInitiatives || statusCounts.in_progress}
+                color="yellow"
+                icon="🚀"
+                change="+3"
+                trend="up"
+              />
+              <MetricCard
+                label="Events This Month"
+                value={quickStats.eventsThisMonth || '0'}
+                color="purple"
+                icon="📅"
+              />
+              <MetricCard
+                label="Feedback Queue"
+                value={feedback.filter(f => f.status === 'new').length}
+                color={feedback.filter(f => f.status === 'new').length > 5 ? 'red' : 'green'}
+                icon="📬"
+              />
+              <MetricCard
+                label="Budget Utilized"
+                value={`${((budgetData.spent / budgetData.total) * 100).toFixed(0)}%`}
+                subtitle={`$${budgetData.spent.toLocaleString()} spent`}
+                color="green"
+                icon="💰"
+              />
+              <MetricCard
+                label="Announcements"
+                value={announcements.length}
+                color="blue"
+                icon="📢"
+                subtitle={`${announcements.filter(a => a.pinned).length} pinned`}
+              />
+            </div>
+
+            {/* Quick Stats Editor */}
+            <Panel title="Platform Metrics" subtitle="Click values to edit" collapsible defaultCollapsed>
+              <div className="grid grid-cols-4 gap-4">
                 {[
                   { key: 'totalStudentsReached', label: 'Students Reached', color: '#00d4ff' },
                   { key: 'activeInitiatives', label: 'Active Initiatives', color: '#3fb950' },
                   { key: 'eventsThisMonth', label: 'Events This Month', color: '#d29922' },
                   { key: 'feedbackReceived', label: 'Total Feedback', color: '#a371f7' },
                 ].map(item => (
-                  <div key={item.key} className="p-4 hover:bg-[#21262d]/50 transition-colors">
-                    <label className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.1em] block mb-2">{item.label}</label>
+                  <div key={item.key} className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
+                    <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest block mb-2">{item.label}</label>
                     <input
                       type="number"
                       value={quickStats[item.key]}
@@ -325,358 +676,200 @@ export default function AdminDashboard() {
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* Department Command Panels */}
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg">
-              <div className="px-5 py-3 border-b border-[#30363d] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-1 bg-[#3fb950] rounded-full animate-pulse" />
-                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Department Control</span>
-                </div>
-                <span className="text-[9px] font-mono text-[#6e7681]">Real-time progress editing</span>
-              </div>
-              <div className="p-5 space-y-4">
-                {departments.map(dept => {
-                  const deptPolicies = policies.filter(p => p.department === dept.id)
-                  const deptProgress = getOverallProgress(deptPolicies)
-                  return (
-                    <div key={dept.id} className="group">
-                      <div className="flex items-center gap-4 mb-3">
-                        <span className="text-xl">{dept.icon}</span>
-                        <span className="font-medium text-[#f0f6fc] text-sm flex-1">{dept.name}</span>
-                        <span className="text-xl font-mono font-bold text-[#00d4ff] tabular-nums">{deptProgress}%</span>
-                      </div>
-                      {/* Individual policy progress controls */}
-                      <div className="ml-9 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                        {deptPolicies.map(policy => (
-                          <div key={policy.id} className="bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 hover:border-[#00d4ff]/50 transition-colors group/policy">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-xs text-[#8b949e] truncate flex-1" title={policy.title}>{policy.title}</span>
-                              <div className="flex items-center gap-1">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  value={policy.progress}
-                                  onChange={(e) => handleQuickProgressUpdate(policy.id, parseInt(e.target.value) || 0)}
-                                  className="w-12 text-right bg-transparent text-sm font-mono font-semibold text-[#00d4ff] border-0 p-0 focus:ring-0 focus:outline-none"
-                                />
-                                <span className="text-[#6e7681] text-xs">%</span>
-                              </div>
-                            </div>
-                            <div className="h-1 bg-[#21262d] rounded-full overflow-hidden mt-1.5">
-                              <div className={`h-full rounded-full transition-all ${
-                                policy.progress >= 100 ? 'bg-[#3fb950]' :
-                                policy.progress >= 50 ? 'bg-[#00d4ff]' :
-                                policy.progress > 0 ? 'bg-[#d29922]' : 'bg-[#6e7681]'
-                              }`} style={{ width: `${policy.progress}%` }} />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Activity Feed */}
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg">
-              <div className="px-5 py-3 border-b border-[#30363d] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-1 bg-[#3fb950] rounded-full animate-pulse" />
-                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Activity Feed</span>
-                </div>
-                <span className="text-[9px] font-mono text-[#6e7681]">{activityLog.length} entries</span>
-              </div>
-              <div className="max-h-[300px] overflow-y-auto">
-                {activityLog.slice(0, 15).map(entry => {
-                  const dept = departments.find(d => d.id === entry.category)
-                  const hasProgress = entry.metadata?.progress !== undefined
-                  return (
-                    <div key={entry.id} className="flex items-center gap-3 px-5 py-3 border-b border-[#21262d] last:border-0 hover:bg-[#21262d]/50 transition-colors">
-                      <div className={`w-1 h-1 rounded-full ${hasProgress ? 'bg-[#3fb950]' : 'bg-[#00d4ff]'}`} />
-                      {dept && <span className="text-sm">{dept.icon}</span>}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-[#f0f6fc] truncate">{entry.details}</p>
-                        <p className="text-[10px] font-mono text-[#6e7681]">{formatTime(entry.timestamp)}</p>
-                      </div>
-                      {hasProgress && (
-                        <span className="px-2 py-0.5 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded text-[10px] font-mono font-bold text-[#3fb950]">
-                          {entry.metadata.progress}%
-                        </span>
-                      )}
-                    </div>
-                  )
-                })}
-                {activityLog.length === 0 && <p className="text-[#6e7681] text-xs py-6 text-center">No activity recorded</p>}
-              </div>
-            </div>
+            </Panel>
           </div>
         )}
 
-        {/* ANNOUNCEMENTS */}
-        {activeTab === 'announcements' && (
-          <div className="space-y-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Communications</span>
-                </div>
-                <h2 className="text-3xl font-semibold text-[#f0f6fc] tracking-tight">Announcements</h2>
-                <p className="text-[#8b949e] mt-1">Communicate directly with students</p>
-              </div>
-              <Button onClick={() => setShowModal('announcement')}>New Announcement</Button>
-            </div>
-
-            <div className="space-y-4">
-              {[...announcements].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)).map(a => (
-                <div key={a.id} className={`bg-[#161b22] border rounded-lg p-6 ${a.pinned ? 'border-[#d29922]' : 'border-[#30363d]'}`}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
-                        {a.pinned && <span className="text-[#d29922]">&#9733;</span>}
-                        <span className={`px-2.5 py-1 rounded border text-xs font-mono ${
-                          a.category === 'urgent' ? 'bg-transparent border-[#f85149]/50 text-[#f85149]' :
-                          a.category === 'event' ? 'bg-transparent border-[#a371f7]/50 text-[#a371f7]' :
-                          a.category === 'milestone' ? 'bg-transparent border-[#3fb950]/50 text-[#3fb950]' :
-                          'bg-transparent border-[#30363d] text-[#8b949e]'
-                        }`}>{a.category}</span>
-                      </div>
-                      <h3 className="text-lg font-semibold text-[#f0f6fc]">{a.title}</h3>
-                      <p className="text-[#8b949e] mt-2">{a.content}</p>
-                      <p className="text-xs font-mono text-[#6e7681] mt-4">{formatDate(a.createdAt)}</p>
-                    </div>
-                    <div className="flex gap-2 ml-4">
-                      <button onClick={() => pinAnnouncement(a.id, !a.pinned)} className="w-8 h-8 rounded-lg bg-[#21262d] border border-[#30363d] flex items-center justify-center hover:border-[#d29922] text-[#8b949e] hover:text-[#d29922] transition-all">&#9733;</button>
-                      <button onClick={() => { deleteAnnouncement(a.id); notify('Deleted') }} className="w-8 h-8 rounded-lg bg-[#21262d] border border-[#30363d] flex items-center justify-center hover:border-[#f85149] text-[#8b949e] hover:text-[#f85149] transition-all">&times;</button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {announcements.length === 0 && (
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-12 text-center">
-                  <p className="text-[#6e7681]">No announcements yet</p>
-                </div>
-              )}
-            </div>
-
-            {showModal === 'announcement' && (
-              <Modal title="New Announcement" onClose={() => setShowModal(null)}>
-                <form onSubmit={(e) => { e.preventDefault(); addAnnouncement(announcementForm); setAnnouncementForm({ title: '', content: '', category: 'general', pinned: false }); setShowModal(null); notify('Published') }} className="space-y-4">
-                  <Input label="Title" value={announcementForm.title} onChange={(e) => setAnnouncementForm({ ...announcementForm, title: e.target.value })} required />
-                  <Select label="Category" value={announcementForm.category} onChange={(e) => setAnnouncementForm({ ...announcementForm, category: e.target.value })} options={[
-                    { value: 'general', label: 'General' },
-                    { value: 'policy', label: 'Policy Update' },
-                    { value: 'event', label: 'Event' },
-                    { value: 'urgent', label: 'Urgent' },
-                    { value: 'milestone', label: 'Milestone' },
-                  ]} />
-                  <div>
-                    <label className="block text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-2">Content</label>
-                    <textarea value={announcementForm.content} onChange={(e) => setAnnouncementForm({ ...announcementForm, content: e.target.value })} rows={4} required className="w-full px-4 py-3 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] resize-none focus:ring-1 focus:ring-[#00d4ff] focus:border-[#00d4ff] text-sm" />
-                  </div>
-                  <label className="flex items-center gap-3">
-                    <input type="checkbox" checked={announcementForm.pinned} onChange={(e) => setAnnouncementForm({ ...announcementForm, pinned: e.target.checked })} className="w-4 h-4 bg-[#0d1117] border-[#30363d] rounded text-[#00d4ff] focus:ring-[#00d4ff]" />
-                    <span className="text-sm text-[#8b949e]">Pin announcement</span>
-                  </label>
-                  <div className="flex gap-3 pt-2">
-                    <Button type="submit">Publish</Button>
-                    <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
-                  </div>
-                </form>
-              </Modal>
-            )}
-          </div>
-        )}
-
-        {/* POLICIES */}
+        {/* POLICIES TAB */}
         {activeTab === 'policies' && (
-          <div className="space-y-8">
-            <div className="flex items-center justify-between">
+          <div className="space-y-6">
+            {/* Header with Search and Filter */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Policy Management</span>
-                </div>
-                <h2 className="text-3xl font-semibold text-[#f0f6fc] tracking-tight">Policies</h2>
-                <p className="text-[#8b949e] mt-1">Manage all 40 policy initiatives</p>
+                <h2 className="text-2xl font-bold text-[#f0f6fc]">Policy Management</h2>
+                <p className="text-[#8b949e] mt-1">Manage all {policies.length} policy initiatives across {departments.length} departments</p>
               </div>
-              <select value={selectedDept} onChange={(e) => setSelectedDept(e.target.value)} className="px-4 py-2 bg-[#21262d] border border-[#30363d] rounded-lg text-sm text-[#f0f6fc] focus:ring-1 focus:ring-[#00d4ff] focus:border-[#00d4ff]">
-                <option value="all">All Departments</option>
-                {departments.map(d => <option key={d.id} value={d.id}>{d.icon} {d.name}</option>)}
-              </select>
+              <div className="flex items-center gap-3">
+                <SearchInput
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onClear={() => setSearchQuery('')}
+                  placeholder="Search policies..."
+                />
+                <select
+                  value={selectedDept}
+                  onChange={(e) => setSelectedDept(e.target.value)}
+                  className="px-4 py-2.5 bg-[#21262d] border border-[#30363d] rounded-lg text-sm text-[#f0f6fc] focus:ring-1 focus:ring-[#00d4ff]"
+                >
+                  <option value="all">All Departments</option>
+                  {departments.map(d => <option key={d.id} value={d.id}>{d.icon} {d.name}</option>)}
+                </select>
+              </div>
             </div>
 
-            <div className="space-y-4">
-              {filteredPolicies.map(policy => (
-                <div key={policy.id} className="bg-[#161b22] border border-[#30363d] rounded-lg p-6 hover:border-[#8b949e]/30 transition-colors">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-start gap-3">
-                      <span className="text-2xl">{departments.find(d => d.id === policy.department)?.icon}</span>
-                      <div>
-                        <h3 className="font-semibold text-[#f0f6fc]">{policy.title}</h3>
-                        <p className="text-sm text-[#8b949e] mt-0.5">{policy.description}</p>
-                      </div>
-                    </div>
-                    <span className={`px-2.5 py-1 rounded border text-xs font-mono ${
-                      policy.priority === 'high' ? 'bg-transparent border-[#f85149]/50 text-[#f85149]' :
-                      policy.priority === 'medium' ? 'bg-transparent border-[#d29922]/50 text-[#d29922]' :
-                      'bg-transparent border-[#30363d] text-[#6e7681]'
-                    }`}>{policy.priority}</span>
-                  </div>
-
-                  <div className="grid md:grid-cols-3 gap-4 mb-4">
-                    <div>
-                      <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Status</label>
-                      <select value={policy.status} onChange={(e) => { updatePolicy(policy.id, { status: e.target.value }); notify('Updated') }} className="w-full mt-2 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#f0f6fc] focus:ring-1 focus:ring-[#00d4ff]">
-                        <option value="planned">Planned</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="completed">Completed</option>
-                      </select>
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Progress</label>
-                        <button
-                          onClick={() => { setProgressLogForm({ policyId: policy.id, progress: policy.progress, note: '' }); setShowModal('progressLog') }}
-                          className="text-[10px] font-semibold text-[#00d4ff] uppercase tracking-widest hover:text-[#00d4ff]/80 transition flex items-center gap-1"
-                        >
-                          <span>+</span> Log Update
-                        </button>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={policy.progress}
-                          onChange={(e) => handleQuickProgressUpdate(policy.id, parseInt(e.target.value) || 0)}
-                          className="w-20 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-center text-lg font-mono font-bold text-[#00d4ff] focus:ring-1 focus:ring-[#00d4ff] focus:border-[#00d4ff]"
-                        />
-                        <span className="text-[#6e7681] text-sm">%</span>
-                        <input type="range" min="0" max="100" value={policy.progress} onChange={(e) => handleQuickProgressUpdate(policy.id, parseInt(e.target.value))} className="flex-1 accent-[#00d4ff]" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Priority</label>
-                      <select value={policy.priority} onChange={(e) => { updatePolicy(policy.id, { priority: e.target.value }); notify('Updated') }} className="w-full mt-2 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#f0f6fc] focus:ring-1 focus:ring-[#00d4ff]">
-                        <option value="high">High</option>
-                        <option value="medium">Medium</option>
-                        <option value="low">Low</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="h-1 bg-[#21262d] rounded-full overflow-hidden mb-4">
-                    <div className={`h-full rounded-full transition-all ${
-                      policy.status === 'completed' ? 'bg-[#3fb950]' :
-                      policy.status === 'in_progress' ? 'bg-[#00d4ff]' : 'bg-[#6e7681]'
-                    }`} style={{ width: `${policy.progress}%` }} />
-                  </div>
-
-                  {policy.metrics && (
-                    <div>
-                      <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Metrics</label>
-                      <div className="grid grid-cols-3 gap-3 mt-3">
-                        {Object.entries(policy.metrics).map(([key, value]) => (
-                          <div key={key} className="bg-[#0d1117] border border-[#30363d] rounded-lg p-3">
-                            <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest block mb-2">{key.replace(/([A-Z])/g, ' $1')}</label>
-                            <input type="number" value={value} onChange={(e) => updatePolicyMetrics(policy.id, { [key]: parseInt(e.target.value) || 0 })} className="w-full bg-transparent text-lg font-mono font-semibold text-[#00d4ff] border-0 p-0 focus:ring-0" />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+            {/* Policy Stats */}
+            <div className="grid grid-cols-4 gap-4">
+              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-[#00d4ff]/10 flex items-center justify-center">
+                  <span className="text-2xl font-mono font-bold text-[#00d4ff]">{filteredPolicies.length}</span>
                 </div>
-              ))}
+                <div>
+                  <p className="text-[10px] text-[#6e7681] uppercase tracking-widest">Showing</p>
+                  <p className="text-sm text-[#f0f6fc]">Policies</p>
+                </div>
+              </div>
+              <div className="bg-[#161b22] border border-[#3fb950]/30 rounded-lg p-4 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-[#3fb950]/10 flex items-center justify-center">
+                  <span className="text-2xl font-mono font-bold text-[#3fb950]">{filteredPolicies.filter(p => p.status === 'completed').length}</span>
+                </div>
+                <div>
+                  <p className="text-[10px] text-[#6e7681] uppercase tracking-widest">Completed</p>
+                  <p className="text-sm text-[#f0f6fc]">Initiatives</p>
+                </div>
+              </div>
+              <div className="bg-[#161b22] border border-[#d29922]/30 rounded-lg p-4 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-[#d29922]/10 flex items-center justify-center">
+                  <span className="text-2xl font-mono font-bold text-[#d29922]">{filteredPolicies.filter(p => p.status === 'in_progress').length}</span>
+                </div>
+                <div>
+                  <p className="text-[10px] text-[#6e7681] uppercase tracking-widest">In Progress</p>
+                  <p className="text-sm text-[#f0f6fc]">Active Now</p>
+                </div>
+              </div>
+              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-[#21262d] flex items-center justify-center">
+                  <span className="text-2xl font-mono font-bold text-[#6e7681]">{filteredPolicies.filter(p => p.status === 'planned').length}</span>
+                </div>
+                <div>
+                  <p className="text-[10px] text-[#6e7681] uppercase tracking-widest">Planned</p>
+                  <p className="text-sm text-[#f0f6fc]">Upcoming</p>
+                </div>
+              </div>
             </div>
 
-            {showModal === 'progressLog' && progressLogForm.policyId && (
-              <Modal title="Log Progress Update" onClose={() => setShowModal(null)}>
-                {(() => {
-                  const policy = policies.find(p => p.id === progressLogForm.policyId)
-                  const dept = departments.find(d => d.id === policy?.department)
-                  return (
-                    <form onSubmit={(e) => {
-                      e.preventDefault()
-                      logPolicyProgress(progressLogForm.policyId, progressLogForm.progress, progressLogForm.note)
-                      setProgressLogForm({ policyId: null, progress: 0, note: '' })
-                      setShowModal(null)
-                      notify('Progress logged')
-                    }} className="space-y-4">
-                      <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className="text-xl">{dept?.icon}</span>
-                          <div>
-                            <p className="font-semibold text-[#f0f6fc]">{policy?.title}</p>
-                            <p className="text-xs text-[#6e7681] font-mono uppercase">{dept?.name}</p>
+            {/* Policy List */}
+            <div className="space-y-4">
+              {filteredPolicies.map(policy => {
+                const dept = departments.find(d => d.id === policy.department)
+                return (
+                  <div key={policy.id} className="bg-[#161b22] border border-[#30363d] rounded-xl p-6 hover:border-[#8b949e]/30 transition-all">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-lg bg-[#0d1117] flex items-center justify-center text-2xl">
+                          {dept?.icon}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-[#f0f6fc] text-lg">{policy.title}</h3>
+                          <p className="text-sm text-[#8b949e] mt-1">{policy.description}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <span className="text-[10px] text-[#6e7681] uppercase tracking-widest">{dept?.name}</span>
+                            <span className="text-[#30363d]">•</span>
+                            <span className={`px-2 py-0.5 rounded border text-[10px] font-mono ${
+                              policy.priority === 'high' ? 'bg-transparent border-[#f85149]/50 text-[#f85149]' :
+                              policy.priority === 'medium' ? 'bg-transparent border-[#d29922]/50 text-[#d29922]' :
+                              'bg-transparent border-[#30363d] text-[#6e7681]'
+                            }`}>{policy.priority}</span>
                           </div>
                         </div>
+                      </div>
+                      <StatusBadge status={
+                        policy.status === 'completed' ? 'success' :
+                        policy.status === 'in_progress' ? 'warning' : 'default'
+                      }>
+                        {policy.status === 'in_progress' ? 'Active' : policy.status}
+                      </StatusBadge>
+                    </div>
+
+                    <div className="grid md:grid-cols-3 gap-4 mb-4">
+                      <div>
+                        <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Status</label>
+                        <select
+                          value={policy.status}
+                          onChange={(e) => { updatePolicy(policy.id, { status: e.target.value }); notify('Status updated') }}
+                          className="w-full mt-2 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#f0f6fc] focus:ring-1 focus:ring-[#00d4ff]"
+                        >
+                          <option value="planned">Planned</option>
+                          <option value="in_progress">In Progress</option>
+                          <option value="completed">Completed</option>
+                        </select>
                       </div>
                       <div>
                         <div className="flex items-center justify-between mb-2">
                           <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Progress</label>
-                          <span className="text-lg font-mono font-semibold text-[#00d4ff]">{progressLogForm.progress}%</span>
+                          <span className="text-lg font-mono font-bold text-[#00d4ff]">{policy.progress}%</span>
                         </div>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={progressLogForm.progress}
-                          onChange={(e) => setProgressLogForm({ ...progressLogForm, progress: parseInt(e.target.value) })}
-                          className="w-full accent-[#00d4ff]"
-                        />
-                        <div className="flex justify-between text-[10px] text-[#6e7681] mt-1 font-mono">
-                          <span>0%</span>
-                          <span>50%</span>
-                          <span>100%</span>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={policy.progress}
+                            onChange={(e) => handleQuickProgressUpdate(policy.id, parseInt(e.target.value))}
+                            className="flex-1 accent-[#00d4ff]"
+                          />
                         </div>
                       </div>
                       <div>
-                        <label className="block text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-2">Update Note</label>
-                        <textarea
-                          value={progressLogForm.note}
-                          onChange={(e) => setProgressLogForm({ ...progressLogForm, note: e.target.value })}
-                          placeholder="Describe what was accomplished..."
-                          rows={3}
-                          className="w-full px-4 py-3 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] placeholder-[#6e7681] resize-none focus:ring-1 focus:ring-[#00d4ff] focus:border-[#00d4ff] text-sm"
-                        />
+                        <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Priority</label>
+                        <select
+                          value={policy.priority}
+                          onChange={(e) => { updatePolicy(policy.id, { priority: e.target.value }); notify('Priority updated') }}
+                          className="w-full mt-2 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#f0f6fc] focus:ring-1 focus:ring-[#00d4ff]"
+                        >
+                          <option value="high">High</option>
+                          <option value="medium">Medium</option>
+                          <option value="low">Low</option>
+                        </select>
                       </div>
-                      <div className="flex gap-3 pt-2">
-                        <Button type="submit">Log Progress</Button>
-                        <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
+                    </div>
+
+                    <div className="h-2 bg-[#21262d] rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full transition-all ${
+                        policy.status === 'completed' ? 'bg-[#3fb950]' :
+                        policy.status === 'in_progress' ? 'bg-gradient-to-r from-[#00d4ff] to-[#388bfd]' : 'bg-[#6e7681]'
+                      }`} style={{ width: `${policy.progress}%` }} />
+                    </div>
+
+                    {policy.metrics && Object.keys(policy.metrics).length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-[#30363d]">
+                        <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Metrics</label>
+                        <div className="grid grid-cols-3 gap-3 mt-3">
+                          {Object.entries(policy.metrics).map(([key, value]) => (
+                            <div key={key} className="bg-[#0d1117] border border-[#30363d] rounded-lg p-3">
+                              <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest block mb-2">{key.replace(/([A-Z])/g, ' $1')}</label>
+                              <input
+                                type="number"
+                                value={value}
+                                onChange={(e) => updatePolicyMetrics(policy.id, { [key]: parseInt(e.target.value) || 0 })}
+                                className="w-full bg-transparent text-lg font-mono font-semibold text-[#00d4ff] border-0 p-0 focus:ring-0"
+                              />
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </form>
-                  )
-                })()}
-              </Modal>
-            )}
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           </div>
         )}
 
-        {/* OPERATIONS */}
+        {/* OPERATIONS TAB */}
         {activeTab === 'operations' && (
-          <div className="space-y-8">
+          <div className="space-y-6">
             <div>
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Operational Management</span>
-              </div>
-              <h2 className="text-3xl font-semibold text-[#f0f6fc] tracking-tight">Operations</h2>
-              <p className="text-[#8b949e] mt-1">Manage programs and services</p>
+              <h2 className="text-2xl font-bold text-[#f0f6fc]">Operations Management</h2>
+              <p className="text-[#8b949e] mt-1">Manage programs, services, and operational resources</p>
             </div>
 
-            {/* Tech Loaner */}
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#30363d]">
-                <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Tech Loaner Program</span>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="secondary" onClick={() => setShowModal('device')}>Add Device</Button>
-                  <Button onClick={() => setShowModal('loan')}>Record Loan</Button>
-                </div>
+            {/* Tech Loaner Program */}
+            <Panel title="Tech Loaner Program" subtitle="Device inventory and loan tracking" actions={
+              <div className="flex gap-2">
+                <Button size="sm" variant="secondary" onClick={() => setShowModal('device')}>Add Device</Button>
+                <Button size="sm" onClick={() => setShowModal('loan')}>Record Loan</Button>
               </div>
+            }>
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -702,13 +895,14 @@ export default function AdminDashboard() {
                           <input type="number" value={device.onLoan} onChange={(e) => updateTechDevice(device.id, { onLoan: parseInt(e.target.value) || 0 })} className="w-16 text-center bg-[#0d1117] border border-[#30363d] rounded-lg py-1 text-[#d29922] font-mono" />
                         </td>
                         <td className="py-4 text-right">
-                          <button onClick={() => { deleteTechDevice(device.id); notify('Deleted') }} className="text-[#f85149] text-sm font-medium hover:underline">Remove</button>
+                          <button onClick={() => { deleteTechDevice(device.id); notify('Device removed') }} className="text-[#f85149] text-sm font-medium hover:underline">Remove</button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+
               {operationalData.techLoaners.loans.filter(l => l.status === 'active').length > 0 && (
                 <div className="mt-6 pt-6 border-t border-[#30363d]">
                   <div className="flex items-center gap-3 mb-4">
@@ -719,20 +913,17 @@ export default function AdminDashboard() {
                     <div key={loan.id} className="flex items-center justify-between py-3 border-b border-[#21262d]">
                       <div>
                         <p className="font-medium text-[#f0f6fc]">{loan.studentName}</p>
-                        <p className="text-sm font-mono text-[#8b949e]">{loan.deviceType} &middot; Due {loan.dueDate}</p>
+                        <p className="text-sm font-mono text-[#8b949e]">{loan.deviceType} · Due {loan.dueDate}</p>
                       </div>
-                      <button onClick={() => { updateTechLoan(loan.id, { status: 'returned' }); notify('Returned') }} className="text-[#00d4ff] text-sm font-medium hover:underline">Mark Returned</button>
+                      <button onClick={() => { updateTechLoan(loan.id, { status: 'returned' }); notify('Device returned') }} className="text-[#00d4ff] text-sm font-medium hover:underline">Mark Returned</button>
                     </div>
                   ))}
                 </div>
               )}
-            </div>
+            </Panel>
 
             {/* Food Pantry */}
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#30363d]">
-                <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Food Pantry</span>
-              </div>
+            <Panel title="Food Pantry Operations" subtitle="Location management and visit tracking">
               <div className="grid grid-cols-3 gap-4 mb-6">
                 <div className="bg-[#0d1117] border border-[#d29922]/30 rounded-lg p-4 text-center">
                   <p className="text-3xl font-mono font-semibold text-[#d29922]">{operationalData.foodPantry.totalVisits}</p>
@@ -756,8 +947,8 @@ export default function AdminDashboard() {
                         <p className="text-sm font-mono text-[#8b949e]">{loc.hours}</p>
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => { logPantryVisit(loc.id, 1); notify('+1 visit') }} className="px-3 py-1 bg-[#21262d] border border-[#30363d] rounded-lg text-sm text-[#00d4ff] font-mono hover:border-[#00d4ff] transition-colors">+1</button>
-                        <button onClick={() => { logPantryVisit(loc.id, 10); notify('+10 visits') }} className="px-3 py-1 bg-[#21262d] border border-[#30363d] rounded-lg text-sm text-[#00d4ff] font-mono hover:border-[#00d4ff] transition-colors">+10</button>
+                        <button onClick={() => { logPantryVisit(loc.id, 1); notify('+1 visit logged') }} className="px-3 py-1 bg-[#21262d] border border-[#30363d] rounded-lg text-sm text-[#00d4ff] font-mono hover:border-[#00d4ff] transition-colors">+1</button>
+                        <button onClick={() => { logPantryVisit(loc.id, 10); notify('+10 visits logged') }} className="px-3 py-1 bg-[#21262d] border border-[#30363d] rounded-lg text-sm text-[#00d4ff] font-mono hover:border-[#00d4ff] transition-colors">+10</button>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
@@ -772,137 +963,54 @@ export default function AdminDashboard() {
                           <option value="moderate">Moderate</option>
                           <option value="low">Low</option>
                           <option value="critical">Critical</option>
-                          <option value="unknown">Unknown</option>
                         </select>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
+            </Panel>
 
-            {/* Training */}
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#30363d]">
-                <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Training Programs</span>
-                <Button variant="secondary" onClick={() => setShowModal('training')}>Add Session</Button>
+            {/* Training Programs */}
+            <Panel title="Training Programs" subtitle="Mental Health First Aid and other certifications" actions={
+              <Button size="sm" variant="secondary" onClick={() => setShowModal('training')}>Add Session</Button>
+            }>
+              <div className="bg-[#0d1117] border border-[#a371f7]/30 rounded-lg p-6">
+                <h4 className="font-medium text-[#f0f6fc]">Mental Health First Aid</h4>
+                <p className="text-4xl font-mono font-semibold text-[#a371f7] mt-3">{operationalData.trainings.mentalHealthFirstAid.totalTrained}</p>
+                <p className="text-sm text-[#8b949e] mt-1">trained · {operationalData.trainings.mentalHealthFirstAid.sessions.length} sessions</p>
               </div>
-              <div className="grid md:grid-cols-1 gap-4">
-                <div className="bg-[#0d1117] border border-[#a371f7]/30 rounded-lg p-6">
-                  <h4 className="font-medium text-[#f0f6fc]">Mental Health First Aid</h4>
-                  <p className="text-3xl font-mono font-semibold text-[#a371f7] mt-3">{operationalData.trainings.mentalHealthFirstAid.totalTrained}</p>
-                  <p className="text-sm text-[#8b949e] mt-1">trained &middot; {operationalData.trainings.mentalHealthFirstAid.sessions.length} sessions</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Modals */}
-            {showModal === 'device' && (
-              <Modal title="Add Device" onClose={() => setShowModal(null)}>
-                <form onSubmit={(e) => { e.preventDefault(); addTechDevice({ ...deviceForm, onLoan: 0 }); setDeviceForm({ type: 'laptop-windows', name: '', total: 0, available: 0 }); setShowModal(null); notify('Device added') }} className="space-y-4">
-                  <Select label="Type" value={deviceForm.type} onChange={(e) => setDeviceForm({ ...deviceForm, type: e.target.value })} options={[
-                    { value: 'laptop-windows', label: 'Windows Laptop' },
-                    { value: 'laptop-mac', label: 'MacBook' },
-                    { value: 'hotspot', label: 'Wi-Fi Hotspot' },
-                    { value: 'tablet', label: 'Tablet' },
-                    { value: 'charger', label: 'Charger' },
-                  ]} />
-                  <Input label="Name" value={deviceForm.name} onChange={(e) => setDeviceForm({ ...deviceForm, name: e.target.value })} required />
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input label="Total" type="number" value={deviceForm.total} onChange={(e) => setDeviceForm({ ...deviceForm, total: parseInt(e.target.value) || 0 })} />
-                    <Input label="Available" type="number" value={deviceForm.available} onChange={(e) => setDeviceForm({ ...deviceForm, available: parseInt(e.target.value) || 0 })} />
-                  </div>
-                  <div className="flex gap-3 pt-2">
-                    <Button type="submit">Add</Button>
-                    <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
-                  </div>
-                </form>
-              </Modal>
-            )}
-            {showModal === 'loan' && (
-              <Modal title="Record Loan" onClose={() => setShowModal(null)}>
-                <form onSubmit={(e) => { e.preventDefault(); addTechLoan(loanForm); setLoanForm({ studentName: '', studentEmail: '', deviceType: '', dueDate: '' }); setShowModal(null); notify('Loan recorded') }} className="space-y-4">
-                  <Input label="Student Name" value={loanForm.studentName} onChange={(e) => setLoanForm({ ...loanForm, studentName: e.target.value })} required />
-                  <Input label="Email" type="email" value={loanForm.studentEmail} onChange={(e) => setLoanForm({ ...loanForm, studentEmail: e.target.value })} required />
-                  <Input label="Device Type" value={loanForm.deviceType} onChange={(e) => setLoanForm({ ...loanForm, deviceType: e.target.value })} required />
-                  <Input label="Due Date" type="date" value={loanForm.dueDate} onChange={(e) => setLoanForm({ ...loanForm, dueDate: e.target.value })} required />
-                  <div className="flex gap-3 pt-2">
-                    <Button type="submit">Record</Button>
-                    <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
-                  </div>
-                </form>
-              </Modal>
-            )}
-            {showModal === 'training' && (
-              <Modal title="Add Training Session" onClose={() => setShowModal(null)}>
-                <form onSubmit={(e) => { e.preventDefault(); addTrainingSession(trainingForm.type, trainingForm); setTrainingForm({ type: 'mentalHealthFirstAid', title: '', date: '', location: '', capacity: 0 }); setShowModal(null); notify('Session added') }} className="space-y-4">
-                  <Select label="Type" value={trainingForm.type} onChange={(e) => setTrainingForm({ ...trainingForm, type: e.target.value })} options={[
-                    { value: 'mentalHealthFirstAid', label: 'Mental Health First Aid' },
-                  ]} />
-                  <Input label="Title" value={trainingForm.title} onChange={(e) => setTrainingForm({ ...trainingForm, title: e.target.value })} required />
-                  <Input label="Date" type="date" value={trainingForm.date} onChange={(e) => setTrainingForm({ ...trainingForm, date: e.target.value })} required />
-                  <Input label="Location" value={trainingForm.location} onChange={(e) => setTrainingForm({ ...trainingForm, location: e.target.value })} />
-                  <Input label="Capacity" type="number" value={trainingForm.capacity} onChange={(e) => setTrainingForm({ ...trainingForm, capacity: parseInt(e.target.value) || 0 })} />
-                  <div className="flex gap-3 pt-2">
-                    <Button type="submit">Add</Button>
-                    <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
-                  </div>
-                </form>
-              </Modal>
-            )}
+            </Panel>
           </div>
         )}
 
-        {/* BUDGET */}
+        {/* BUDGET TAB */}
         {activeTab === 'budget' && (
-          <div className="space-y-8">
+          <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Financial Management</span>
-                </div>
-                <h2 className="text-3xl font-semibold text-[#f0f6fc] tracking-tight">Budget</h2>
-                <p className="text-[#8b949e] mt-1">Track spending and allocations</p>
+                <h2 className="text-2xl font-bold text-[#f0f6fc]">Financial Management</h2>
+                <p className="text-[#8b949e] mt-1">Track spending, allocations, and transactions</p>
               </div>
               <Button onClick={() => setShowModal('transaction')}>Add Transaction</Button>
             </div>
 
             <div className="grid md:grid-cols-3 gap-4">
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Total Budget</label>
-                <div className="flex items-baseline gap-1 mt-3">
-                  <span className="text-[#6e7681] text-xl">$</span>
-                  <input type="number" value={budgetData.total} onChange={(e) => updateBudget({ total: parseFloat(e.target.value) || 0 })} className="text-3xl font-mono font-semibold text-[#3fb950] bg-transparent border-0 w-full focus:ring-0" />
-                </div>
-              </div>
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Allocated</label>
-                <div className="flex items-baseline gap-1 mt-3">
-                  <span className="text-[#6e7681] text-xl">$</span>
-                  <input type="number" value={budgetData.allocated} onChange={(e) => updateBudget({ allocated: parseFloat(e.target.value) || 0 })} className="text-3xl font-mono font-semibold text-[#00d4ff] bg-transparent border-0 w-full focus:ring-0" />
-                </div>
-              </div>
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Spent</label>
-                <p className="text-3xl font-mono font-semibold text-[#d29922] mt-3">${budgetData.spent.toLocaleString()}</p>
-              </div>
+              <MetricCard label="Total Budget" value={`$${budgetData.total.toLocaleString()}`} color="green" icon="💰" />
+              <MetricCard label="Allocated" value={`$${budgetData.allocated.toLocaleString()}`} color="cyan" icon="📊" />
+              <MetricCard label="Spent" value={`$${budgetData.spent.toLocaleString()}`} color="yellow" subtitle={`${((budgetData.spent / budgetData.total) * 100).toFixed(1)}% utilized`} icon="💸" />
             </div>
 
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#30363d]">
-                <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Categories</span>
-              </div>
+            <Panel title="Category Breakdown" subtitle="Budget allocation by category">
               <div className="space-y-6">
                 {budgetData.categories.map(cat => (
                   <div key={cat.name}>
                     <div className="flex justify-between mb-2">
                       <span className="font-medium text-[#f0f6fc]">{cat.name}</span>
-                      <span className="text-sm font-mono text-[#8b949e]">${cat.spent} / ${cat.allocated}</span>
+                      <span className="text-sm font-mono text-[#8b949e]">${cat.spent.toLocaleString()} / ${cat.allocated.toLocaleString()}</span>
                     </div>
-                    <div className="h-1 bg-[#21262d] rounded-full overflow-hidden mb-4">
-                      <div className="h-full bg-gradient-to-r from-[#3fb950] to-[#00d4ff] rounded-full" style={{ width: `${cat.allocated > 0 ? (cat.spent / cat.allocated) * 100 : 0}%` }} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <ProgressBar value={cat.spent} max={cat.allocated} color={cat.spent / cat.allocated > 0.9 ? 'red' : cat.spent / cat.allocated > 0.7 ? 'yellow' : 'green'} showLabel={false} size="md" />
+                    <div className="grid grid-cols-2 gap-3 mt-3">
                       <div>
                         <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Allocated</label>
                         <input type="number" value={cat.allocated} onChange={(e) => updateBudgetCategory(cat.name, { allocated: parseFloat(e.target.value) || 0 })} className="w-full mt-2 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] font-mono focus:ring-1 focus:ring-[#00d4ff]" />
@@ -915,68 +1023,41 @@ export default function AdminDashboard() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Panel>
 
             {budgetData.transactions?.length > 0 && (
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#30363d]">
-                  <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Recent Transactions</span>
-                </div>
+              <Panel title="Recent Transactions" subtitle={`${budgetData.transactions.length} total transactions`}>
                 <div className="space-y-1">
-                  {budgetData.transactions.slice(-8).reverse().map(tx => (
+                  {budgetData.transactions.slice(-10).reverse().map(tx => (
                     <div key={tx.id} className="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-[#21262d] transition-colors">
                       <div>
                         <p className="font-medium text-[#f0f6fc]">{tx.description}</p>
-                        <p className="text-xs font-mono text-[#6e7681]">{formatDate(tx.date)}</p>
+                        <p className="text-xs font-mono text-[#6e7681]">{formatDate(tx.date)} · {tx.category || 'Uncategorized'}</p>
                       </div>
                       <span className={`font-mono font-semibold ${tx.type === 'expense' ? 'text-[#f85149]' : 'text-[#3fb950]'}`}>
-                        {tx.type === 'expense' ? '-' : '+'}${tx.amount}
+                        {tx.type === 'expense' ? '-' : '+'}${tx.amount.toLocaleString()}
                       </span>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {showModal === 'transaction' && (
-              <Modal title="Add Transaction" onClose={() => setShowModal(null)}>
-                <form onSubmit={(e) => { e.preventDefault(); addBudgetTransaction(transactionForm); setTransactionForm({ type: 'expense', amount: 0, description: '', category: '' }); setShowModal(null); notify('Transaction added') }} className="space-y-4">
-                  <Select label="Type" value={transactionForm.type} onChange={(e) => setTransactionForm({ ...transactionForm, type: e.target.value })} options={[
-                    { value: 'expense', label: 'Expense' },
-                    { value: 'income', label: 'Income' },
-                  ]} />
-                  <Input label="Amount" type="number" value={transactionForm.amount} onChange={(e) => setTransactionForm({ ...transactionForm, amount: parseFloat(e.target.value) || 0 })} required />
-                  <Input label="Description" value={transactionForm.description} onChange={(e) => setTransactionForm({ ...transactionForm, description: e.target.value })} required />
-                  <Select label="Category" value={transactionForm.category} onChange={(e) => setTransactionForm({ ...transactionForm, category: e.target.value })} options={[
-                    { value: '', label: 'Select...' },
-                    ...budgetData.categories.map(c => ({ value: c.name, label: c.name }))
-                  ]} />
-                  <div className="flex gap-3 pt-2">
-                    <Button type="submit">Add</Button>
-                    <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
-                  </div>
-                </form>
-              </Modal>
+              </Panel>
             )}
           </div>
         )}
 
-        {/* FEEDBACK */}
+        {/* FEEDBACK TAB */}
         {activeTab === 'feedback' && (
-          <div className="space-y-8">
+          <div className="space-y-6">
             <div>
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">User Feedback</span>
-              </div>
-              <h2 className="text-3xl font-semibold text-[#f0f6fc] tracking-tight">Feedback</h2>
-              <p className="text-[#8b949e] mt-1">Student submissions and responses</p>
+              <h2 className="text-2xl font-bold text-[#f0f6fc]">Feedback Management</h2>
+              <p className="text-[#8b949e] mt-1">Review and respond to student submissions</p>
             </div>
 
             <div className="grid grid-cols-4 gap-4">
-              <StatCard value={feedback.length} label="Total" color="cyan" />
-              <StatCard value={feedback.filter(f => f.status === 'new').length} label="New" color="yellow" />
-              <StatCard value={feedback.filter(f => f.status === 'reviewed').length} label="Reviewed" color="purple" />
-              <StatCard value={feedback.filter(f => f.status === 'resolved').length} label="Resolved" color="green" />
+              <MetricCard label="Total" value={feedback.length} color="cyan" />
+              <MetricCard label="New" value={feedback.filter(f => f.status === 'new').length} color="yellow" />
+              <MetricCard label="Reviewed" value={feedback.filter(f => f.status === 'reviewed').length} color="purple" />
+              <MetricCard label="Resolved" value={feedback.filter(f => f.status === 'resolved').length} color="green" />
             </div>
 
             <div className="space-y-4">
@@ -987,12 +1068,11 @@ export default function AdminDashboard() {
                   item.status === 'resolved' ? 'border-l-[#3fb950] border-[#30363d]' : 'border-[#30363d]'
                 }`}>
                   <div className="flex items-start justify-between mb-3">
-                    <span className={`px-2.5 py-1 rounded border text-xs font-mono ${
-                      item.status === 'new' ? 'bg-transparent border-[#d29922]/50 text-[#d29922]' :
-                      item.status === 'reviewed' ? 'bg-transparent border-[#a371f7]/50 text-[#a371f7]' :
-                      item.status === 'resolved' ? 'bg-transparent border-[#3fb950]/50 text-[#3fb950]' :
-                      'bg-transparent border-[#30363d] text-[#6e7681]'
-                    }`}>{item.status}</span>
+                    <StatusBadge status={
+                      item.status === 'new' ? 'warning' :
+                      item.status === 'reviewed' ? 'info' :
+                      item.status === 'resolved' ? 'success' : 'default'
+                    }>{item.status}</StatusBadge>
                     <span className="text-xs font-mono text-[#6e7681]">{formatDate(item.submittedAt)}</span>
                   </div>
                   <p className="text-[#f0f6fc] mb-3">{item.message}</p>
@@ -1003,7 +1083,7 @@ export default function AdminDashboard() {
                     </div>
                   )}
                   <div className="flex gap-3">
-                    <select value={item.status} onChange={(e) => { updateFeedbackStatus(item.id, e.target.value); notify('Updated') }} className="px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#f0f6fc] focus:ring-1 focus:ring-[#00d4ff]">
+                    <select value={item.status} onChange={(e) => { updateFeedbackStatus(item.id, e.target.value); notify('Status updated') }} className="px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#f0f6fc] focus:ring-1 focus:ring-[#00d4ff]">
                       <option value="new">New</option>
                       <option value="reviewed">Reviewed</option>
                       <option value="resolved">Resolved</option>
@@ -1022,124 +1102,165 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* ACTIVITY - Enhanced Audit Log */}
-        {activeTab === 'activity' && (
+        {/* ANNOUNCEMENTS TAB */}
+        {activeTab === 'announcements' && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-1 h-1 bg-[#00d4ff] rounded-full" />
-                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Audit Log</span>
-                </div>
-                <h2 className="text-2xl font-semibold text-[#f0f6fc] tracking-tight">Activity Stream</h2>
+                <h2 className="text-2xl font-bold text-[#f0f6fc]">Communications</h2>
+                <p className="text-[#8b949e] mt-1">Publish announcements to students</p>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-mono text-[#6e7681]">{activityLog.length} entries</span>
-                <button onClick={() => { if(confirm('Clear all activity?')) { clearActivityLog(); notify('Cleared') }}} className="text-xs text-[#f85149] hover:underline font-medium">Clear</button>
-              </div>
+              <Button onClick={() => setShowModal('announcement')}>New Announcement</Button>
             </div>
 
-            {/* Progress Updates Summary */}
-            {activityLog.filter(e => e.metadata?.progress !== undefined).length > 0 && (
-              <div className="bg-[#161b22] border border-[#3fb950]/30 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-1.5 h-1.5 bg-[#3fb950] rounded-full" />
-                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Recent Progress Updates</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {activityLog.filter(e => e.metadata?.progress !== undefined).slice(0, 10).map(entry => (
-                    <div key={entry.id} className="bg-[#0d1117] border border-[#30363d] rounded px-3 py-1.5 flex items-center gap-2">
-                      <span className="text-xs text-[#8b949e] max-w-[150px] truncate">{entry.metadata.policyTitle || 'Policy'}</span>
-                      {entry.metadata.previousProgress !== undefined && (
-                        <span className="text-[10px] font-mono text-[#6e7681]">{entry.metadata.previousProgress}%</span>
-                      )}
-                      <span className="text-[#6e7681]">&rarr;</span>
-                      <span className="text-sm font-mono font-bold text-[#3fb950]">{entry.metadata.progress}%</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Full Activity Log */}
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
-              <div className="max-h-[550px] overflow-y-auto">
-                {activityLog.map(entry => {
-                  const dept = departments.find(d => d.id === entry.category)
-                  const hasProgress = entry.metadata?.progress !== undefined
-                  const progressDelta = hasProgress && entry.metadata?.previousProgress !== undefined
-                    ? entry.metadata.progress - entry.metadata.previousProgress
-                    : null
-                  return (
-                    <div key={entry.id} className={`flex items-center gap-4 px-5 py-3 border-b border-[#21262d] hover:bg-[#21262d]/50 transition-colors ${hasProgress ? 'bg-[#3fb950]/5' : ''}`}>
-                      <div className="flex items-center gap-2 min-w-[32px]">
-                        {dept && <span className="text-base">{dept.icon}</span>}
-                        {!dept && <div className={`w-1.5 h-1.5 rounded-full ${hasProgress ? 'bg-[#3fb950]' : 'bg-[#00d4ff]'}`} />}
+            <div className="space-y-4">
+              {[...announcements].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)).map(a => (
+                <div key={a.id} className={`bg-[#161b22] border rounded-lg p-6 ${a.pinned ? 'border-[#d29922]' : 'border-[#30363d]'}`}>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-3">
+                        {a.pinned && <span className="text-[#d29922]">★</span>}
+                        <StatusBadge status={
+                          a.category === 'urgent' ? 'danger' :
+                          a.category === 'event' ? 'info' :
+                          a.category === 'milestone' ? 'success' : 'default'
+                        }>{a.category}</StatusBadge>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm text-[#f0f6fc]">{entry.details}</p>
-                          {hasProgress && (
-                            <div className="flex items-center gap-1.5">
-                              <span className="px-2 py-0.5 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded text-[10px] font-mono font-bold text-[#3fb950]">
-                                {entry.metadata.progress}%
-                              </span>
-                              {progressDelta !== null && (
-                                <span className={`text-[10px] font-mono font-semibold ${progressDelta > 0 ? 'text-[#3fb950]' : progressDelta < 0 ? 'text-[#f85149]' : 'text-[#6e7681]'}`}>
-                                  {progressDelta > 0 ? '+' : ''}{progressDelta}%
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className={`px-1.5 py-0.5 rounded text-[8px] font-mono uppercase tracking-wide ${
-                            dept ? 'bg-[#00d4ff]/10 text-[#00d4ff]' : 'bg-[#21262d] text-[#6e7681]'
-                          }`}>
-                            {dept ? dept.name : entry.category}
-                          </span>
-                          <span className="text-[9px] font-mono text-[#6e7681] uppercase">{entry.action}</span>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-mono text-[#6e7681] whitespace-nowrap">{formatTime(entry.timestamp)}</span>
+                      <h3 className="text-lg font-semibold text-[#f0f6fc]">{a.title}</h3>
+                      <p className="text-[#8b949e] mt-2">{a.content}</p>
+                      <p className="text-xs font-mono text-[#6e7681] mt-4">{formatDate(a.createdAt)}</p>
                     </div>
-                  )
-                })}
-                {activityLog.length === 0 && (
-                  <div className="p-12 text-center text-[#6e7681] text-sm">No activity recorded yet</div>
-                )}
-              </div>
+                    <div className="flex gap-2 ml-4">
+                      <button onClick={() => { pinAnnouncement(a.id, !a.pinned); notify(a.pinned ? 'Unpinned' : 'Pinned') }} className="w-8 h-8 rounded-lg bg-[#21262d] border border-[#30363d] flex items-center justify-center hover:border-[#d29922] text-[#8b949e] hover:text-[#d29922] transition-all">★</button>
+                      <button onClick={() => { deleteAnnouncement(a.id); notify('Deleted') }} className="w-8 h-8 rounded-lg bg-[#21262d] border border-[#30363d] flex items-center justify-center hover:border-[#f85149] text-[#8b949e] hover:text-[#f85149] transition-all">×</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {announcements.length === 0 && (
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-12 text-center">
+                  <p className="text-[#6e7681]">No announcements yet</p>
+                </div>
+              )}
             </div>
           </div>
         )}
 
-        {/* SETTINGS */}
-        {activeTab === 'settings' && (
-          <div className="space-y-8">
+        {/* ANALYTICS TAB */}
+        {activeTab === 'analytics' && (
+          <div className="space-y-6">
             <div>
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Configuration</span>
-              </div>
-              <h2 className="text-3xl font-semibold text-[#f0f6fc] tracking-tight">Settings</h2>
-              <p className="text-[#8b949e] mt-1">Data management and backup</p>
+              <h2 className="text-2xl font-bold text-[#f0f6fc]">Analytics & Insights</h2>
+              <p className="text-[#8b949e] mt-1">Deep dive into platform performance metrics</p>
             </div>
 
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-[#f0f6fc] mb-2">Backup & Restore</h3>
-              <p className="text-[#8b949e] mb-6">Export your data for backup or import a previous backup.</p>
+            <div className="grid lg:grid-cols-2 gap-6">
+              {/* Department Performance */}
+              <Panel title="Department Performance" subtitle="Progress by department">
+                <HorizontalBarChart
+                  data={departments.map(d => ({
+                    label: d.name,
+                    value: getOverallProgress(policies.filter(p => p.department === d.id)),
+                    color: getOverallProgress(policies.filter(p => p.department === d.id)) >= 70 ? '#3fb950' :
+                           getOverallProgress(policies.filter(p => p.department === d.id)) >= 40 ? '#d29922' : '#f85149'
+                  }))}
+                  maxValue={100}
+                />
+              </Panel>
+
+              {/* Status Distribution */}
+              <Panel title="Initiative Status" subtitle="Distribution by status">
+                <div className="flex items-center justify-center">
+                  <DonutChart
+                    data={[
+                      { value: statusCounts.completed, color: '#3fb950' },
+                      { value: statusCounts.in_progress, color: '#d29922' },
+                      { value: statusCounts.planned, color: '#6e7681' },
+                    ]}
+                    size={180}
+                    thickness={20}
+                    centerValue={policies.length}
+                    centerLabel="Total"
+                  />
+                </div>
+                <div className="flex justify-center gap-6 mt-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded bg-[#3fb950]" />
+                    <span className="text-sm text-[#8b949e]">Completed ({statusCounts.completed})</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded bg-[#d29922]" />
+                    <span className="text-sm text-[#8b949e]">Active ({statusCounts.in_progress})</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded bg-[#6e7681]" />
+                    <span className="text-sm text-[#8b949e]">Planned ({statusCounts.planned})</span>
+                  </div>
+                </div>
+              </Panel>
+
+              {/* Activity Analysis */}
+              <Panel title="Activity Log Analysis" subtitle={`${activityLog.length} total events recorded`}>
+                <div className="space-y-4">
+                  {(() => {
+                    const actionCounts = activityLog.reduce((acc, a) => {
+                      acc[a.action] = (acc[a.action] || 0) + 1
+                      return acc
+                    }, {})
+                    const topActions = Object.entries(actionCounts)
+                      .sort((a, b) => b[1] - a[1])
+                      .slice(0, 5)
+                    return topActions.map(([action, count]) => (
+                      <div key={action} className="flex items-center justify-between">
+                        <span className="text-sm text-[#8b949e] font-mono">{action}</span>
+                        <span className="text-sm font-mono text-[#00d4ff]">{count}</span>
+                      </div>
+                    ))
+                  })()}
+                </div>
+              </Panel>
+
+              {/* Budget Analytics */}
+              <Panel title="Budget Utilization" subtitle="Spending analysis">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-[#0d1117] rounded-lg">
+                    <span className="text-sm text-[#8b949e]">Total Budget</span>
+                    <span className="text-lg font-mono font-bold text-[#3fb950]">${budgetData.total.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-[#0d1117] rounded-lg">
+                    <span className="text-sm text-[#8b949e]">Amount Spent</span>
+                    <span className="text-lg font-mono font-bold text-[#d29922]">${budgetData.spent.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-4 bg-[#0d1117] rounded-lg">
+                    <span className="text-sm text-[#8b949e]">Remaining</span>
+                    <span className="text-lg font-mono font-bold text-[#00d4ff]">${(budgetData.total - budgetData.spent).toLocaleString()}</span>
+                  </div>
+                  <ProgressBar value={budgetData.spent} max={budgetData.total} color={budgetData.spent / budgetData.total > 0.8 ? 'red' : 'green'} />
+                </div>
+              </Panel>
+            </div>
+          </div>
+        )}
+
+        {/* SETTINGS TAB */}
+        {activeTab === 'settings' && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-2xl font-bold text-[#f0f6fc]">Settings</h2>
+              <p className="text-[#8b949e] mt-1">Data management and system configuration</p>
+            </div>
+
+            <Panel title="Backup & Restore" subtitle="Export or import platform data">
               <div className="flex gap-3">
                 <Button onClick={handleExport}>Export Data</Button>
-                <label className="px-5 py-2.5 rounded-lg font-medium text-sm bg-[#21262d] text-[#8b949e] border border-[#30363d] hover:text-[#f0f6fc] hover:bg-[#30363d] hover:border-[#8b949e] cursor-pointer transition-all">
+                <label className="px-4 py-2.5 rounded-md font-medium text-xs uppercase tracking-wider bg-[#21262d] text-[#8b949e] border border-[#30363d] hover:text-[#f0f6fc] hover:bg-[#30363d] cursor-pointer transition-all">
                   Import Data
                   <input type="file" accept=".json" onChange={handleImport} className="hidden" />
                 </label>
               </div>
-            </div>
+            </Panel>
 
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#30363d]">
-                <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Storage</span>
-              </div>
+            <Panel title="Storage Metrics" subtitle="Data storage overview">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
                   { label: 'Policies', value: policies.length },
@@ -1153,7 +1274,11 @@ export default function AdminDashboard() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Panel>
+
+            <Panel title="Activity Log Management" subtitle="Clear activity history">
+              <Button variant="secondary" onClick={() => { if(confirm('Clear all activity?')) { clearActivityLog(); notify('Activity cleared') }}}>Clear Activity Log</Button>
+            </Panel>
 
             <div className="bg-[#f85149]/5 border border-[#f85149]/30 rounded-lg p-6">
               <h3 className="text-lg font-semibold text-[#f85149] mb-2">Danger Zone</h3>
@@ -1163,6 +1288,133 @@ export default function AdminDashboard() {
           </div>
         )}
       </main>
+
+      {/* MODALS */}
+      {showModal === 'announcement' && (
+        <Modal title="New Announcement" onClose={() => setShowModal(null)}>
+          <form onSubmit={(e) => { e.preventDefault(); addAnnouncement(announcementForm); setAnnouncementForm({ title: '', content: '', category: 'general', pinned: false }); setShowModal(null); notify('Announcement published') }} className="space-y-4">
+            <Input label="Title" value={announcementForm.title} onChange={(e) => setAnnouncementForm({ ...announcementForm, title: e.target.value })} required />
+            <Select label="Category" value={announcementForm.category} onChange={(e) => setAnnouncementForm({ ...announcementForm, category: e.target.value })} options={[
+              { value: 'general', label: 'General' },
+              { value: 'policy', label: 'Policy Update' },
+              { value: 'event', label: 'Event' },
+              { value: 'urgent', label: 'Urgent' },
+              { value: 'milestone', label: 'Milestone' },
+            ]} />
+            <div>
+              <label className="block text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-2">Content</label>
+              <textarea value={announcementForm.content} onChange={(e) => setAnnouncementForm({ ...announcementForm, content: e.target.value })} rows={4} required className="w-full px-4 py-3 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] resize-none focus:ring-1 focus:ring-[#00d4ff] focus:border-[#00d4ff] text-sm" />
+            </div>
+            <label className="flex items-center gap-3">
+              <input type="checkbox" checked={announcementForm.pinned} onChange={(e) => setAnnouncementForm({ ...announcementForm, pinned: e.target.checked })} className="w-4 h-4 bg-[#0d1117] border-[#30363d] rounded text-[#00d4ff] focus:ring-[#00d4ff]" />
+              <span className="text-sm text-[#8b949e]">Pin announcement</span>
+            </label>
+            <div className="flex gap-3 pt-2">
+              <Button type="submit">Publish</Button>
+              <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {showModal === 'device' && (
+        <Modal title="Add Device" onClose={() => setShowModal(null)}>
+          <form onSubmit={(e) => { e.preventDefault(); addTechDevice({ ...deviceForm, onLoan: 0 }); setDeviceForm({ type: 'laptop-windows', name: '', total: 0, available: 0 }); setShowModal(null); notify('Device added') }} className="space-y-4">
+            <Select label="Type" value={deviceForm.type} onChange={(e) => setDeviceForm({ ...deviceForm, type: e.target.value })} options={[
+              { value: 'laptop-windows', label: 'Windows Laptop' },
+              { value: 'laptop-mac', label: 'MacBook' },
+              { value: 'hotspot', label: 'Wi-Fi Hotspot' },
+              { value: 'tablet', label: 'Tablet' },
+              { value: 'charger', label: 'Charger' },
+            ]} />
+            <Input label="Name" value={deviceForm.name} onChange={(e) => setDeviceForm({ ...deviceForm, name: e.target.value })} required />
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="Total" type="number" value={deviceForm.total} onChange={(e) => setDeviceForm({ ...deviceForm, total: parseInt(e.target.value) || 0 })} />
+              <Input label="Available" type="number" value={deviceForm.available} onChange={(e) => setDeviceForm({ ...deviceForm, available: parseInt(e.target.value) || 0 })} />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button type="submit">Add Device</Button>
+              <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {showModal === 'loan' && (
+        <Modal title="Record Loan" onClose={() => setShowModal(null)}>
+          <form onSubmit={(e) => { e.preventDefault(); addTechLoan(loanForm); setLoanForm({ studentName: '', studentEmail: '', deviceType: '', dueDate: '' }); setShowModal(null); notify('Loan recorded') }} className="space-y-4">
+            <Input label="Student Name" value={loanForm.studentName} onChange={(e) => setLoanForm({ ...loanForm, studentName: e.target.value })} required />
+            <Input label="Email" type="email" value={loanForm.studentEmail} onChange={(e) => setLoanForm({ ...loanForm, studentEmail: e.target.value })} required />
+            <Input label="Device Type" value={loanForm.deviceType} onChange={(e) => setLoanForm({ ...loanForm, deviceType: e.target.value })} required />
+            <Input label="Due Date" type="date" value={loanForm.dueDate} onChange={(e) => setLoanForm({ ...loanForm, dueDate: e.target.value })} required />
+            <div className="flex gap-3 pt-2">
+              <Button type="submit">Record Loan</Button>
+              <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {showModal === 'training' && (
+        <Modal title="Add Training Session" onClose={() => setShowModal(null)}>
+          <form onSubmit={(e) => { e.preventDefault(); addTrainingSession(trainingForm.type, trainingForm); setTrainingForm({ type: 'mentalHealthFirstAid', title: '', date: '', location: '', capacity: 0 }); setShowModal(null); notify('Session added') }} className="space-y-4">
+            <Select label="Type" value={trainingForm.type} onChange={(e) => setTrainingForm({ ...trainingForm, type: e.target.value })} options={[
+              { value: 'mentalHealthFirstAid', label: 'Mental Health First Aid' },
+            ]} />
+            <Input label="Title" value={trainingForm.title} onChange={(e) => setTrainingForm({ ...trainingForm, title: e.target.value })} required />
+            <Input label="Date" type="date" value={trainingForm.date} onChange={(e) => setTrainingForm({ ...trainingForm, date: e.target.value })} required />
+            <Input label="Location" value={trainingForm.location} onChange={(e) => setTrainingForm({ ...trainingForm, location: e.target.value })} />
+            <Input label="Capacity" type="number" value={trainingForm.capacity} onChange={(e) => setTrainingForm({ ...trainingForm, capacity: parseInt(e.target.value) || 0 })} />
+            <div className="flex gap-3 pt-2">
+              <Button type="submit">Add Session</Button>
+              <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {showModal === 'transaction' && (
+        <Modal title="Add Transaction" onClose={() => setShowModal(null)}>
+          <form onSubmit={(e) => { e.preventDefault(); addBudgetTransaction(transactionForm); setTransactionForm({ type: 'expense', amount: 0, description: '', category: '' }); setShowModal(null); notify('Transaction added') }} className="space-y-4">
+            <Select label="Type" value={transactionForm.type} onChange={(e) => setTransactionForm({ ...transactionForm, type: e.target.value })} options={[
+              { value: 'expense', label: 'Expense' },
+              { value: 'income', label: 'Income' },
+            ]} />
+            <Input label="Amount" type="number" value={transactionForm.amount} onChange={(e) => setTransactionForm({ ...transactionForm, amount: parseFloat(e.target.value) || 0 })} required />
+            <Input label="Description" value={transactionForm.description} onChange={(e) => setTransactionForm({ ...transactionForm, description: e.target.value })} required />
+            <Select label="Category" value={transactionForm.category} onChange={(e) => setTransactionForm({ ...transactionForm, category: e.target.value })} options={[
+              { value: '', label: 'Select...' },
+              ...budgetData.categories.map(c => ({ value: c.name, label: c.name }))
+            ]} />
+            <div className="flex gap-3 pt-2">
+              <Button type="submit">Add Transaction</Button>
+              <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {/* Custom Scrollbar Styles */}
+      <style jsx global>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #21262d;
+          border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #30363d;
+          border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #484f58;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   )
 }

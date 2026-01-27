@@ -1,21 +1,55 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import Layout from '../components/Layout'
 import { useApp } from '../lib/store'
 import { departments, getOverallProgress, getStatusCounts } from '../lib/data'
+import { MetricCard, DonutChart, HorizontalBarChart, StatusBadge, LiveIndicator, ProgressBar } from '../components/FormInput'
 
-export default function Home() {
-  const [selectedDept, setSelectedDept] = useState(null)
+// Live Clock Component
+const LiveClock = () => {
   const [time, setTime] = useState(new Date())
-  const { policies, budgetData, announcements, activityLog, quickStats } = useApp()
-  const overallProgress = getOverallProgress(policies)
-  const statusCounts = getStatusCounts(policies)
-
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000)
     return () => clearInterval(timer)
   }, [])
+  return (
+    <div className="font-mono text-sm text-[#8b949e]">
+      <span className="text-[#f0f6fc]">{time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+      <span className="mx-2 text-[#30363d]">|</span>
+      <span>{time.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+    </div>
+  )
+}
+
+// Animated Counter
+const AnimatedCounter = ({ value, duration = 1000 }) => {
+  const [count, setCount] = useState(0)
+  useEffect(() => {
+    const target = parseInt(value) || 0
+    const increment = target / (duration / 16)
+    let current = 0
+    const timer = setInterval(() => {
+      current += increment
+      if (current >= target) {
+        setCount(target)
+        clearInterval(timer)
+      } else {
+        setCount(Math.floor(current))
+      }
+    }, 16)
+    return () => clearInterval(timer)
+  }, [value, duration])
+  return <span>{count.toLocaleString()}</span>
+}
+
+export default function Home() {
+  const [selectedDept, setSelectedDept] = useState(null)
+  const [hoveredPolicy, setHoveredPolicy] = useState(null)
+  const { policies, budgetData, announcements, activityLog, quickStats, feedback } = useApp()
+
+  const overallProgress = useMemo(() => getOverallProgress(policies), [policies])
+  const statusCounts = useMemo(() => getStatusCounts(policies), [policies])
 
   const filteredPolicies = selectedDept
     ? policies.filter(p => p.department === selectedDept)
@@ -25,105 +59,134 @@ export default function Home() {
     'wellness': '/wellness',
     'basic-needs': '/basic-needs',
     'academic': '/academic',
-    'civic': '/civic',
     'communications': '/communications',
     'environmental': '/environmental',
   }
 
-  const recentActivity = activityLog?.slice(0, 5) || []
+  const recentActivity = activityLog?.slice(0, 8) || []
   const pinnedAnnouncements = announcements?.filter(a => a.pinned) || []
+
+  // Department stats for heatmap
+  const deptStats = useMemo(() => departments.map(dept => {
+    const deptPolicies = policies.filter(p => p.department === dept.id)
+    const progress = getOverallProgress(deptPolicies)
+    const completed = deptPolicies.filter(p => p.status === 'completed').length
+    return { ...dept, progress, completed, total: deptPolicies.length }
+  }), [policies])
 
   return (
     <Layout>
       <Head>
-        <title>Command Center | Project Bold</title>
-        <meta name="description" content="Project Bold Operations Platform - UNC Student Government" />
+        <title>Operations Dashboard | Project Bold 2026</title>
+        <meta name="description" content="Project Bold Operations Platform - UNC Student Government - Real-time tracking of all 40 policy initiatives" />
       </Head>
 
       {/* Hero Command Center */}
-      <div className="relative bg-[#0d1117] border-b border-[#30363d] overflow-hidden">
-        {/* Grid Background */}
-        <div className="absolute inset-0 opacity-20" style={{
-          backgroundImage: 'linear-gradient(#21262d 1px, transparent 1px), linear-gradient(90deg, #21262d 1px, transparent 1px)',
-          backgroundSize: '40px 40px'
+      <div className="relative bg-gradient-to-b from-[#0d1117] via-[#0d1117] to-[#0a0e14] border-b border-[#30363d] overflow-hidden">
+        {/* Animated Grid Background */}
+        <div className="absolute inset-0 opacity-[0.15]" style={{
+          backgroundImage: 'linear-gradient(#30363d 1px, transparent 1px), linear-gradient(90deg, #30363d 1px, transparent 1px)',
+          backgroundSize: '50px 50px'
         }} />
 
-        <div className="relative max-w-[1600px] mx-auto px-6 py-12">
-          <div className="flex items-start justify-between mb-8">
+        {/* Gradient Orbs */}
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#00d4ff]/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-[#a371f7]/10 rounded-full blur-3xl" />
+
+        <div className="relative max-w-[1600px] mx-auto px-6 py-16">
+          {/* Header Row */}
+          <div className="flex items-start justify-between mb-12">
             <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="inline-flex items-center gap-2 px-2 py-1 bg-[#3fb950]/10 border border-[#3fb950] rounded text-[10px] font-semibold text-[#3fb950] uppercase tracking-wider">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#3fb950] animate-pulse shadow-[0_0_8px_#3fb950]" />
-                  Live
-                </div>
-                <span className="text-[10px] text-[#6e7681] font-mono">Last updated: {time.toLocaleTimeString()}</span>
+              <div className="flex items-center gap-4 mb-5">
+                <LiveIndicator label="Operations Live" variant="success" />
+                <LiveClock />
               </div>
-              <h1 className="text-4xl font-bold text-[#f0f6fc] tracking-tight mb-2">Operations Command</h1>
-              <p className="text-[#8b949e] max-w-xl">
-                Real-time monitoring of all 40 policy initiatives across 8 departments.
+              <h1 className="text-5xl md:text-6xl font-bold text-[#f0f6fc] tracking-tight mb-4">
+                Operations <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00d4ff] to-[#a371f7]">Command</span>
+              </h1>
+              <p className="text-lg text-[#8b949e] max-w-2xl">
+                Real-time monitoring of <span className="text-[#00d4ff] font-mono">{policies.length}</span> policy initiatives across <span className="text-[#a371f7] font-mono">{departments.length}</span> departments.
                 Building a Carolina where every student thrives.
               </p>
             </div>
-            <div className="text-right hidden lg:block">
-              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-1">Session</p>
-              <p className="text-[#00d4ff] font-mono text-sm">SG-2026-BOLD</p>
-              <p className="text-[10px] text-[#6e7681] mt-2">First, Best, For All</p>
+            <div className="hidden lg:block text-right">
+              <div className="inline-block bg-[#161b22]/80 backdrop-blur border border-[#30363d] rounded-xl p-5">
+                <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-2">Session</p>
+                <p className="text-2xl font-mono font-bold text-[#00d4ff] tracking-wide">SG-2026</p>
+                <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mt-2">Project Bold</p>
+              </div>
             </div>
           </div>
 
-          {/* Key Metrics Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-[#30363d] rounded-lg overflow-hidden">
-            <div className="bg-[#161b22] p-5">
-              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-2">Overall Progress</p>
-              <p className="text-4xl font-bold font-mono text-[#00d4ff]">{overallProgress}%</p>
-              <div className="mt-3 h-1 bg-[#21262d] rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-[#00d4ff] to-[#388bfd] rounded-full" style={{ width: `${overallProgress}%` }} />
+          {/* Hero Metrics Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <div className="bg-[#161b22]/80 backdrop-blur border border-[#00d4ff]/30 rounded-xl p-5 relative overflow-hidden group hover:border-[#00d4ff]/60 transition-all">
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#00d4ff] to-transparent" />
+              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-3">Overall Progress</p>
+              <p className="text-4xl font-bold font-mono text-[#00d4ff]"><AnimatedCounter value={overallProgress} />%</p>
+              <div className="mt-3 h-1.5 bg-[#21262d] rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-[#00d4ff] to-[#388bfd] rounded-full transition-all duration-1000" style={{ width: `${overallProgress}%` }} />
               </div>
             </div>
-            <div className="bg-[#161b22] p-5">
-              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-2">Active Policies</p>
-              <p className="text-4xl font-bold font-mono text-[#f0f6fc]">{policies.length}</p>
-              <p className="text-xs text-[#8b949e] mt-1">across {departments.length} depts</p>
+
+            <div className="bg-[#161b22]/80 backdrop-blur border border-[#3fb950]/30 rounded-xl p-5 relative overflow-hidden hover:border-[#3fb950]/60 transition-all">
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#3fb950] to-transparent" />
+              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-3">Completed</p>
+              <p className="text-4xl font-bold font-mono text-[#3fb950]"><AnimatedCounter value={statusCounts.completed} /></p>
+              <p className="text-xs text-[#6e7681] mt-1">initiatives done</p>
             </div>
-            <div className="bg-[#161b22] p-5">
-              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-2">Completed</p>
-              <p className="text-4xl font-bold font-mono text-[#3fb950]">{statusCounts.completed}</p>
-              <p className="text-xs text-[#8b949e] mt-1">initiatives done</p>
+
+            <div className="bg-[#161b22]/80 backdrop-blur border border-[#d29922]/30 rounded-xl p-5 relative overflow-hidden hover:border-[#d29922]/60 transition-all">
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#d29922] to-transparent" />
+              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-3">In Progress</p>
+              <p className="text-4xl font-bold font-mono text-[#d29922]"><AnimatedCounter value={statusCounts.in_progress} /></p>
+              <p className="text-xs text-[#6e7681] mt-1">active now</p>
             </div>
-            <div className="bg-[#161b22] p-5">
-              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-2">In Progress</p>
-              <p className="text-4xl font-bold font-mono text-[#d29922]">{statusCounts.in_progress}</p>
-              <p className="text-xs text-[#8b949e] mt-1">active now</p>
+
+            <div className="bg-[#161b22]/80 backdrop-blur border border-[#a371f7]/30 rounded-xl p-5 relative overflow-hidden hover:border-[#a371f7]/60 transition-all">
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#a371f7] to-transparent" />
+              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-3">Students Reached</p>
+              <p className="text-4xl font-bold font-mono text-[#a371f7]"><AnimatedCounter value={quickStats?.totalStudentsReached || 0} /></p>
+              <p className="text-xs text-[#6e7681] mt-1">this semester</p>
             </div>
-            <div className="bg-[#161b22] p-5">
-              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-2">Students Reached</p>
-              <p className="text-4xl font-bold font-mono text-[#a371f7]">{(quickStats?.totalStudentsReached || 0).toLocaleString()}</p>
-              <p className="text-xs text-[#8b949e] mt-1">this semester</p>
+
+            <div className="bg-[#161b22]/80 backdrop-blur border border-[#f85149]/30 rounded-xl p-5 relative overflow-hidden hover:border-[#f85149]/60 transition-all">
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#f85149] to-transparent" />
+              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-3">Events</p>
+              <p className="text-4xl font-bold font-mono text-[#f85149]"><AnimatedCounter value={quickStats?.eventsThisMonth || 0} /></p>
+              <p className="text-xs text-[#6e7681] mt-1">this month</p>
+            </div>
+
+            <div className="bg-[#161b22]/80 backdrop-blur border border-[#388bfd]/30 rounded-xl p-5 relative overflow-hidden hover:border-[#388bfd]/60 transition-all">
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-[#388bfd] to-transparent" />
+              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-3">Feedback</p>
+              <p className="text-4xl font-bold font-mono text-[#388bfd]"><AnimatedCounter value={feedback?.length || 0} /></p>
+              <p className="text-xs text-[#6e7681] mt-1">responses</p>
             </div>
           </div>
         </div>
       </div>
 
-      <main className="max-w-[1600px] mx-auto px-6 py-8">
+      <main className="max-w-[1600px] mx-auto px-6 py-10">
         {/* Pinned Announcements */}
         {pinnedAnnouncements.length > 0 && (
-          <div className="mb-8">
-            <div className="flex items-center gap-3 mb-4">
-              <span className="text-[#d29922]">★</span>
-              <h2 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Pinned Announcements</h2>
+          <div className="mb-10">
+            <div className="flex items-center gap-3 mb-5">
+              <span className="text-[#d29922] text-lg">★</span>
+              <h2 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-widest">Important Announcements</h2>
             </div>
             <div className="grid md:grid-cols-2 gap-4">
               {pinnedAnnouncements.slice(0, 2).map(a => (
-                <div key={a.id} className="bg-[#161b22] border border-[#d29922]/30 rounded-lg p-5">
-                  <div className="flex items-start justify-between mb-2">
-                    <span className={`px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded ${
-                      a.category === 'urgent' ? 'bg-[#f85149]/10 text-[#f85149] border border-[#f85149]' :
-                      a.category === 'milestone' ? 'bg-[#3fb950]/10 text-[#3fb950] border border-[#3fb950]' :
-                      'bg-[#21262d] text-[#8b949e] border border-[#30363d]'
-                    }`}>{a.category}</span>
+                <div key={a.id} className="bg-gradient-to-br from-[#161b22] to-[#0d1117] border border-[#d29922]/30 rounded-xl p-6 hover:border-[#d29922]/60 transition-all">
+                  <div className="flex items-start justify-between mb-3">
+                    <StatusBadge status={
+                      a.category === 'urgent' ? 'danger' :
+                      a.category === 'milestone' ? 'success' :
+                      a.category === 'event' ? 'info' : 'default'
+                    }>{a.category}</StatusBadge>
                     <span className="text-[10px] text-[#6e7681] font-mono">{new Date(a.createdAt).toLocaleDateString()}</span>
                   </div>
-                  <h3 className="font-semibold text-[#f0f6fc] mb-1">{a.title}</h3>
+                  <h3 className="font-semibold text-[#f0f6fc] text-lg mb-2">{a.title}</h3>
                   <p className="text-sm text-[#8b949e] line-clamp-2">{a.content}</p>
                 </div>
               ))}
@@ -132,72 +195,88 @@ export default function Home() {
         )}
 
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Left Column - Departments & Progress */}
+          {/* Left Column - Department Matrix + Policies */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Department Status Grid */}
+            {/* Department Performance Matrix */}
             <div>
-              <h2 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest pb-3 border-b border-[#21262d] mb-4">Department Status</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {departments.map(dept => {
-                  const deptPolicies = policies.filter(p => p.department === dept.id)
-                  const avgProgress = Math.round(deptPolicies.reduce((sum, p) => sum + p.progress, 0) / deptPolicies.length) || 0
-                  const completed = deptPolicies.filter(p => p.status === 'completed').length
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-widest">Department Matrix</h2>
+                  <span className="text-[10px] text-[#6e7681] font-mono">{departments.length} departments</span>
+                </div>
+              </div>
 
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                {deptStats.map(dept => {
+                  const getHeatColor = (p) => {
+                    if (p >= 80) return 'from-[#3fb950]/20 to-[#3fb950]/5 border-[#3fb950]/40 hover:border-[#3fb950]'
+                    if (p >= 60) return 'from-[#00d4ff]/20 to-[#00d4ff]/5 border-[#00d4ff]/40 hover:border-[#00d4ff]'
+                    if (p >= 40) return 'from-[#d29922]/20 to-[#d29922]/5 border-[#d29922]/40 hover:border-[#d29922]'
+                    if (p >= 20) return 'from-[#db6d28]/20 to-[#db6d28]/5 border-[#db6d28]/40 hover:border-[#db6d28]'
+                    return 'from-[#f85149]/20 to-[#f85149]/5 border-[#f85149]/40 hover:border-[#f85149]'
+                  }
+                  const getTextColor = (p) => {
+                    if (p >= 80) return 'text-[#3fb950]'
+                    if (p >= 60) return 'text-[#00d4ff]'
+                    if (p >= 40) return 'text-[#d29922]'
+                    return 'text-[#f85149]'
+                  }
                   return (
                     <Link
                       key={dept.id}
                       href={deptLinks[dept.id]}
-                      className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 hover:border-[#00d4ff]/50 hover:bg-[#161b22]/80 transition-all group"
+                      className={`bg-gradient-to-br ${getHeatColor(dept.progress)} border rounded-xl p-4 transition-all hover:scale-[1.02] hover:shadow-lg group`}
                     >
                       <div className="flex items-start justify-between mb-3">
                         <span className="text-2xl">{dept.icon}</span>
-                        <span className={`w-2 h-2 rounded-full ${
-                          avgProgress >= 75 ? 'bg-[#3fb950] shadow-[0_0_8px_#3fb950]' :
-                          avgProgress >= 50 ? 'bg-[#d29922] shadow-[0_0_8px_#d29922]' :
-                          avgProgress >= 25 ? 'bg-[#db6d28] shadow-[0_0_8px_#db6d28]' :
-                          'bg-[#6e7681]'
+                        <span className={`w-2.5 h-2.5 rounded-full ${
+                          dept.progress >= 75 ? 'bg-[#3fb950] shadow-[0_0_8px_#3fb950]' :
+                          dept.progress >= 50 ? 'bg-[#00d4ff] shadow-[0_0_8px_#00d4ff]' :
+                          dept.progress >= 25 ? 'bg-[#d29922] shadow-[0_0_8px_#d29922]' : 'bg-[#6e7681]'
                         }`} />
                       </div>
-                      <h3 className="font-semibold text-[#f0f6fc] text-sm mb-1 group-hover:text-[#00d4ff] transition">{dept.name}</h3>
-                      <div className="flex items-center justify-between text-[10px] text-[#6e7681] mb-2">
-                        <span>{deptPolicies.length} policies</span>
-                        <span className="font-mono">{avgProgress}%</span>
+                      <h3 className="font-semibold text-[#f0f6fc] text-sm mb-2 group-hover:text-[#00d4ff] transition truncate">{dept.name}</h3>
+                      <div className="flex items-baseline gap-1 mb-2">
+                        <span className={`text-2xl font-mono font-bold ${getTextColor(dept.progress)}`}>{dept.progress}%</span>
                       </div>
-                      <div className="h-1 bg-[#21262d] rounded-full overflow-hidden">
+                      <p className="text-[10px] text-[#6e7681]">{dept.completed}/{dept.total} complete</p>
+                      <div className="mt-2 h-1 bg-[#21262d] rounded-full overflow-hidden">
                         <div className={`h-full rounded-full ${
-                          avgProgress >= 75 ? 'bg-[#3fb950]' :
-                          avgProgress >= 50 ? 'bg-[#d29922]' :
-                          avgProgress >= 25 ? 'bg-[#db6d28]' :
-                          'bg-[#6e7681]'
-                        }`} style={{ width: `${avgProgress}%` }} />
+                          dept.progress >= 75 ? 'bg-[#3fb950]' :
+                          dept.progress >= 50 ? 'bg-[#00d4ff]' :
+                          dept.progress >= 25 ? 'bg-[#d29922]' : 'bg-[#6e7681]'
+                        }`} style={{ width: `${dept.progress}%` }} />
                       </div>
-                      <p className="text-[10px] text-[#6e7681] mt-2">{completed}/{deptPolicies.length} completed</p>
                     </Link>
                   )
                 })}
               </div>
             </div>
 
-            {/* Policy Feed */}
+            {/* Policy Registry */}
             <div>
-              <div className="flex items-center justify-between pb-3 border-b border-[#21262d] mb-4">
-                <h2 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Policy Registry</h2>
-                <div className="flex gap-1">
+              <div className="flex items-center justify-between pb-4 border-b border-[#21262d] mb-5">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-widest">Policy Registry</h2>
+                  <span className="text-[10px] font-mono px-2 py-0.5 bg-[#00d4ff]/10 border border-[#00d4ff]/30 rounded text-[#00d4ff]">{filteredPolicies.length} policies</span>
+                </div>
+                <div className="flex gap-1.5">
                   <button
                     onClick={() => setSelectedDept(null)}
-                    className={`px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider rounded transition ${
-                      !selectedDept ? 'bg-[#00d4ff]/10 text-[#00d4ff] border border-[#00d4ff]' : 'text-[#8b949e] border border-[#30363d] hover:bg-[#21262d]'
+                    className={`px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider rounded-lg transition ${
+                      !selectedDept ? 'bg-[#00d4ff]/10 text-[#00d4ff] border border-[#00d4ff]' : 'text-[#6e7681] border border-[#30363d] hover:bg-[#21262d] hover:text-[#8b949e]'
                     }`}
                   >
                     All
                   </button>
-                  {departments.slice(0, 4).map(d => (
+                  {departments.map(d => (
                     <button
                       key={d.id}
-                      onClick={() => setSelectedDept(d.id)}
-                      className={`px-3 py-1.5 text-[10px] font-medium rounded transition hidden md:block ${
-                        selectedDept === d.id ? 'bg-[#00d4ff]/10 text-[#00d4ff] border border-[#00d4ff]' : 'text-[#8b949e] border border-[#30363d] hover:bg-[#21262d]'
+                      onClick={() => setSelectedDept(selectedDept === d.id ? null : d.id)}
+                      className={`px-2.5 py-1.5 text-sm rounded-lg transition hidden md:block ${
+                        selectedDept === d.id ? 'bg-[#00d4ff]/10 border border-[#00d4ff]' : 'border border-[#30363d] hover:bg-[#21262d]'
                       }`}
+                      title={d.name}
                     >
                       {d.icon}
                     </button>
@@ -206,154 +285,185 @@ export default function Home() {
               </div>
 
               <div className="space-y-3">
-                {filteredPolicies.slice(0, 8).map(policy => {
+                {filteredPolicies.slice(0, 10).map(policy => {
                   const dept = departments.find(d => d.id === policy.department)
                   return (
-                    <div key={policy.id} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 hover:border-[#484f58] transition">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <span>{dept?.icon}</span>
+                    <div
+                      key={policy.id}
+                      className="bg-[#161b22] border border-[#30363d] rounded-xl p-5 hover:border-[#8b949e]/30 transition-all group"
+                      onMouseEnter={() => setHoveredPolicy(policy.id)}
+                      onMouseLeave={() => setHoveredPolicy(null)}
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl">{dept?.icon}</span>
                           <span className="text-[10px] text-[#6e7681] uppercase tracking-wider">{dept?.name}</span>
+                          {policy.priority === 'high' && (
+                            <span className="px-1.5 py-0.5 bg-[#f85149]/10 border border-[#f85149]/30 rounded text-[9px] font-mono text-[#f85149] uppercase">Priority</span>
+                          )}
                         </div>
-                        <span className={`px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded border ${
-                          policy.status === 'completed' ? 'bg-[#3fb950]/10 text-[#3fb950] border-[#3fb950]' :
-                          policy.status === 'in_progress' ? 'bg-[#d29922]/10 text-[#d29922] border-[#d29922]' :
-                          'bg-[#21262d] text-[#6e7681] border-[#30363d]'
-                        }`}>
+                        <StatusBadge status={
+                          policy.status === 'completed' ? 'success' :
+                          policy.status === 'in_progress' ? 'warning' : 'default'
+                        }>
                           {policy.status === 'in_progress' ? 'Active' : policy.status}
-                        </span>
+                        </StatusBadge>
                       </div>
-                      <h3 className="font-semibold text-[#f0f6fc] mb-1">{policy.title}</h3>
-                      <p className="text-sm text-[#8b949e] mb-3 line-clamp-1">{policy.description}</p>
+                      <h3 className="font-semibold text-[#f0f6fc] mb-2 group-hover:text-[#00d4ff] transition">{policy.title}</h3>
+                      <p className="text-sm text-[#8b949e] mb-4 line-clamp-1">{policy.description}</p>
                       <div className="flex items-center justify-between">
                         <div className="flex-1 mr-4">
-                          <div className="h-1 bg-[#21262d] rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${
+                          <div className="h-1.5 bg-[#21262d] rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full transition-all duration-500 ${
                               policy.status === 'completed' ? 'bg-[#3fb950]' :
-                              policy.status === 'in_progress' ? 'bg-gradient-to-r from-[#00d4ff] to-[#388bfd]' :
-                              'bg-[#6e7681]'
+                              policy.status === 'in_progress' ? 'bg-gradient-to-r from-[#00d4ff] to-[#388bfd]' : 'bg-[#6e7681]'
                             }`} style={{ width: `${policy.progress}%` }} />
                           </div>
                         </div>
-                        <span className="text-xs font-mono text-[#8b949e]">{policy.progress}%</span>
+                        <span className={`text-sm font-mono font-bold ${
+                          policy.status === 'completed' ? 'text-[#3fb950]' :
+                          policy.progress >= 50 ? 'text-[#00d4ff]' : 'text-[#8b949e]'
+                        }`}>{policy.progress}%</span>
                       </div>
                     </div>
                   )
                 })}
               </div>
+
+              {filteredPolicies.length > 10 && (
+                <div className="mt-5 text-center">
+                  <Link href={selectedDept ? deptLinks[selectedDept] : '/communications'} className="inline-flex items-center gap-2 text-sm text-[#00d4ff] hover:underline">
+                    View all {filteredPolicies.length} policies →
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Right Column - Activity & Stats */}
+          {/* Right Column - Stats & Activity */}
           <div className="space-y-8">
-            {/* Quick Stats */}
-            <div>
-              <h2 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest pb-3 border-b border-[#21262d] mb-4">Platform Metrics</h2>
+            {/* Status Distribution */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-6">
+              <h3 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-widest mb-5">Status Overview</h3>
+              <div className="flex items-center justify-center mb-6">
+                <DonutChart
+                  data={[
+                    { value: statusCounts.completed, color: '#3fb950' },
+                    { value: statusCounts.in_progress, color: '#d29922' },
+                    { value: statusCounts.planned, color: '#6e7681' },
+                  ]}
+                  size={140}
+                  thickness={16}
+                  centerValue={`${overallProgress}%`}
+                  centerLabel="Complete"
+                />
+              </div>
               <div className="space-y-3">
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] text-[#6e7681] uppercase tracking-wider">Active Initiatives</span>
-                    <span className="text-lg font-bold font-mono text-[#00d4ff]">{quickStats?.activeInitiatives || 0}</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded bg-[#3fb950]" />
+                    <span className="text-sm text-[#8b949e]">Completed</span>
                   </div>
-                  <div className="h-1 bg-[#21262d] rounded-full">
-                    <div className="h-full w-3/4 bg-[#00d4ff] rounded-full" />
-                  </div>
+                  <span className="font-mono font-bold text-[#3fb950]">{statusCounts.completed}</span>
                 </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] text-[#6e7681] uppercase tracking-wider">Events This Month</span>
-                    <span className="text-lg font-bold font-mono text-[#a371f7]">{quickStats?.eventsThisMonth || 0}</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded bg-[#d29922]" />
+                    <span className="text-sm text-[#8b949e]">In Progress</span>
                   </div>
-                  <div className="h-1 bg-[#21262d] rounded-full">
-                    <div className="h-full w-1/2 bg-[#a371f7] rounded-full" />
-                  </div>
+                  <span className="font-mono font-bold text-[#d29922]">{statusCounts.in_progress}</span>
                 </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] text-[#6e7681] uppercase tracking-wider">Feedback Received</span>
-                    <span className="text-lg font-bold font-mono text-[#3fb950]">{quickStats?.feedbackReceived || 0}</span>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded bg-[#6e7681]" />
+                    <span className="text-sm text-[#8b949e]">Planned</span>
                   </div>
-                  <div className="h-1 bg-[#21262d] rounded-full">
-                    <div className="h-full w-2/3 bg-[#3fb950] rounded-full" />
-                  </div>
+                  <span className="font-mono font-bold text-[#6e7681]">{statusCounts.planned}</span>
                 </div>
               </div>
             </div>
 
             {/* Budget Overview */}
-            <div>
-              <h2 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest pb-3 border-b border-[#21262d] mb-4">Budget Allocation</h2>
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                <div className="grid grid-cols-3 gap-4 mb-4">
-                  <div className="text-center">
-                    <p className="text-[10px] text-[#6e7681] uppercase tracking-wider mb-1">Total</p>
-                    <p className="text-lg font-bold font-mono text-[#f0f6fc]">${(budgetData.total / 1000).toFixed(0)}K</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[10px] text-[#6e7681] uppercase tracking-wider mb-1">Allocated</p>
-                    <p className="text-lg font-bold font-mono text-[#00d4ff]">${(budgetData.allocated / 1000).toFixed(0)}K</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[10px] text-[#6e7681] uppercase tracking-wider mb-1">Spent</p>
-                    <p className="text-lg font-bold font-mono text-[#3fb950]">${(budgetData.spent / 1000).toFixed(0)}K</p>
-                  </div>
+            <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-6">
+              <h3 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-widest mb-5">Budget Allocation</h3>
+              <div className="grid grid-cols-3 gap-4 mb-5">
+                <div className="text-center">
+                  <p className="text-[10px] text-[#6e7681] uppercase tracking-wider mb-1">Total</p>
+                  <p className="text-xl font-bold font-mono text-[#f0f6fc]">${(budgetData.total / 1000).toFixed(0)}K</p>
                 </div>
-                <div className="h-2 bg-[#21262d] rounded-full overflow-hidden flex">
-                  <div className="h-full bg-[#3fb950]" style={{ width: `${(budgetData.spent / budgetData.total) * 100}%` }} />
-                  <div className="h-full bg-[#00d4ff]" style={{ width: `${((budgetData.allocated - budgetData.spent) / budgetData.total) * 100}%` }} />
+                <div className="text-center">
+                  <p className="text-[10px] text-[#6e7681] uppercase tracking-wider mb-1">Allocated</p>
+                  <p className="text-xl font-bold font-mono text-[#00d4ff]">${(budgetData.allocated / 1000).toFixed(0)}K</p>
                 </div>
-                <div className="flex justify-between mt-2 text-[10px] text-[#6e7681]">
-                  <span>Spent: {((budgetData.spent / budgetData.total) * 100).toFixed(0)}%</span>
-                  <span>Remaining: {(((budgetData.total - budgetData.spent) / budgetData.total) * 100).toFixed(0)}%</span>
+                <div className="text-center">
+                  <p className="text-[10px] text-[#6e7681] uppercase tracking-wider mb-1">Spent</p>
+                  <p className="text-xl font-bold font-mono text-[#3fb950]">${(budgetData.spent / 1000).toFixed(0)}K</p>
                 </div>
-                <Link href="/communications" className="flex items-center justify-center gap-2 mt-4 py-2 border border-[#30363d] rounded text-xs text-[#8b949e] hover:text-[#00d4ff] hover:border-[#00d4ff] transition">
-                  <span>→</span> View Full Transparency Dashboard
-                </Link>
               </div>
+              <div className="h-3 bg-[#21262d] rounded-full overflow-hidden flex">
+                <div className="h-full bg-[#3fb950]" style={{ width: `${(budgetData.spent / budgetData.total) * 100}%` }} />
+                <div className="h-full bg-[#00d4ff]" style={{ width: `${((budgetData.allocated - budgetData.spent) / budgetData.total) * 100}%` }} />
+              </div>
+              <div className="flex justify-between mt-3 text-[10px] text-[#6e7681]">
+                <span>Spent: {((budgetData.spent / budgetData.total) * 100).toFixed(0)}%</span>
+                <span>Available: {(((budgetData.total - budgetData.spent) / budgetData.total) * 100).toFixed(0)}%</span>
+              </div>
+              <Link href="/communications" className="flex items-center justify-center gap-2 mt-5 py-2.5 border border-[#30363d] rounded-lg text-xs text-[#8b949e] hover:text-[#00d4ff] hover:border-[#00d4ff] transition">
+                View Full Dashboard →
+              </Link>
             </div>
 
             {/* Activity Feed */}
-            <div>
-              <h2 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest pb-3 border-b border-[#21262d] mb-4">Activity Feed</h2>
-              <div className="space-y-3">
-                {recentActivity.length > 0 ? recentActivity.map(entry => (
-                  <div key={entry.id} className="flex items-start gap-3 py-2 border-b border-[#21262d]">
-                    <div className="w-2 h-2 rounded-full bg-[#00d4ff] mt-1.5 shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm text-[#8b949e] truncate">{entry.details}</p>
-                      <p className="text-[10px] text-[#6e7681] font-mono mt-0.5">
-                        {new Date(entry.timestamp).toLocaleTimeString()}
-                      </p>
+            <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-6">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-widest">Recent Activity</h3>
+                <LiveIndicator label="Live" variant="success" />
+              </div>
+              <div className="space-y-0">
+                {recentActivity.length > 0 ? recentActivity.map(entry => {
+                  const dept = departments.find(d => d.id === entry.category)
+                  return (
+                    <div key={entry.id} className="flex items-start gap-3 py-3 border-b border-[#21262d] last:border-0">
+                      <div className="w-2 h-2 rounded-full bg-[#00d4ff] mt-1.5 shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          {dept && <span className="text-sm">{dept.icon}</span>}
+                          <p className="text-sm text-[#f0f6fc] truncate">{entry.details}</p>
+                        </div>
+                        <p className="text-[10px] text-[#6e7681] font-mono mt-0.5">
+                          {new Date(entry.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                )) : (
-                  <p className="text-sm text-[#6e7681] text-center py-4">No recent activity</p>
+                  )
+                }) : (
+                  <p className="text-sm text-[#6e7681] text-center py-6">No recent activity</p>
                 )}
               </div>
             </div>
 
             {/* Quick Access */}
             <div>
-              <h2 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest pb-3 border-b border-[#21262d] mb-4">Quick Access</h2>
+              <h3 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-widest mb-4">Quick Access</h3>
               <div className="grid grid-cols-2 gap-3">
-                <Link href="/wellness" className="bg-[#3fb950]/10 border border-[#3fb950]/30 rounded-lg p-4 hover:border-[#3fb950] transition-all group">
+                <Link href="/wellness" className="bg-gradient-to-br from-[#3fb950]/20 to-[#3fb950]/5 border border-[#3fb950]/30 rounded-xl p-4 hover:border-[#3fb950] transition-all group">
                   <span className="text-2xl">🆘</span>
-                  <p className="font-medium text-[#f0f6fc] text-sm mt-2 group-hover:text-[#3fb950] transition">Wellness</p>
+                  <p className="font-medium text-[#f0f6fc] text-sm mt-3 group-hover:text-[#3fb950] transition">Wellness</p>
                   <p className="text-[10px] text-[#6e7681] mt-0.5">Crisis Support</p>
                 </Link>
-                <Link href="/basic-needs" className="bg-[#d29922]/10 border border-[#d29922]/30 rounded-lg p-4 hover:border-[#d29922] transition-all group">
+                <Link href="/basic-needs" className="bg-gradient-to-br from-[#d29922]/20 to-[#d29922]/5 border border-[#d29922]/30 rounded-xl p-4 hover:border-[#d29922] transition-all group">
                   <span className="text-2xl">🍎</span>
-                  <p className="font-medium text-[#f0f6fc] text-sm mt-2 group-hover:text-[#d29922] transition">Basic Needs</p>
+                  <p className="font-medium text-[#f0f6fc] text-sm mt-3 group-hover:text-[#d29922] transition">Basic Needs</p>
                   <p className="text-[10px] text-[#6e7681] mt-0.5">Food & Housing</p>
                 </Link>
-                <Link href="/civic" className="bg-[#a371f7]/10 border border-[#a371f7]/30 rounded-lg p-4 hover:border-[#a371f7] transition-all group">
-                  <span className="text-2xl">🗳️</span>
-                  <p className="font-medium text-[#f0f6fc] text-sm mt-2 group-hover:text-[#a371f7] transition">Civic</p>
-                  <p className="text-[10px] text-[#6e7681] mt-0.5">Voter Resources</p>
+                <Link href="/academic" className="bg-gradient-to-br from-[#a371f7]/20 to-[#a371f7]/5 border border-[#a371f7]/30 rounded-xl p-4 hover:border-[#a371f7] transition-all group">
+                  <span className="text-2xl">📚</span>
+                  <p className="font-medium text-[#f0f6fc] text-sm mt-3 group-hover:text-[#a371f7] transition">Academic</p>
+                  <p className="text-[10px] text-[#6e7681] mt-0.5">Student Success</p>
                 </Link>
-                <Link href="/communications" className="bg-[#00d4ff]/10 border border-[#00d4ff]/30 rounded-lg p-4 hover:border-[#00d4ff] transition-all group">
+                <Link href="/communications" className="bg-gradient-to-br from-[#00d4ff]/20 to-[#00d4ff]/5 border border-[#00d4ff]/30 rounded-xl p-4 hover:border-[#00d4ff] transition-all group">
                   <span className="text-2xl">📊</span>
-                  <p className="font-medium text-[#f0f6fc] text-sm mt-2 group-hover:text-[#00d4ff] transition">Transparency</p>
+                  <p className="font-medium text-[#f0f6fc] text-sm mt-3 group-hover:text-[#00d4ff] transition">Transparency</p>
                   <p className="text-[10px] text-[#6e7681] mt-0.5">Full Dashboard</p>
                 </Link>
               </div>
