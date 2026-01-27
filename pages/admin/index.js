@@ -8,6 +8,9 @@ import {
   MetricCard, StatusBadge, DonutChart, HorizontalBarChart, ProgressBar,
   LiveIndicator, Panel, AlertBanner, SearchInput, TabNav, Button
 } from '../../components/FormInput'
+import {
+  EditWindow, PolicyEditor, AnnouncementEditor, QuickStatsEditor, BudgetEditor
+} from '../../components/EditWindow'
 
 // ==========================================
 // UTILITY FUNCTIONS
@@ -346,6 +349,66 @@ export default function AdminDashboard() {
   const [showModal, setShowModal] = useState(null)
   const [toast, setToast] = useState(null)
 
+  // Edit Window state
+  const [editWindow, setEditWindow] = useState({
+    isOpen: false,
+    type: null,        // 'policy', 'announcement', 'quickStats', 'budget', 'feedback'
+    data: null,
+    title: '',
+    subtitle: ''
+  })
+
+  // Open edit window helper
+  const openEditWindow = useCallback((type, data, title, subtitle) => {
+    setEditWindow({
+      isOpen: true,
+      type,
+      data,
+      title,
+      subtitle
+    })
+  }, [])
+
+  // Close edit window helper
+  const closeEditWindow = useCallback(() => {
+    setEditWindow({
+      isOpen: false,
+      type: null,
+      data: null,
+      title: '',
+      subtitle: ''
+    })
+    setToast({ message: 'Changes committed', type: 'success' })
+    setTimeout(() => setToast(null), 3000)
+  }, [])
+
+  // Handle edit window save
+  const handleEditWindowSave = useCallback(async (updatedData) => {
+    switch (editWindow.type) {
+      case 'policy':
+        updatePolicy(updatedData.id, updatedData)
+        if (updatedData.metrics) {
+          updatePolicyMetrics(updatedData.id, updatedData.metrics)
+        }
+        break
+      case 'announcement':
+        // Update announcement (would need updateAnnouncement function)
+        // For now, we'll delete and re-add
+        deleteAnnouncement(updatedData.id)
+        addAnnouncement({ ...updatedData, id: updatedData.id })
+        break
+      case 'quickStats':
+        updateQuickStats(updatedData)
+        break
+      case 'budget':
+        updateBudget(updatedData)
+        break
+      case 'feedback':
+        updateFeedbackStatus(updatedData.id, updatedData.status, updatedData.adminNote)
+        break
+    }
+  }, [editWindow.type, updatePolicy, updatePolicyMetrics, deleteAnnouncement, addAnnouncement, updateQuickStats, updateBudget, updateFeedbackStatus])
+
   // Form states
   const [announcementForm, setAnnouncementForm] = useState({ title: '', content: '', category: 'general', pinned: false })
   const [deviceForm, setDeviceForm] = useState({ type: 'laptop-windows', name: '', total: 0, available: 0 })
@@ -656,7 +719,21 @@ export default function AdminDashboard() {
             </div>
 
             {/* Quick Stats Editor */}
-            <Panel title="Platform Metrics" subtitle="Click values to edit" collapsible defaultCollapsed>
+            <Panel
+              title="Platform Metrics"
+              subtitle="Click values to edit"
+              collapsible
+              defaultCollapsed
+              actions={
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => openEditWindow('quickStats', quickStats, 'Edit Platform Metrics', 'Homepage Statistics')}
+                >
+                  Open Editor
+                </Button>
+              }
+            >
               <div className="grid grid-cols-4 gap-4">
                 {[
                   { key: 'totalStudentsReached', label: 'Students Reached', color: '#00d4ff' },
@@ -772,12 +849,23 @@ export default function AdminDashboard() {
                           </div>
                         </div>
                       </div>
-                      <StatusBadge status={
-                        policy.status === 'completed' ? 'success' :
-                        policy.status === 'in_progress' ? 'warning' : 'default'
-                      }>
-                        {policy.status === 'in_progress' ? 'Active' : policy.status}
-                      </StatusBadge>
+                      <div className="flex items-center gap-2">
+                        <StatusBadge status={
+                          policy.status === 'completed' ? 'success' :
+                          policy.status === 'in_progress' ? 'warning' : 'default'
+                        }>
+                          {policy.status === 'in_progress' ? 'Active' : policy.status}
+                        </StatusBadge>
+                        <button
+                          onClick={() => openEditWindow('policy', policy, `Edit: ${policy.title}`, `${dept?.name} Department`)}
+                          className="w-8 h-8 rounded-lg bg-[#00d4ff]/10 border border-[#00d4ff]/30 flex items-center justify-center hover:bg-[#00d4ff]/20 hover:border-[#00d4ff] transition-all group"
+                          title="Open Edit Window"
+                        >
+                          <svg className="w-4 h-4 text-[#00d4ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid md:grid-cols-3 gap-4 mb-4">
@@ -992,7 +1080,15 @@ export default function AdminDashboard() {
                 <h2 className="text-2xl font-bold text-[#f0f6fc]">Financial Management</h2>
                 <p className="text-[#8b949e] mt-1">Track spending, allocations, and transactions</p>
               </div>
-              <Button onClick={() => setShowModal('transaction')}>Add Transaction</Button>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => openEditWindow('budget', budgetData, 'Edit Budget', 'Financial Overview')}
+                >
+                  Open Editor
+                </Button>
+                <Button onClick={() => setShowModal('transaction')}>Add Transaction</Button>
+              </div>
             </div>
 
             <div className="grid md:grid-cols-3 gap-4">
@@ -1131,6 +1227,15 @@ export default function AdminDashboard() {
                       <p className="text-xs font-mono text-[#6e7681] mt-4">{formatDate(a.createdAt)}</p>
                     </div>
                     <div className="flex gap-2 ml-4">
+                      <button
+                        onClick={() => openEditWindow('announcement', a, `Edit: ${a.title}`, 'Announcement')}
+                        className="w-8 h-8 rounded-lg bg-[#00d4ff]/10 border border-[#00d4ff]/30 flex items-center justify-center hover:bg-[#00d4ff]/20 hover:border-[#00d4ff] transition-all"
+                        title="Edit"
+                      >
+                        <svg className="w-4 h-4 text-[#00d4ff]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
                       <button onClick={() => { pinAnnouncement(a.id, !a.pinned); notify(a.pinned ? 'Unpinned' : 'Pinned') }} className="w-8 h-8 rounded-lg bg-[#21262d] border border-[#30363d] flex items-center justify-center hover:border-[#d29922] text-[#8b949e] hover:text-[#d29922] transition-all">★</button>
                       <button onClick={() => { deleteAnnouncement(a.id); notify('Deleted') }} className="w-8 h-8 rounded-lg bg-[#21262d] border border-[#30363d] flex items-center justify-center hover:border-[#f85149] text-[#8b949e] hover:text-[#f85149] transition-all">×</button>
                     </div>
@@ -1393,6 +1498,34 @@ export default function AdminDashboard() {
           </form>
         </Modal>
       )}
+
+      {/* EDIT WINDOW */}
+      <EditWindow
+        isOpen={editWindow.isOpen}
+        onClose={closeEditWindow}
+        title={editWindow.title}
+        subtitle={editWindow.subtitle}
+        type={editWindow.type}
+        data={editWindow.data}
+        onSave={handleEditWindowSave}
+      >
+        {({ data, onChange, isDirty }) => {
+          if (!data) return null
+
+          switch (editWindow.type) {
+            case 'policy':
+              return <PolicyEditor data={data} onChange={onChange} departments={departments} />
+            case 'announcement':
+              return <AnnouncementEditor data={data} onChange={onChange} />
+            case 'quickStats':
+              return <QuickStatsEditor data={data} onChange={onChange} />
+            case 'budget':
+              return <BudgetEditor data={data} onChange={onChange} />
+            default:
+              return null
+          }
+        }}
+      </EditWindow>
 
       {/* Custom Scrollbar Styles */}
       <style jsx global>{`
