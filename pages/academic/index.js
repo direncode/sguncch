@@ -4,6 +4,7 @@ import Layout from '../../components/Layout'
 import { Input, Select, Textarea } from '../../components/FormInput'
 import { useApp } from '../../lib/store'
 import { departmentContacts, departmentFAQs, departmentAnnouncements, serviceGuides } from '../../lib/data'
+import { EditModeToggle } from '../../components/InlineEditor'
 
 export default function AcademicPage() {
   const [activeTab, setActiveTab] = useState('overview')
@@ -845,6 +846,7 @@ export default function AcademicPage() {
           </div>
         </div>
       )}
+      <EditModeToggle />
     </Layout>
   )
 }

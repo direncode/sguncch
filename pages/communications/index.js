@@ -4,6 +4,7 @@ import Layout from '../../components/Layout'
 import { Input, Select, Textarea } from '../../components/FormInput'
 import { useApp } from '../../lib/store'
 import { getOverallProgress, getStatusCounts, departmentContacts, departmentFAQs, departmentAnnouncements } from '../../lib/data'
+import { EditModeToggle } from '../../components/InlineEditor'
 
 export default function CommunicationsPage() {
   const [activeTab, setActiveTab] = useState('overview')
@@ -798,6 +799,7 @@ export default function CommunicationsPage() {
           </div>
         </div>
       )}
+      <EditModeToggle />
     </Layout>
   )
 }
