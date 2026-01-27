@@ -3,6 +3,7 @@ import Head from 'next/head'
 import Layout from '../../components/Layout'
 import { Input, Select, Textarea, Button, Checkbox } from '../../components/FormInput'
 import { useApp } from '../../lib/store'
+import { departmentContacts, departmentFAQs, departmentAnnouncements, serviceGuides } from '../../lib/data'
 
 export default function CivicPage() {
   const [activeTab, setActiveTab] = useState('voter')
@@ -13,6 +14,20 @@ export default function CivicPage() {
   const { policies } = useApp()
 
   const deptPolicies = policies.filter(p => p.department === 'civic')
+
+  const contact = departmentContacts.civic
+  const faqs = departmentFAQs.civic
+  const announcements = departmentAnnouncements.civic
+  const voterGuide = serviceGuides['voter-registration']
+  const [expandedFaq, setExpandedFaq] = useState(null)
+  const [feedbackForm, setFeedbackForm] = useState({ topic: '', message: '', email: '' })
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
+
+  const handleFeedbackSubmit = (e) => {
+    e.preventDefault()
+    setFeedbackSubmitted(true)
+    setFeedbackForm({ topic: '', message: '', email: '' })
+  }
 
   return (
     <Layout>
@@ -56,6 +71,7 @@ export default function CivicPage() {
               { id: 'transit', label: 'Election Transit' },
               { id: 'service', label: 'Day of Service' },
               { id: 'democracy', label: 'Democracy Week' },
+              { id: 'faq', label: 'FAQ & Contact' },
               { id: 'policies', label: 'All Policies' },
             ].map(tab => (
               <button
@@ -400,6 +416,141 @@ export default function CivicPage() {
                     </button>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* FAQ & Contact Tab */}
+          {activeTab === 'faq' && (
+            <div className="space-y-8">
+              <div className="grid lg:grid-cols-2 gap-8">
+                {/* Contact Info */}
+                <div>
+                  <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-6">Contact Us</h2>
+                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-12 h-12 bg-[#a371f7]/20 border border-[#a371f7]/40 rounded-full flex items-center justify-center">
+                        <span className="text-xl">👤</span>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-[#f0f6fc]">{contact.lead.name}</p>
+                        <p className="text-sm text-[#8b949e]">{contact.lead.title}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[#8b949e]">📍</span>
+                        <span className="text-[#f0f6fc]">{contact.office}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[#8b949e]">🕐</span>
+                        <span className="text-[#f0f6fc]">{contact.hours}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[#8b949e]">📧</span>
+                        <a href={`mailto:${contact.lead.email}`} className="text-[#a371f7] hover:underline">{contact.lead.email}</a>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[#8b949e]">📱</span>
+                        <span className="text-[#f0f6fc]">{contact.socialMedia}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Feedback Form */}
+                  <div className="mt-6 bg-[#161b22] border border-[#30363d] rounded-lg p-6">
+                    <h3 className="font-semibold text-[#f0f6fc] mb-4">Send Feedback</h3>
+                    {feedbackSubmitted ? (
+                      <div className="text-center py-4">
+                        <div className="w-12 h-12 bg-[#a371f7]/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <span className="text-2xl">✓</span>
+                        </div>
+                        <p className="text-[#a371f7] font-medium">Thanks for your feedback!</p>
+                        <button onClick={() => setFeedbackSubmitted(false)} className="text-[#8b5cf6] text-sm mt-2 hover:underline">Send another</button>
+                      </div>
+                    ) : (
+                      <form onSubmit={handleFeedbackSubmit} className="space-y-4">
+                        <Select label="Topic" name="topic" value={feedbackForm.topic} onChange={e => setFeedbackForm({...feedbackForm, topic: e.target.value})} required
+                          options={[
+                            { value: 'voting', label: 'Voter Registration' },
+                            { value: 'fellows', label: 'Civic Fellows' },
+                            { value: 'transit', label: 'Election Transit' },
+                            { value: 'other', label: 'Other' },
+                          ]}
+                        />
+                        <Textarea label="Message" name="message" value={feedbackForm.message} onChange={e => setFeedbackForm({...feedbackForm, message: e.target.value})} required rows={3} />
+                        <Input label="Email (optional)" type="email" name="email" value={feedbackForm.email} onChange={e => setFeedbackForm({...feedbackForm, email: e.target.value})} />
+                        <button type="submit" className="w-full bg-[#a371f7] text-white px-4 py-2.5 rounded font-semibold hover:bg-[#8b5cf6] transition-colors">
+                          Submit Feedback
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                </div>
+
+                {/* FAQ Section */}
+                <div>
+                  <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-6">Frequently Asked Questions</h2>
+                  <div className="space-y-3">
+                    {faqs.map((faq, i) => (
+                      <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+                        <button
+                          onClick={() => setExpandedFaq(expandedFaq === i ? null : i)}
+                          className="w-full text-left p-4 flex items-center justify-between hover:bg-[#21262d] transition-colors"
+                        >
+                          <span className="font-medium text-[#f0f6fc] pr-4">{faq.q}</span>
+                          <span className="text-[#8b949e] flex-shrink-0">{expandedFaq === i ? '−' : '+'}</span>
+                        </button>
+                        {expandedFaq === i && (
+                          <div className="px-4 pb-4 text-[#8b949e] text-sm border-t border-[#30363d] pt-3">
+                            {faq.a}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* How-To Guide */}
+              <div>
+                <h3 className="text-lg font-bold text-[#f0f6fc] tracking-tight mb-4">{voterGuide.title}</h3>
+                <div className="grid md:grid-cols-4 gap-4">
+                  {voterGuide.steps.map((step) => (
+                    <div key={step.step} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 relative">
+                      <div className="absolute -top-3 left-4 bg-[#a371f7] text-white text-xs font-bold px-2 py-1 rounded">
+                        Step {step.step}
+                      </div>
+                      <h4 className="font-semibold text-[#f0f6fc] mt-2 mb-2">{step.title}</h4>
+                      <p className="text-sm text-[#8b949e]">{step.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Announcements */}
+              <div>
+                <h3 className="text-lg font-bold text-[#f0f6fc] tracking-tight mb-4">Recent Updates</h3>
+                <div className="space-y-3">
+                  {announcements.map(ann => (
+                    <div key={ann.id} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 flex items-start gap-4">
+                      <div className={`px-2 py-1 rounded text-xs font-mono ${
+                        ann.type === 'event' ? 'bg-[#a371f7]/10 text-[#a371f7] border border-[#a371f7]' :
+                        ann.type === 'deadline' ? 'bg-[#d29922]/10 text-[#d29922] border border-[#d29922]' :
+                        'bg-[#3fb950]/10 text-[#3fb950] border border-[#3fb950]'
+                      }`}>
+                        {ann.type.toUpperCase()}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-1">
+                          <h4 className="font-semibold text-[#f0f6fc]">{ann.title}</h4>
+                          <span className="text-xs text-[#6e7681] font-mono">{ann.date}</span>
+                        </div>
+                        <p className="text-sm text-[#8b949e]">{ann.content}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
           )}

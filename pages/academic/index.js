@@ -3,6 +3,7 @@ import Head from 'next/head'
 import Layout from '../../components/Layout'
 import { Input, Select, Textarea, Button } from '../../components/FormInput'
 import { useApp } from '../../lib/store'
+import { departmentContacts, departmentFAQs, departmentAnnouncements, serviceGuides } from '../../lib/data'
 
 export default function AcademicPage() {
   const [activeTab, setActiveTab] = useState('research')
@@ -25,8 +26,23 @@ export default function AcademicPage() {
     { id: 'advising', label: 'Advising Resources' },
     { id: 'syllabus', label: 'Syllabus Database' },
     { id: 'transfer', label: 'Transfer Credits' },
+    { id: 'faq', label: 'FAQ & Contact' },
     { id: 'policies', label: 'All Policies' },
   ]
+
+  const contact = departmentContacts.academic
+  const faqs = departmentFAQs.academic
+  const announcements = departmentAnnouncements.academic
+  const researchGuide = serviceGuides['research-position']
+  const [expandedFaq, setExpandedFaq] = useState(null)
+  const [deptFeedbackForm, setDeptFeedbackForm] = useState({ topic: '', message: '', email: '' })
+  const [deptFeedbackSubmitted, setDeptFeedbackSubmitted] = useState(false)
+
+  const handleDeptFeedbackSubmit = (e) => {
+    e.preventDefault()
+    setDeptFeedbackSubmitted(true)
+    setDeptFeedbackForm({ topic: '', message: '', email: '' })
+  }
 
   return (
     <Layout>
@@ -385,6 +401,141 @@ export default function AcademicPage() {
                 <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
                   <p className="text-4xl font-semibold font-mono text-[#a371f7]">81%</p>
                   <p className="text-sm text-[#6e7681] mt-1 uppercase tracking-wide">Approval Rate</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* FAQ & Contact Tab */}
+          {activeTab === 'faq' && (
+            <div className="space-y-8">
+              <div className="grid lg:grid-cols-2 gap-8">
+                {/* Contact Info */}
+                <div>
+                  <h2 className="text-2xl font-semibold text-[#f0f6fc] tracking-tight mb-6">Contact Us</h2>
+                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="w-12 h-12 bg-[#388bfd]/20 border border-[#388bfd]/40 rounded-full flex items-center justify-center">
+                        <span className="text-xl">👤</span>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-[#f0f6fc]">{contact.lead.name}</p>
+                        <p className="text-sm text-[#8b949e]">{contact.lead.title}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex items-center gap-3">
+                        <span className="text-[#8b949e]">📍</span>
+                        <span className="text-[#f0f6fc]">{contact.office}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[#8b949e]">🕐</span>
+                        <span className="text-[#f0f6fc]">{contact.hours}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[#8b949e]">📧</span>
+                        <a href={`mailto:${contact.lead.email}`} className="text-[#388bfd] hover:underline">{contact.lead.email}</a>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[#8b949e]">📱</span>
+                        <span className="text-[#f0f6fc]">{contact.socialMedia}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Feedback Form */}
+                  <div className="mt-6 bg-[#161b22] border border-[#30363d] rounded-lg p-6">
+                    <h3 className="font-semibold text-[#f0f6fc] mb-4">Send Feedback</h3>
+                    {deptFeedbackSubmitted ? (
+                      <div className="text-center py-4">
+                        <div className="w-12 h-12 bg-[#388bfd]/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <span className="text-2xl">✓</span>
+                        </div>
+                        <p className="text-[#388bfd] font-medium">Thanks for your feedback!</p>
+                        <button onClick={() => setDeptFeedbackSubmitted(false)} className="text-[#58a6ff] text-sm mt-2 hover:underline">Send another</button>
+                      </div>
+                    ) : (
+                      <form onSubmit={handleDeptFeedbackSubmit} className="space-y-4">
+                        <Select label="Topic" name="topic" value={deptFeedbackForm.topic} onChange={e => setDeptFeedbackForm({...deptFeedbackForm, topic: e.target.value})} required
+                          options={[
+                            { value: 'registration', label: 'Registration' },
+                            { value: 'advising', label: 'Advising' },
+                            { value: 'research', label: 'Research' },
+                            { value: 'other', label: 'Other' },
+                          ]}
+                        />
+                        <Textarea label="Message" name="message" value={deptFeedbackForm.message} onChange={e => setDeptFeedbackForm({...deptFeedbackForm, message: e.target.value})} required rows={3} />
+                        <Input label="Email (optional)" type="email" name="email" value={deptFeedbackForm.email} onChange={e => setDeptFeedbackForm({...deptFeedbackForm, email: e.target.value})} />
+                        <button type="submit" className="w-full bg-[#388bfd] text-white px-4 py-2.5 rounded font-semibold hover:bg-[#58a6ff] transition-colors">
+                          Submit Feedback
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                </div>
+
+                {/* FAQ Section */}
+                <div>
+                  <h2 className="text-2xl font-semibold text-[#f0f6fc] tracking-tight mb-6">Frequently Asked Questions</h2>
+                  <div className="space-y-3">
+                    {faqs.map((faq, i) => (
+                      <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+                        <button
+                          onClick={() => setExpandedFaq(expandedFaq === i ? null : i)}
+                          className="w-full text-left p-4 flex items-center justify-between hover:bg-[#21262d] transition-colors"
+                        >
+                          <span className="font-medium text-[#f0f6fc] pr-4">{faq.q}</span>
+                          <span className="text-[#8b949e] flex-shrink-0">{expandedFaq === i ? '−' : '+'}</span>
+                        </button>
+                        {expandedFaq === i && (
+                          <div className="px-4 pb-4 text-[#8b949e] text-sm border-t border-[#30363d] pt-3">
+                            {faq.a}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* How-To Guide */}
+              <div>
+                <h3 className="text-lg font-semibold text-[#f0f6fc] tracking-tight mb-4">{researchGuide.title}</h3>
+                <div className="grid md:grid-cols-4 gap-4">
+                  {researchGuide.steps.map((step) => (
+                    <div key={step.step} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 relative">
+                      <div className="absolute -top-3 left-4 bg-[#388bfd] text-white text-xs font-bold px-2 py-1 rounded">
+                        Step {step.step}
+                      </div>
+                      <h4 className="font-semibold text-[#f0f6fc] mt-2 mb-2">{step.title}</h4>
+                      <p className="text-sm text-[#8b949e]">{step.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Announcements */}
+              <div>
+                <h3 className="text-lg font-semibold text-[#f0f6fc] tracking-tight mb-4">Recent Updates</h3>
+                <div className="space-y-3">
+                  {announcements.map(ann => (
+                    <div key={ann.id} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 flex items-start gap-4">
+                      <div className={`px-2 py-1 rounded text-xs font-mono ${
+                        ann.type === 'event' ? 'bg-[#388bfd]/10 text-[#388bfd] border border-[#388bfd]' :
+                        ann.type === 'survey' ? 'bg-[#a371f7]/10 text-[#a371f7] border border-[#a371f7]' :
+                        'bg-[#3fb950]/10 text-[#3fb950] border border-[#3fb950]'
+                      }`}>
+                        {ann.type.toUpperCase()}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-1">
+                          <h4 className="font-semibold text-[#f0f6fc]">{ann.title}</h4>
+                          <span className="text-xs text-[#6e7681] font-mono">{ann.date}</span>
+                        </div>
+                        <p className="text-sm text-[#8b949e]">{ann.content}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
