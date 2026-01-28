@@ -517,6 +517,7 @@ export default function AdminDashboard() {
   const tabs = [
     { id: 'command', label: 'Command Center', icon: '' },
     { id: 'policies', label: 'Policies', icon: '', count: policies.length },
+    { id: 'activity', label: 'Activity Log', icon: '', count: activityLog.filter(a => a.action === 'LOG_PROGRESS').length },
     { id: 'budget', label: 'Budget', icon: '' },
     { id: 'feedback', label: 'Feedback', icon: '', count: feedback.filter(f => f.status === 'new').length },
     { id: 'announcements', label: 'Comms', icon: '' },
@@ -933,6 +934,120 @@ export default function AdminDashboard() {
                 )
               })}
             </div>
+          </div>
+        )}
+
+        {/* ACTIVITY LOG TAB */}
+        {activeTab === 'activity' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-bold text-[#f0f6fc]">Activity Log</h2>
+                <p className="text-[#8b949e] mt-1">Track all progress updates and administrative actions</p>
+              </div>
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => clearActivityLog()}>Clear Log</Button>
+              </div>
+            </div>
+
+            {/* Activity Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-[#161b22] border border-[#3fb950]/30 rounded-lg p-4 text-center">
+                <p className="text-3xl font-mono font-bold text-[#3fb950]">{activityLog.filter(a => a.action === 'LOG_PROGRESS').length}</p>
+                <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mt-1">Progress Updates</p>
+              </div>
+              <div className="bg-[#161b22] border border-[#00d4ff]/30 rounded-lg p-4 text-center">
+                <p className="text-3xl font-mono font-bold text-[#00d4ff]">{activityLog.filter(a => a.action.includes('UPDATE')).length}</p>
+                <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mt-1">Total Updates</p>
+              </div>
+              <div className="bg-[#161b22] border border-[#a371f7]/30 rounded-lg p-4 text-center">
+                <p className="text-3xl font-mono font-bold text-[#a371f7]">{activityLog.filter(a => a.action.includes('CREATE') || a.action.includes('ADD')).length}</p>
+                <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mt-1">Items Created</p>
+              </div>
+              <div className="bg-[#161b22] border border-[#d29922]/30 rounded-lg p-4 text-center">
+                <p className="text-3xl font-mono font-bold text-[#d29922]">{activityLog.filter(a => Date.now() - new Date(a.timestamp).getTime() < 86400000).length}</p>
+                <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mt-1">Last 24 Hours</p>
+              </div>
+            </div>
+
+            {/* Progress Log Section */}
+            <Panel title="Progress Log" subtitle="All policy progress updates with notes">
+              <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                {activityLog
+                  .filter(a => a.action === 'LOG_PROGRESS')
+                  .map((entry) => {
+                    const policy = policies.find(p => p.id === entry.metadata?.policyId)
+                    const dept = departments.find(d => d.id === entry.metadata?.department || d.id === policy?.department)
+                    const progressDelta = entry.metadata?.previousProgress !== undefined
+                      ? entry.metadata.progress - entry.metadata.previousProgress
+                      : null
+
+                    return (
+                      <div key={entry.id} className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4 hover:border-[#00d4ff]/50 transition-colors">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <span className={`px-2 py-1 rounded text-xs font-bold ${
+                                entry.metadata?.progress >= 100 ? 'bg-[#3fb950]/20 text-[#3fb950] border border-[#3fb950]/30' :
+                                entry.metadata?.progress >= 50 ? 'bg-[#00d4ff]/20 text-[#00d4ff] border border-[#00d4ff]/30' :
+                                'bg-[#d29922]/20 text-[#d29922] border border-[#d29922]/30'
+                              }`}>
+                                {entry.metadata?.progress || 0}%
+                                {progressDelta !== null && progressDelta !== 0 && (
+                                  <span className={`ml-1 ${progressDelta > 0 ? 'text-[#3fb950]' : 'text-[#f85149]'}`}>
+                                    ({progressDelta > 0 ? '+' : ''}{progressDelta})
+                                  </span>
+                                )}
+                              </span>
+                              {dept && <span className="text-xs text-[#6e7681] uppercase tracking-widest">{dept.name}</span>}
+                            </div>
+                            <p className="font-medium text-[#f0f6fc]">{entry.metadata?.policyTitle || policy?.title || 'Unknown Policy'}</p>
+                            <p className="text-sm text-[#8b949e] mt-1">{entry.metadata?.note || entry.details}</p>
+                          </div>
+                          <div className="text-right ml-4">
+                            <p className="text-xs font-mono text-[#6e7681]">{formatDate(entry.timestamp)}</p>
+                            <p className="text-xs font-mono text-[#6e7681]">{formatTime(entry.timestamp)}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                {activityLog.filter(a => a.action === 'LOG_PROGRESS').length === 0 && (
+                  <div className="text-center py-8 text-[#6e7681]">
+                    <p className="text-sm">No progress updates yet</p>
+                    <p className="text-xs mt-1">Update policy progress to see entries here</p>
+                  </div>
+                )}
+              </div>
+            </Panel>
+
+            {/* Full Activity Log */}
+            <Panel title="All Activity" subtitle={`${activityLog.length} total entries`} collapsible defaultCollapsed>
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                {activityLog.slice(0, 100).map((entry) => {
+                  const getActionColor = (action) => {
+                    if (action.includes('PROGRESS') || action.includes('COMPLETE')) return 'text-[#3fb950]'
+                    if (action.includes('UPDATE')) return 'text-[#00d4ff]'
+                    if (action.includes('CREATE') || action.includes('ADD')) return 'text-[#a371f7]'
+                    if (action.includes('DELETE') || action.includes('RESET')) return 'text-[#f85149]'
+                    if (action.includes('LOGIN')) return 'text-[#d29922]'
+                    return 'text-[#6e7681]'
+                  }
+
+                  return (
+                    <div key={entry.id} className="flex items-center justify-between py-2 px-3 rounded hover:bg-[#21262d] transition-colors">
+                      <div className="flex items-center gap-3">
+                        <span className={`text-[10px] font-mono font-bold uppercase ${getActionColor(entry.action)}`}>
+                          {entry.action.replace(/_/g, ' ')}
+                        </span>
+                        <span className="text-sm text-[#f0f6fc]">{entry.details}</span>
+                      </div>
+                      <span className="text-xs font-mono text-[#6e7681] shrink-0">{formatRelativeTime(entry.timestamp)}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </Panel>
           </div>
         )}
 
