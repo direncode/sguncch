@@ -69,3 +69,10 @@ uploads/
 # Temporary files
 tmp/
 temp/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.so
