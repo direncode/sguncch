@@ -1,7 +1,7 @@
 """
 Undercurrent Flux Engine (UFE) API Client
 
-Async client for governance and policy modeling via the UFE API.
+Synchronous client for governance and policy modeling via the UFE API.
 Energy function: E = α×trajectory_deviation + β×undercurrent_friction + γ×self_prediction_error
 
 Domain: governance
@@ -9,45 +9,9 @@ Domain: governance
 - Friction terms: stagnation_risk, engagement_drop
 """
 
-import asyncio
-from dataclasses import dataclass
-from typing import Any
+from typing import Any, Dict, List, Optional
 
 import httpx
-
-
-@dataclass
-class EnergyResponse:
-    """Response from the energy endpoint."""
-    total_energy: float
-    trajectory_deviation: float
-    undercurrent_friction: float
-    friction_breakdown: dict[str, float]
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "EnergyResponse":
-        return cls(
-            total_energy=data["total_energy"],
-            trajectory_deviation=data["trajectory_deviation"],
-            undercurrent_friction=data["undercurrent_friction"],
-            friction_breakdown=data.get("friction_breakdown", {}),
-        )
-
-
-@dataclass
-class HealthResponse:
-    """Response from the health endpoint."""
-    status: str
-    latent_dim: int
-    domains: list[str]
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "HealthResponse":
-        return cls(
-            status=data["status"],
-            latent_dim=data["latent_dim"],
-            domains=data.get("domains", []),
-        )
 
 
 class UFEClientError(Exception):
@@ -57,25 +21,22 @@ class UFEClientError(Exception):
 
 class UFEClient:
     """
-    Async client for the Undercurrent Flux Engine (UFE) API.
+    Synchronous client for the Undercurrent Flux Engine (UFE) API.
 
     Provides governance and policy modeling through latent space encoding,
     energy computation, friction analysis, and trajectory prediction.
 
     Example:
-        async with UFEClient() as client:
-            health = await client.health()
-            print(f"API Status: {health.status}")
+        client = UFEClient()
+        health = client.health()
+        print(f"API Status: {health['status']}")
 
-            # Get demo trajectory data
-            demo_data = await client.demo()
+        # Encode policy data (32-dimensional features)
+        latent = client.encode(policy_features, "governance")
 
-            # Encode policy data (32-dimensional features)
-            latent = await client.encode(policy_features)
-
-            # Compute energy landscape
-            energy = await client.energy(policy_features)
-            print(f"Stagnation risk: {energy.friction_breakdown['stagnation_risk']}")
+        # Compute energy landscape
+        energy = client.energy(policy_features, "governance")
+        print(f"Stagnation risk: {energy['friction_breakdown']['stagnation_risk']}")
     """
 
     BASE_URL = "https://latentintegrator-j3ul23w91-direns-projects-6fcf4bec.vercel.app"
@@ -86,9 +47,8 @@ class UFEClient:
 
     def __init__(
         self,
-        base_url: str | None = None,
+        base_url: Optional[str] = None,
         timeout: float = 30.0,
-        domain: str | None = None,
     ):
         """
         Initialize the UFE client.
@@ -96,149 +56,77 @@ class UFEClient:
         Args:
             base_url: API base URL (defaults to production URL)
             timeout: Request timeout in seconds
-            domain: Domain for modeling (defaults to 'governance')
         """
         self.base_url = (base_url or self.BASE_URL).rstrip("/")
-        self.timeout = timeout
-        self.domain = domain or self.DOMAIN
-        self._client: httpx.AsyncClient | None = None
+        self.client = httpx.Client(timeout=timeout)
 
-    async def __aenter__(self) -> "UFEClient":
-        """Enter async context manager."""
-        self._client = httpx.AsyncClient(
-            base_url=self.base_url,
-            timeout=self.timeout,
-            headers={"Content-Type": "application/json"},
-        )
-        return self
-
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
-        """Exit async context manager."""
-        if self._client:
-            await self._client.aclose()
-            self._client = None
-
-    @property
-    def client(self) -> httpx.AsyncClient:
-        """Get the HTTP client, raising if not initialized."""
-        if self._client is None:
-            raise UFEClientError(
-                "Client not initialized. Use 'async with UFEClient() as client:'"
-            )
-        return self._client
-
-    async def _request(
-        self,
-        method: str,
-        endpoint: str,
-        json: dict[str, Any] | None = None,
-    ) -> dict[str, Any]:
-        """
-        Make an HTTP request to the API.
-
-        Args:
-            method: HTTP method (GET, POST)
-            endpoint: API endpoint path
-            json: JSON body for POST requests
-
-        Returns:
-            Parsed JSON response
-
-        Raises:
-            UFEClientError: On request failure
-        """
-        try:
-            response = await self.client.request(method, endpoint, json=json)
-            response.raise_for_status()
-            return response.json()
-        except httpx.HTTPStatusError as e:
-            raise UFEClientError(
-                f"API request failed: {e.response.status_code} - {e.response.text}"
-            ) from e
-        except httpx.RequestError as e:
-            raise UFEClientError(f"Request error: {e}") from e
-
-    async def health(self) -> HealthResponse:
+    def health(self) -> Dict[str, Any]:
         """
         Check API health status.
 
         Returns:
-            HealthResponse with status, latent_dim, and available domains
-
-        Example:
-            health = await client.health()
-            assert health.status == "healthy"
-            assert "governance" in health.domains
+            Dict with status, latent_dim, and available domains
         """
-        data = await self._request("GET", "/api/health")
-        return HealthResponse.from_dict(data)
+        return self.client.get(f"{self.base_url}/api/health").json()
 
-    async def demo(self) -> dict[str, Any]:
+    def demo(self, domain: str) -> Dict[str, Any]:
         """
-        Generate demo trajectory data for the governance domain.
+        Generate demo trajectory data for the specified domain.
+
+        Args:
+            domain: Domain name (e.g., "governance")
 
         Returns:
             Demo trajectory data for testing and visualization
-
-        Example:
-            demo_data = await client.demo()
-            trajectory = demo_data["trajectory"]
         """
-        return await self._request("GET", f"/api/demo/{self.domain}")
+        return self.client.get(f"{self.base_url}/api/demo/{domain}").json()
 
-    async def encode(self, data: list[list[list[float]]]) -> dict[str, Any]:
+    def encode(self, data: List, domain: str) -> Dict[str, Any]:
         """
         Encode input data into latent space representation.
 
         Args:
-            data: Input tensor of shape [batch, sequence, 32]
-                  Each feature vector must have 32 dimensions
+            data: Input tensor of shape [batch, sequence, feature_dim]
+            domain: Domain name for encoding
 
         Returns:
             Latent vectors in 256-dimensional space
-
-        Example:
-            # Single sequence with 10 timesteps, 32 features each
-            features = [[[0.1] * 32 for _ in range(10)]]
-            latent = await client.encode(features)
         """
-        self._validate_input_dimensions(data)
-        return await self._request(
-            "POST",
-            "/api/encode",
-            json={"data": data, "domain": self.domain},
-        )
+        return self.client.post(
+            f"{self.base_url}/api/encode",
+            json={"data": data, "domain": domain}
+        ).json()
 
-    async def energy(self, data: list[list[list[float]]]) -> EnergyResponse:
+    def energy(
+        self,
+        data: List,
+        domain: str,
+        weights: Optional[Dict[str, float]] = None
+    ) -> Dict[str, Any]:
         """
         Compute the energy landscape for input data.
 
         Energy function: E = α×trajectory_deviation + β×undercurrent_friction + γ×self_prediction_error
 
         Args:
-            data: Input tensor of shape [batch, sequence, 32]
+            data: Input tensor of shape [batch, sequence, feature_dim]
+            domain: Domain name for energy computation
+            weights: Optional custom weights for energy terms
 
         Returns:
-            EnergyResponse containing:
+            Dict containing:
                 - total_energy: Combined energy value
                 - trajectory_deviation: Deviation from expected trajectory
                 - undercurrent_friction: Hidden resistance factors
-                - friction_breakdown: Dict with stagnation_risk and engagement_drop
-
-        Example:
-            energy = await client.energy(policy_data)
-            if energy.friction_breakdown["stagnation_risk"] > 0.7:
-                print("Warning: High stagnation risk detected")
+                - self_prediction_error: Model self-consistency error
+                - friction_breakdown: Dict with domain-specific friction terms
         """
-        self._validate_input_dimensions(data)
-        data_response = await self._request(
-            "POST",
-            "/api/energy",
-            json={"data": data, "domain": self.domain},
-        )
-        return EnergyResponse.from_dict(data_response)
+        body: Dict[str, Any] = {"data": data, "domain": domain}
+        if weights:
+            body["weights"] = weights
+        return self.client.post(f"{self.base_url}/api/energy", json=body).json()
 
-    async def friction(self, latent: list[list[float]]) -> dict[str, Any]:
+    def friction(self, latent: List, domain: str) -> Dict[str, Any]:
         """
         Compute friction terms from latent space representation.
 
@@ -248,30 +136,17 @@ class UFEClient:
 
         Args:
             latent: Latent vectors of shape [batch, 256]
+            domain: Domain name for friction computation
 
         Returns:
             Friction analysis results
-
-        Example:
-            # First encode to get latent representation
-            encoded = await client.encode(data)
-            latent_vectors = encoded["latent"]
-
-            # Then compute friction
-            friction = await client.friction(latent_vectors)
         """
-        self._validate_latent_dimensions(latent)
-        return await self._request(
-            "POST",
-            "/api/friction",
-            json={"latent": latent, "domain": self.domain},
-        )
+        return self.client.post(
+            f"{self.base_url}/api/friction",
+            json={"latent": latent, "domain": domain}
+        ).json()
 
-    async def predict(
-        self,
-        latent: list[list[float]],
-        num_steps: int = 10,
-    ) -> dict[str, Any]:
+    def predict(self, latent: List, num_steps: int = 10) -> Dict[str, Any]:
         """
         Predict future trajectory from latent state.
 
@@ -281,72 +156,32 @@ class UFEClient:
 
         Returns:
             Predicted trajectory data
-
-        Example:
-            # Predict 20 steps into the future
-            prediction = await client.predict(latent_vectors, num_steps=20)
-            future_states = prediction["trajectory"]
         """
-        self._validate_latent_dimensions(latent)
-        return await self._request(
-            "POST",
-            "/api/predict",
-            json={"latent": latent, "num_steps": num_steps},
-        )
+        return self.client.post(
+            f"{self.base_url}/api/predict",
+            json={"latent": latent, "num_steps": num_steps}
+        ).json()
 
-    def _validate_input_dimensions(self, data: list[list[list[float]]]) -> None:
-        """Validate input data has correct dimensions (32 features)."""
-        if not data or not data[0] or not data[0][0]:
-            raise UFEClientError("Input data cannot be empty")
-        if len(data[0][0]) != self.INPUT_DIMENSIONS:
-            raise UFEClientError(
-                f"Input features must have {self.INPUT_DIMENSIONS} dimensions, "
-                f"got {len(data[0][0])}"
-            )
+    def close(self):
+        """Close the HTTP client."""
+        self.client.close()
 
-    def _validate_latent_dimensions(self, latent: list[list[float]]) -> None:
-        """Validate latent vectors have correct dimensions (256)."""
-        if not latent or not latent[0]:
-            raise UFEClientError("Latent vectors cannot be empty")
-        if len(latent[0]) != self.LATENT_DIMENSIONS:
-            raise UFEClientError(
-                f"Latent vectors must have {self.LATENT_DIMENSIONS} dimensions, "
-                f"got {len(latent[0])}"
-            )
+    def __enter__(self):
+        return self
 
-
-async def main():
-    """Example usage of the UFE client."""
-    async with UFEClient() as client:
-        # Check health
-        print("Checking API health...")
-        health = await client.health()
-        print(f"  Status: {health.status}")
-        print(f"  Latent dimensions: {health.latent_dim}")
-        print(f"  Available domains: {health.domains}")
-
-        # Get demo data
-        print("\nFetching demo trajectory...")
-        demo = await client.demo()
-        print(f"  Demo data keys: {list(demo.keys())}")
-
-        # Example: encode synthetic policy data
-        print("\nEncoding synthetic policy data...")
-        # Create sample data: 1 batch, 5 timesteps, 32 features
-        sample_data = [[[0.5] * 32 for _ in range(5)]]
-        encoded = await client.encode(sample_data)
-        print(f"  Encoded response keys: {list(encoded.keys())}")
-
-        # Compute energy
-        print("\nComputing energy landscape...")
-        energy = await client.energy(sample_data)
-        print(f"  Total energy: {energy.total_energy:.4f}")
-        print(f"  Trajectory deviation: {energy.trajectory_deviation:.4f}")
-        print(f"  Undercurrent friction: {energy.undercurrent_friction:.4f}")
-        print(f"  Friction breakdown:")
-        for term, value in energy.friction_breakdown.items():
-            print(f"    - {term}: {value:.4f}")
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    # Quick test
+    client = UFEClient()
+    try:
+        health = client.health()
+        print(f"UFE API Status: {health.get('status', 'unknown')}")
+        print(f"Latent Dimensions: {health.get('latent_dim', 'unknown')}")
+        print(f"Available Domains: {health.get('domains', [])}")
+    except Exception as e:
+        print(f"Error connecting to UFE API: {e}")
+    finally:
+        client.close()
