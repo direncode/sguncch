@@ -360,6 +360,7 @@ export default function AdminDashboard() {
     approveFundingRequest,
     denyFundingRequest,
     requestMoreInfo,
+    amendFundingRequest,
     reallocations,
     generateReallocations,
     approveReallocation,
@@ -450,6 +451,8 @@ export default function AdminDashboard() {
     orgName: '', category: 'events', amount: 0, description: '', justification: '', studentsImpacted: 0
   })
   const [reviewerNotes, setReviewerNotes] = useState('')
+  const [amendModal, setAmendModal] = useState({ isOpen: false, request: null })
+  const [amendForm, setAmendForm] = useState({ suggestedAmount: '', reason: '', conditions: '' })
 
   // Use sample data if no line items exist
   const displayLineItems = budgetLineItems?.length > 0 ? budgetLineItems : sampleBudgetLineItems
@@ -1238,9 +1241,16 @@ export default function AdminDashboard() {
 
             {/* FUNDING REQUESTS SUB-TAB */}
             {budgetSubTab === 'requests' && (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <p className="text-[#8b949e]">{displayFundingRequests.filter(r => r.status === 'pending').length} pending requests</p>
+                  <div className="flex items-center gap-4">
+                    <p className="text-[#8b949e]">{displayFundingRequests.filter(r => r.status === 'pending').length} pending</p>
+                    {displayFundingRequests.filter(r => r.status === 'amendment-requested').length > 0 && (
+                      <span className="px-2 py-1 rounded text-xs font-mono bg-[#d29922]/20 text-[#d29922] border border-[#d29922]/30">
+                        {displayFundingRequests.filter(r => r.status === 'amendment-requested').length} awaiting response
+                      </span>
+                    )}
+                  </div>
                   <Button variant="outline" onClick={() => {
                     const csv = exportFundingRequestsToCSV(displayFundingRequests)
                     const blob = new Blob([csv], { type: 'text/csv' })
@@ -1251,6 +1261,52 @@ export default function AdminDashboard() {
                     a.click()
                     notify('Funding requests exported')
                   }}>Export Requests</Button>
+                </div>
+
+                {/* Amended Requests Awaiting Response */}
+                {displayFundingRequests.filter(r => r.status === 'amendment-requested').length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-sm font-semibold text-[#d29922] uppercase tracking-widest">Awaiting Amendment Response</h3>
+                    {displayFundingRequests.filter(r => r.status === 'amendment-requested').map(request => {
+                      const category = BUDGET_CATEGORIES.find(c => c.id === request.category)
+                      return (
+                        <div key={request.id} className="bg-[#161b22] border border-[#d29922]/30 rounded-xl p-5">
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <div className="flex items-center gap-3 mb-1">
+                                <h4 className="font-semibold text-[#f0f6fc]">{request.orgName}</h4>
+                                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-[#d29922]/20 text-[#d29922] border border-[#d29922]/30">
+                                  AMENDMENT REQUESTED
+                                </span>
+                              </div>
+                              <p className="text-sm text-[#8b949e]">{request.description}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm text-[#6e7681] line-through">${request.amount?.toLocaleString()}</p>
+                              <p className="text-xl font-mono font-bold text-[#d29922]">${request.amendment?.suggestedAmount?.toLocaleString()}</p>
+                            </div>
+                          </div>
+                          <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-3 mt-3">
+                            <p className="text-xs text-[#6e7681] uppercase tracking-wider mb-1">Amendment Reason</p>
+                            <p className="text-sm text-[#8b949e]">{request.amendment?.reason}</p>
+                            {request.amendment?.conditions && (
+                              <p className="text-xs text-[#d29922] mt-2">Conditions: {request.amendment.conditions}</p>
+                            )}
+                          </div>
+                          <p className="text-xs text-[#6e7681] mt-2">
+                            Sent {new Date(request.amendment?.requestedAt).toLocaleDateString()} - Waiting for organization response
+                          </p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* Pending Requests */}
+                <div className="space-y-4">
+                  {displayFundingRequests.filter(r => r.status === 'amendment-requested').length > 0 && (
+                    <h3 className="text-sm font-semibold text-[#6e7681] uppercase tracking-widest">Pending Review</h3>
+                  )}
                 </div>
 
                 {displayFundingRequests.filter(r => r.status === 'pending').map(request => {
@@ -1300,12 +1356,16 @@ export default function AdminDashboard() {
                       </div>
 
                       {/* Action Buttons */}
-                      <div className="flex gap-3">
+                      <div className="flex gap-3 flex-wrap">
                         <Button onClick={() => {
                           approveFundingRequest(request.id, request.amount, reviewerNotes)
                           setReviewerNotes('')
                           notify('Request approved')
                         }}>Approve</Button>
+                        <Button variant="warning" onClick={() => {
+                          setAmendModal({ isOpen: true, request })
+                          setAmendForm({ suggestedAmount: request.amount, reason: '', conditions: '' })
+                        }}>Amend</Button>
                         <Button variant="danger" onClick={() => {
                           denyFundingRequest(request.id, reviewerNotes)
                           setReviewerNotes('')
@@ -1316,9 +1376,19 @@ export default function AdminDashboard() {
                           placeholder="Add reviewer notes..."
                           value={reviewerNotes}
                           onChange={(e) => setReviewerNotes(e.target.value)}
-                          className="flex-1 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#f0f6fc] placeholder-[#6e7681] focus:ring-1 focus:ring-[#00d4ff]"
+                          className="flex-1 min-w-[200px] px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#f0f6fc] placeholder-[#6e7681] focus:ring-1 focus:ring-[#00d4ff]"
                         />
                       </div>
+
+                      {/* Amendment Badge if previously amended */}
+                      {request.amendmentHistory && request.amendmentHistory.length > 0 && (
+                        <div className="mt-3 px-3 py-2 bg-[#d29922]/10 border border-[#d29922]/30 rounded-lg">
+                          <p className="text-xs text-[#d29922]">
+                            This request was previously amended {request.amendmentHistory.length} time(s).
+                            Last suggested: ${request.amendmentHistory[request.amendmentHistory.length - 1]?.suggestedAmount?.toLocaleString()}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )
                 })}
@@ -1866,6 +1936,103 @@ export default function AdminDashboard() {
               <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* AMEND FUNDING REQUEST MODAL */}
+      {amendModal.isOpen && amendModal.request && (
+        <Modal title="Request Amendment" onClose={() => setAmendModal({ isOpen: false, request: null })} size="lg">
+          <div className="space-y-6">
+            {/* Original Request Info */}
+            <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
+              <p className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-2">Original Request</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-semibold text-[#f0f6fc]">{amendModal.request.orgName}</h4>
+                  <p className="text-sm text-[#8b949e]">{amendModal.request.description}</p>
+                </div>
+                <p className="text-2xl font-mono font-bold text-[#f0f6fc]">${amendModal.request.amount?.toLocaleString()}</p>
+              </div>
+            </div>
+
+            {/* Amendment Form */}
+            <div>
+              <label className="block text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-2">Suggested Amount</label>
+              <div className="relative">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#6e7681]">$</span>
+                <input
+                  type="number"
+                  value={amendForm.suggestedAmount}
+                  onChange={(e) => setAmendForm({ ...amendForm, suggestedAmount: parseFloat(e.target.value) || 0 })}
+                  className="w-full pl-8 pr-4 py-3 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] text-lg font-mono focus:ring-1 focus:ring-[#d29922] focus:border-[#d29922]"
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+              {amendForm.suggestedAmount !== amendModal.request.amount && (
+                <p className="mt-2 text-sm text-[#d29922]">
+                  {amendForm.suggestedAmount < amendModal.request.amount ? 'Reducing' : 'Increasing'} by ${Math.abs(amendForm.suggestedAmount - amendModal.request.amount).toLocaleString()}
+                  ({((amendForm.suggestedAmount / amendModal.request.amount - 1) * 100).toFixed(0)}%)
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-2">Reason for Amendment *</label>
+              <textarea
+                value={amendForm.reason}
+                onChange={(e) => setAmendForm({ ...amendForm, reason: e.target.value })}
+                rows={3}
+                placeholder="Explain why you're suggesting this change (e.g., budget constraints, similar approved requests, policy limits)"
+                className="w-full px-4 py-3 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] placeholder-[#6e7681] resize-none focus:ring-1 focus:ring-[#d29922] focus:border-[#d29922] text-sm"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-2">Conditions (optional)</label>
+              <textarea
+                value={amendForm.conditions}
+                onChange={(e) => setAmendForm({ ...amendForm, conditions: e.target.value })}
+                rows={2}
+                placeholder="Any conditions for approval (e.g., provide itemized budget, co-sponsorship required)"
+                className="w-full px-4 py-3 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] placeholder-[#6e7681] resize-none focus:ring-1 focus:ring-[#d29922] focus:border-[#d29922] text-sm"
+              />
+            </div>
+
+            {/* Info Notice */}
+            <div className="bg-[#d29922]/10 border border-[#d29922]/30 rounded-lg p-4">
+              <p className="text-sm text-[#d29922]">
+                The requester will be notified and can accept, modify, or appeal this suggested amendment.
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="warning"
+                onClick={() => {
+                  if (!amendForm.reason) {
+                    notify('Please provide a reason for the amendment', 'error')
+                    return
+                  }
+                  amendFundingRequest(amendModal.request.id, {
+                    suggestedAmount: amendForm.suggestedAmount,
+                    reason: amendForm.reason,
+                    conditions: amendForm.conditions,
+                  })
+                  setAmendModal({ isOpen: false, request: null })
+                  setAmendForm({ suggestedAmount: '', reason: '', conditions: '' })
+                  notify('Amendment request sent')
+                }}
+              >
+                Send Amendment Request
+              </Button>
+              <Button variant="secondary" onClick={() => setAmendModal({ isOpen: false, request: null })}>
+                Cancel
+              </Button>
+            </div>
+          </div>
         </Modal>
       )}
 

@@ -79,6 +79,7 @@ export function Button({ children, type = 'button', onClick, variant = 'primary'
     primary: 'bg-[#00d4ff] hover:bg-[#00bfea] text-[#0a0e14] hover:shadow-[0_0_20px_rgba(0,212,255,0.3)]',
     secondary: 'bg-[#21262d] hover:bg-[#30363d] text-[#f0f6fc] border border-[#30363d] hover:border-[#484f58]',
     danger: 'bg-[#da3633] hover:bg-[#f85149] text-[#f0f6fc] hover:shadow-[0_0_20px_rgba(248,81,73,0.3)]',
+    warning: 'bg-[#9e6a03] hover:bg-[#bb8009] text-[#f0f6fc] hover:shadow-[0_0_20px_rgba(210,153,34,0.3)]',
     success: 'bg-[#238636] hover:bg-[#2ea043] text-[#f0f6fc] hover:shadow-[0_0_20px_rgba(63,185,80,0.3)]',
     ghost: 'bg-transparent hover:bg-[#21262d] text-[#8b949e] hover:text-[#f0f6fc] border border-[#30363d]',
     outline: 'bg-transparent border border-[#00d4ff] text-[#00d4ff] hover:bg-[#00d4ff]/10',
