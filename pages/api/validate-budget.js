@@ -15,12 +15,21 @@ const limiter = rateLimit({
 export default async function handler(req, res) {
   // Log all requests for debugging
   console.log(`[validate-budget] ${req.method} request from ${getClientIP(req)}`)
+  console.log(`[validate-budget] Headers:`, JSON.stringify(req.headers, null, 2))
+
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Cache-Control')
+    return res.status(200).end()
+  }
 
   // Only allow POST
   if (req.method !== 'POST') {
     console.log(`[validate-budget] Rejected ${req.method} - only POST allowed`)
     return res.status(405).json({
       error: 'Method not allowed',
+      method: req.method,
       message: `This endpoint only accepts POST requests. Received: ${req.method}`,
       hint: 'If you see this in browser console, it may be from browser prefetch - this is normal.'
     })
