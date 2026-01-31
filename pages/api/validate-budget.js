@@ -1,0 +1,75 @@
+// ============================================
+// BUDGET VALIDATION API
+// Uses Groq LLAMA 3.3 for real-world context checking
+// ============================================
+
+import { validateFundingRequest, quickPriceCheck } from '../../lib/groq'
+import { rateLimit, getClientIP } from '../../lib/rateLimit'
+
+// Rate limit: 20 validation requests per minute per IP
+const limiter = rateLimit({
+  windowMs: 60 * 1000,
+  maxAttempts: 20,
+})
+
+export default async function handler(req, res) {
+  // Only allow POST
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  // Rate limiting
+  const clientIP = getClientIP(req)
+  const rateLimitResult = limiter(clientIP)
+
+  if (!rateLimitResult.allowed) {
+    return res.status(429).json({
+      error: 'Too many requests',
+      retryAfter: Math.ceil(rateLimitResult.resetIn / 1000),
+    })
+  }
+
+  try {
+    const { request, deepValidation = false } = req.body
+
+    if (!request || !request.amount || !request.description) {
+      return res.status(400).json({
+        error: 'Missing required fields: amount, description',
+      })
+    }
+
+    // Quick price check (no API call)
+    const quickCheck = quickPriceCheck(
+      request.category || 'events',
+      request.amount,
+      request.description
+    )
+
+    // If deep validation requested or quick check flags issues
+    if (deepValidation || quickCheck.requiresDeepValidation) {
+      const aiValidation = await validateFundingRequest(request)
+
+      return res.status(200).json({
+        quickCheck,
+        aiValidation,
+        requiresReview: aiValidation.recommendation === 'FLAG' ||
+                        aiValidation.recommendation === 'REVIEW' ||
+                        quickCheck.severity !== 'normal',
+      })
+    }
+
+    // Return quick check only
+    return res.status(200).json({
+      quickCheck,
+      aiValidation: null,
+      requiresReview: quickCheck.severity !== 'normal',
+    })
+
+  } catch (error) {
+    console.error('Budget validation error:', error)
+    return res.status(500).json({
+      error: 'Validation failed',
+      message: error.message,
+    })
+  }
+}

@@ -453,6 +453,31 @@ export default function AdminDashboard() {
   const [reviewerNotes, setReviewerNotes] = useState('')
   const [amendModal, setAmendModal] = useState({ isOpen: false, request: null })
   const [amendForm, setAmendForm] = useState({ suggestedAmount: '', reason: '', conditions: '' })
+  const [aiValidation, setAiValidation] = useState({}) // Store AI validation results by request ID
+  const [validatingId, setValidatingId] = useState(null) // Currently validating request ID
+
+  // AI Validation function
+  const runAiValidation = async (request) => {
+    setValidatingId(request.id)
+    try {
+      const response = await fetch('/api/validate-budget', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ request, deepValidation: true }),
+      })
+      const data = await response.json()
+      setAiValidation(prev => ({ ...prev, [request.id]: data }))
+      if (data.aiValidation?.recommendation === 'REJECT') {
+        notify('AI flagged this request as potentially unreasonable', 'warning')
+      } else if (data.aiValidation?.recommendation === 'APPROVE') {
+        notify('AI validated the amount as reasonable')
+      }
+    } catch (error) {
+      console.error('AI validation failed:', error)
+      notify('AI validation failed', 'error')
+    }
+    setValidatingId(null)
+  }
 
   // Use sample data if no line items exist
   const displayLineItems = budgetLineItems?.length > 0 ? budgetLineItems : sampleBudgetLineItems
@@ -1342,10 +1367,11 @@ export default function AdminDashboard() {
                             <span className="text-sm text-[#6e7681]">/100</span>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 flex-wrap">
                           <span className={`px-3 py-1 rounded-lg text-sm font-bold ${
                             recommendation?.action === 'APPROVE' ? 'bg-[#3fb950]/20 text-[#3fb950] border border-[#3fb950]/30' :
                             recommendation?.action === 'DENY' ? 'bg-[#f85149]/20 text-[#f85149] border border-[#f85149]/30' :
+                            recommendation?.action === 'FLAG' ? 'bg-[#f85149]/20 text-[#f85149] border border-[#f85149]/30' :
                             recommendation?.action === 'REALLOCATE' ? 'bg-[#d29922]/20 text-[#d29922] border border-[#d29922]/30' :
                             'bg-[#6e7681]/20 text-[#6e7681] border border-[#6e7681]/30'
                           }`}>
@@ -1353,6 +1379,57 @@ export default function AdminDashboard() {
                           </span>
                           <span className="text-sm text-[#8b949e]">{recommendation?.reason}</span>
                         </div>
+
+                        {/* Price Reasonableness Factor */}
+                        {request.aiScore?.factors?.find(f => f.name === 'Price Reasonableness')?.status !== 'reasonable' && (
+                          <div className="mt-3 pt-3 border-t border-[#30363d]">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-xs text-[#f85149] font-semibold">Price Check Warning</p>
+                                <p className="text-xs text-[#8b949e] mt-1">
+                                  {request.aiScore?.factors?.find(f => f.name === 'Price Reasonableness')?.description}
+                                </p>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => runAiValidation(request)}
+                                disabled={validatingId === request.id}
+                              >
+                                {validatingId === request.id ? 'Validating...' : 'Validate with AI'}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* AI Validation Results */}
+                        {aiValidation[request.id]?.aiValidation && !aiValidation[request.id].aiValidation.skipped && (
+                          <div className="mt-3 pt-3 border-t border-[#30363d] space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-semibold text-[#a371f7] uppercase tracking-widest">LLAMA 3.3 Analysis</span>
+                              <span className={`px-2 py-0.5 rounded text-xs font-mono ${
+                                aiValidation[request.id].aiValidation.recommendation === 'APPROVE' ? 'bg-[#3fb950]/20 text-[#3fb950]' :
+                                aiValidation[request.id].aiValidation.recommendation === 'REJECT' ? 'bg-[#f85149]/20 text-[#f85149]' :
+                                'bg-[#d29922]/20 text-[#d29922]'
+                              }`}>
+                                {aiValidation[request.id].aiValidation.recommendation}
+                              </span>
+                            </div>
+                            <p className="text-xs text-[#8b949e]">{aiValidation[request.id].aiValidation.marketAnalysis}</p>
+                            {aiValidation[request.id].aiValidation.suggestedRange && (
+                              <p className="text-xs text-[#6e7681]">
+                                Market range: ${aiValidation[request.id].aiValidation.suggestedRange.min?.toLocaleString()} - ${aiValidation[request.id].aiValidation.suggestedRange.max?.toLocaleString()}
+                              </p>
+                            )}
+                            {aiValidation[request.id].aiValidation.flags?.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {aiValidation[request.id].aiValidation.flags.map((flag, i) => (
+                                  <span key={i} className="px-1.5 py-0.5 rounded text-[10px] bg-[#f85149]/10 text-[#f85149]">{flag}</span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Action Buttons */}
