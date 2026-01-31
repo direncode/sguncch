@@ -505,37 +505,51 @@ export default function AdminDashboard() {
       console.log('[AI Validation] Sending POST to /api/validate-budget')
       const response = await fetch('/api/validate-budget', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+        },
+        cache: 'no-store',
         body: JSON.stringify({ request, deepValidation: true }),
       })
 
       console.log('[AI Validation] Response status:', response.status)
 
-      // Check if response is OK before parsing JSON
+      // Read response as text first (body can only be read once)
+      const responseText = await response.text()
+
+      // Check if response is OK
       if (!response.ok) {
-        let errorData
+        let errorData = {}
         try {
-          errorData = await response.json()
+          errorData = JSON.parse(responseText)
         } catch {
-          errorData = { message: await response.text() }
+          errorData = { message: responseText || `HTTP ${response.status}` }
         }
+
         console.error('[AI Validation] API error:', {
           status: response.status,
           statusText: response.statusText,
           error: errorData
         })
 
-        if (response.status === 405) {
-          // This is likely from browser prefetch - not a real error
-          console.log('[AI Validation] 405 error - this may be from browser prefetch, not your actual request')
-        }
-
         notify(`Validation API error: ${response.status} - ${errorData.message || 'Unknown error'}`, 'error')
         setValidatingId(null)
         return
       }
 
-      const data = await response.json()
+      // Parse successful response
+      let data
+      try {
+        data = JSON.parse(responseText)
+      } catch (parseError) {
+        console.error('[AI Validation] Failed to parse response:', parseError.message)
+        console.error('[AI Validation] Raw response:', responseText.substring(0, 200))
+        notify('Failed to parse validation response', 'error')
+        setValidatingId(null)
+        return
+      }
+
       console.log('[AI Validation] Success:', data)
       setAiValidation(prev => ({ ...prev, [request.id]: data }))
 

@@ -43,7 +43,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline'", // Tailwind uses inline styles
               "img-src 'self' data: https: blob:",
               "font-src 'self' data:",
-              "connect-src 'self' https://api.web3forms.com https://*.supabase.co wss://*.supabase.co",
+              "connect-src 'self' https://api.web3forms.com https://*.supabase.co wss://*.supabase.co https://api.groq.com",
               "frame-ancestors 'none'",
               "form-action 'self'",
               "base-uri 'self'",
