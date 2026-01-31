@@ -3,7 +3,7 @@ import { useRouter } from 'next/router'
 import Head from 'next/head'
 import Link from 'next/link'
 import { useApp } from '../../lib/store'
-import { departments, getOverallProgress, getStatusCounts } from '../../lib/data'
+import { departments, getOverallProgress, getStatusCounts, budgetCategories, sgPriorities } from '../../lib/data'
 
 const formatDate = (dateString) => {
   if (!dateString) return ''
@@ -43,6 +43,10 @@ export default function AdminDashboard() {
     updatePantryLocation, logPantryVisit, logPantryDonation,
     addTrainingSession,
     updateBudget, updateBudgetCategory, addBudgetTransaction,
+    addLineItem, updateLineItem, deleteLineItem,
+    submitFundingRequest, reviewFundingRequest, checkRateLimit,
+    scanForReallocations, reviewReallocation,
+    exportBudgetCSV, getBudgetSummaryStats,
     updateQuickStats,
     exportAllData, importData, resetAllData, clearActivityLog,
   } = useApp()
@@ -59,6 +63,12 @@ export default function AdminDashboard() {
   const [quickEditPolicy, setQuickEditPolicy] = useState(null)
   const [quickEditProgress, setQuickEditProgress] = useState(0)
   const [toast, setToast] = useState(null)
+
+  // Budget Module State
+  const [budgetSubTab, setBudgetSubTab] = useState('overview')
+  const [lineItemForm, setLineItemForm] = useState({ orgName: '', category: 'Events', requested: 0, approved: 0, receiptsLink: '', impactNotes: '' })
+  const [editingLineItem, setEditingLineItem] = useState(null)
+  const [budgetLoading, setBudgetLoading] = useState(false)
 
   // Quick edit progress handler
   const handleQuickProgressUpdate = (policyId, newProgress) => {
@@ -853,89 +863,755 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* BUDGET */}
+        {/* BUDGET - Expanded Module */}
         {activeTab === 'budget' && (
-          <div className="space-y-8">
+          <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-3 mb-2">
                   <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Financial Management</span>
                 </div>
-                <h2 className="text-3xl font-semibold text-[#f0f6fc] tracking-tight">Budget</h2>
-                <p className="text-[#8b949e] mt-1">Track spending and allocations</p>
+                <h2 className="text-3xl font-semibold text-[#f0f6fc] tracking-tight">Budget & Funding</h2>
+                <p className="text-[#8b949e] mt-1">Line-item tracking, AI-assisted requests, and transparency</p>
               </div>
-              <Button onClick={() => setShowModal('transaction')}>Add Transaction</Button>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Total Budget</label>
-                <div className="flex items-baseline gap-1 mt-3">
-                  <span className="text-[#6e7681] text-xl">$</span>
-                  <input type="number" value={budgetData.total} onChange={(e) => updateBudget({ total: parseFloat(e.target.value) || 0 })} className="text-3xl font-mono font-semibold text-[#3fb950] bg-transparent border-0 w-full focus:ring-0" />
-                </div>
-              </div>
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Allocated</label>
-                <div className="flex items-baseline gap-1 mt-3">
-                  <span className="text-[#6e7681] text-xl">$</span>
-                  <input type="number" value={budgetData.allocated} onChange={(e) => updateBudget({ allocated: parseFloat(e.target.value) || 0 })} className="text-3xl font-mono font-semibold text-[#00d4ff] bg-transparent border-0 w-full focus:ring-0" />
-                </div>
-              </div>
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Spent</label>
-                <p className="text-3xl font-mono font-semibold text-[#d29922] mt-3">${budgetData.spent.toLocaleString()}</p>
+              <div className="flex gap-2">
+                <Button variant="secondary" onClick={() => {
+                  setBudgetLoading(true)
+                  setTimeout(() => {
+                    scanForReallocations()
+                    setBudgetLoading(false)
+                    notify('Scanned for reallocations')
+                  }, 500)
+                }}>
+                  {budgetLoading ? 'Scanning...' : 'Scan Reallocations'}
+                </Button>
+                <Button onClick={() => setShowModal('lineItem')}>Add Line Item</Button>
               </div>
             </div>
 
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#30363d]">
-                <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Categories</span>
-              </div>
+            {/* Budget Sub-Navigation */}
+            <div className="flex gap-1 bg-[#0d1117] p-1 rounded-lg border border-[#30363d]">
+              {[
+                { id: 'overview', label: 'Overview' },
+                { id: 'lineItems', label: 'Line Items' },
+                { id: 'requests', label: 'Funding Requests', count: (budgetData.fundingRequests || []).filter(r => r.status === 'pending').length },
+                { id: 'reallocations', label: 'Reallocations', count: (budgetData.reallocationSuggestions || []).filter(r => r.status === 'pending').length },
+                { id: 'transparency', label: 'Transparency' },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setBudgetSubTab(tab.id)}
+                  className={`flex-1 px-4 py-2.5 rounded-md text-sm font-medium transition-all flex items-center justify-center gap-2 ${
+                    budgetSubTab === tab.id
+                      ? 'bg-[#161b22] text-[#00d4ff] border border-[#00d4ff]/30'
+                      : 'text-[#8b949e] hover:text-[#f0f6fc] hover:bg-[#161b22]/50'
+                  }`}
+                >
+                  {tab.label}
+                  {tab.count > 0 && (
+                    <span className="px-1.5 py-0.5 bg-[#d29922]/20 text-[#d29922] text-[10px] font-mono rounded">{tab.count}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* OVERVIEW SUB-TAB */}
+            {budgetSubTab === 'overview' && (
               <div className="space-y-6">
-                {budgetData.categories.map(cat => (
-                  <div key={cat.name}>
-                    <div className="flex justify-between mb-2">
-                      <span className="font-medium text-[#f0f6fc]">{cat.name}</span>
-                      <span className="text-sm font-mono text-[#8b949e]">${cat.spent} / ${cat.allocated}</span>
+                {/* Budget Summary Cards */}
+                <div className="grid md:grid-cols-4 gap-4">
+                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
+                    <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Total Budget</label>
+                    <div className="flex items-baseline gap-1 mt-3">
+                      <span className="text-[#6e7681] text-xl">$</span>
+                      <input type="number" value={budgetData.total} onChange={(e) => updateBudget({ total: parseFloat(e.target.value) || 0 })} className="text-3xl font-mono font-semibold text-[#3fb950] bg-transparent border-0 w-full focus:ring-0" />
                     </div>
-                    <div className="h-1 bg-[#21262d] rounded-full overflow-hidden mb-4">
-                      <div className="h-full bg-gradient-to-r from-[#3fb950] to-[#00d4ff] rounded-full" style={{ width: `${cat.allocated > 0 ? (cat.spent / cat.allocated) * 100 : 0}%` }} />
+                  </div>
+                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
+                    <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Allocated</label>
+                    <div className="flex items-baseline gap-1 mt-3">
+                      <span className="text-[#6e7681] text-xl">$</span>
+                      <input type="number" value={budgetData.allocated} onChange={(e) => updateBudget({ allocated: parseFloat(e.target.value) || 0 })} className="text-3xl font-mono font-semibold text-[#00d4ff] bg-transparent border-0 w-full focus:ring-0" />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Allocated</label>
-                        <input type="number" value={cat.allocated} onChange={(e) => updateBudgetCategory(cat.name, { allocated: parseFloat(e.target.value) || 0 })} className="w-full mt-2 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] font-mono focus:ring-1 focus:ring-[#00d4ff]" />
+                  </div>
+                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
+                    <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Spent</label>
+                    <p className="text-3xl font-mono font-semibold text-[#d29922] mt-3">${(budgetData.spent || 0).toLocaleString()}</p>
+                  </div>
+                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
+                    <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Remaining</label>
+                    <p className="text-3xl font-mono font-semibold text-[#a371f7] mt-3">${((budgetData.total || 0) - (budgetData.spent || 0)).toLocaleString()}</p>
+                  </div>
+                </div>
+
+                {/* Visual Budget Breakdown */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Pie Chart Representation */}
+                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-1 h-1 bg-[#00d4ff] rounded-full" />
+                      <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Allocation vs Spend</span>
+                    </div>
+                    <div className="flex items-center justify-center py-4">
+                      <div className="relative w-40 h-40">
+                        <svg viewBox="0 0 100 100" className="transform -rotate-90">
+                          <circle cx="50" cy="50" r="40" fill="none" stroke="#21262d" strokeWidth="12" />
+                          <circle cx="50" cy="50" r="40" fill="none" stroke="#00d4ff" strokeWidth="12"
+                            strokeDasharray={`${((budgetData.allocated || 0) / (budgetData.total || 1)) * 251.2} 251.2`}
+                            className="transition-all duration-500" />
+                          <circle cx="50" cy="50" r="28" fill="none" stroke="#21262d" strokeWidth="10" />
+                          <circle cx="50" cy="50" r="28" fill="none" stroke="#3fb950" strokeWidth="10"
+                            strokeDasharray={`${((budgetData.spent || 0) / (budgetData.total || 1)) * 175.9} 175.9`}
+                            className="transition-all duration-500" />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="text-center">
+                            <p className="text-xl font-mono font-bold text-[#f0f6fc]">
+                              {budgetData.total > 0 ? Math.round((budgetData.spent / budgetData.total) * 100) : 0}%
+                            </p>
+                            <p className="text-[9px] text-[#6e7681] uppercase">spent</p>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Spent</label>
-                        <input type="number" value={cat.spent} onChange={(e) => updateBudgetCategory(cat.name, { spent: parseFloat(e.target.value) || 0 })} className="w-full mt-2 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] font-mono focus:ring-1 focus:ring-[#00d4ff]" />
+                    </div>
+                    <div className="flex justify-center gap-6 mt-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded bg-[#00d4ff]" />
+                        <span className="text-xs text-[#8b949e]">Allocated</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded bg-[#3fb950]" />
+                        <span className="text-xs text-[#8b949e]">Spent</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded bg-[#21262d]" />
+                        <span className="text-xs text-[#8b949e]">Remaining</span>
                       </div>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
 
-            {budgetData.transactions?.length > 0 && (
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#30363d]">
-                  <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Recent Transactions</span>
-                </div>
-                <div className="space-y-1">
-                  {budgetData.transactions.slice(-8).reverse().map(tx => (
-                    <div key={tx.id} className="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-[#21262d] transition-colors">
-                      <div>
-                        <p className="font-medium text-[#f0f6fc]">{tx.description}</p>
-                        <p className="text-xs font-mono text-[#6e7681]">{formatDate(tx.date)}</p>
-                      </div>
-                      <span className={`font-mono font-semibold ${tx.type === 'expense' ? 'text-[#f85149]' : 'text-[#3fb950]'}`}>
-                        {tx.type === 'expense' ? '-' : '+'}${tx.amount}
-                      </span>
+                  {/* Waste Reduction Metrics */}
+                  <div className="bg-[#161b22] border border-[#3fb950]/30 rounded-lg p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-1.5 h-1.5 bg-[#3fb950] rounded-full animate-pulse" />
+                      <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Waste Reduction Metrics</span>
                     </div>
-                  ))}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
+                        <p className="text-2xl font-mono font-bold text-[#3fb950]">${(budgetData.wasteMetrics?.totalReallocated || 0).toLocaleString()}</p>
+                        <p className="text-[10px] text-[#6e7681] uppercase mt-1">Funds Reallocated</p>
+                      </div>
+                      <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
+                        <p className="text-2xl font-mono font-bold text-[#00d4ff]">{budgetData.wasteMetrics?.duplicateRequestsPrevented || 0}</p>
+                        <p className="text-[10px] text-[#6e7681] uppercase mt-1">Duplicates Blocked</p>
+                      </div>
+                      <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
+                        <p className="text-2xl font-mono font-bold text-[#d29922]">{budgetData.wasteMetrics?.averageProcessingTime || 0}h</p>
+                        <p className="text-[10px] text-[#6e7681] uppercase mt-1">Avg Process Time</p>
+                      </div>
+                      <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
+                        <p className="text-2xl font-mono font-bold text-[#a371f7]">${(budgetData.wasteMetrics?.costSavingsFromAI || 0).toLocaleString()}</p>
+                        <p className="text-[10px] text-[#6e7681] uppercase mt-1">AI Savings</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Category Progress Bars */}
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
+                  <div className="flex items-center gap-2 mb-6">
+                    <div className="w-1 h-1 bg-[#00d4ff] rounded-full" />
+                    <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Category Breakdown</span>
+                  </div>
+                  <div className="space-y-5">
+                    {(budgetData.categories || []).map(cat => {
+                      const utilization = cat.allocated > 0 ? (cat.spent / cat.allocated) * 100 : 0
+                      const remaining = cat.allocated - cat.spent
+                      return (
+                        <div key={cat.name}>
+                          <div className="flex justify-between mb-2">
+                            <span className="font-medium text-[#f0f6fc]">{cat.name}</span>
+                            <div className="flex items-center gap-3">
+                              <span className={`text-xs font-mono px-2 py-0.5 rounded ${
+                                utilization > 90 ? 'bg-[#f85149]/20 text-[#f85149]' :
+                                utilization > 70 ? 'bg-[#d29922]/20 text-[#d29922]' :
+                                'bg-[#3fb950]/20 text-[#3fb950]'
+                              }`}>{Math.round(utilization)}%</span>
+                              <span className="text-sm font-mono text-[#8b949e]">${cat.spent.toLocaleString()} / ${cat.allocated.toLocaleString()}</span>
+                            </div>
+                          </div>
+                          <div className="h-2 bg-[#21262d] rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full transition-all ${
+                              utilization > 90 ? 'bg-gradient-to-r from-[#f85149] to-[#f85149]/70' :
+                              utilization > 70 ? 'bg-gradient-to-r from-[#d29922] to-[#d29922]/70' :
+                              'bg-gradient-to-r from-[#3fb950] to-[#00d4ff]'
+                            }`} style={{ width: `${Math.min(100, utilization)}%` }} />
+                          </div>
+                          {remaining > 0 && utilization < 30 && (
+                            <p className="text-[10px] text-[#d29922] mt-1 font-mono">⚠ ${remaining.toLocaleString()} underutilized — consider reallocation</p>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
+            )}
+
+            {/* LINE ITEMS SUB-TAB */}
+            {budgetSubTab === 'lineItems' && (
+              <div className="space-y-6">
+                {/* Line Items Table */}
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
+                  <div className="px-6 py-4 border-b border-[#30363d] flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1 h-1 bg-[#00d4ff] rounded-full" />
+                      <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Line-Item Funding Tracker</span>
+                    </div>
+                    <span className="text-xs font-mono text-[#6e7681]">{(budgetData.lineItems || []).length} items</span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-[#30363d] bg-[#0d1117]">
+                          <th className="text-left px-4 py-3 text-[10px] text-[#6e7681] uppercase tracking-widest font-semibold">Organization</th>
+                          <th className="text-left px-4 py-3 text-[10px] text-[#6e7681] uppercase tracking-widest font-semibold">Category</th>
+                          <th className="text-right px-4 py-3 text-[10px] text-[#6e7681] uppercase tracking-widest font-semibold">Requested</th>
+                          <th className="text-right px-4 py-3 text-[10px] text-[#6e7681] uppercase tracking-widest font-semibold">Approved</th>
+                          <th className="text-right px-4 py-3 text-[10px] text-[#6e7681] uppercase tracking-widest font-semibold">Spent</th>
+                          <th className="text-center px-4 py-3 text-[10px] text-[#6e7681] uppercase tracking-widest font-semibold">Status</th>
+                          <th className="text-center px-4 py-3 text-[10px] text-[#6e7681] uppercase tracking-widest font-semibold">Utilization</th>
+                          <th className="text-right px-4 py-3 text-[10px] text-[#6e7681] uppercase tracking-widest font-semibold">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(budgetData.lineItems || []).map(item => {
+                          const utilization = item.approved > 0 ? ((item.spent || 0) / item.approved) * 100 : 0
+                          return (
+                            <tr key={item.id} className="border-b border-[#21262d] hover:bg-[#21262d]/50 transition-colors">
+                              <td className="px-4 py-3">
+                                <p className="font-medium text-[#f0f6fc]">{item.orgName}</p>
+                                {item.impactNotes && <p className="text-xs text-[#6e7681] truncate max-w-[200px]">{item.impactNotes}</p>}
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className="px-2 py-1 bg-[#21262d] border border-[#30363d] rounded text-xs text-[#8b949e]">{item.category}</span>
+                              </td>
+                              <td className="px-4 py-3 text-right font-mono text-[#8b949e]">${(item.requested || 0).toLocaleString()}</td>
+                              <td className="px-4 py-3 text-right font-mono text-[#00d4ff]">${(item.approved || 0).toLocaleString()}</td>
+                              <td className="px-4 py-3 text-right">
+                                <input
+                                  type="number"
+                                  value={item.spent || 0}
+                                  onChange={(e) => updateLineItem(item.id, { spent: parseFloat(e.target.value) || 0 })}
+                                  className="w-24 text-right bg-[#0d1117] border border-[#30363d] rounded px-2 py-1 font-mono text-[#3fb950] text-sm focus:ring-1 focus:ring-[#00d4ff]"
+                                />
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <select
+                                  value={item.status}
+                                  onChange={(e) => updateLineItem(item.id, { status: e.target.value })}
+                                  className={`px-2 py-1 rounded border text-xs font-mono ${
+                                    item.status === 'approved' ? 'bg-[#3fb950]/10 border-[#3fb950]/30 text-[#3fb950]' :
+                                    item.status === 'pending' ? 'bg-[#d29922]/10 border-[#d29922]/30 text-[#d29922]' :
+                                    item.status === 'denied' ? 'bg-[#f85149]/10 border-[#f85149]/30 text-[#f85149]' :
+                                    item.status === 'spent' ? 'bg-[#a371f7]/10 border-[#a371f7]/30 text-[#a371f7]' :
+                                    'bg-[#21262d] border-[#30363d] text-[#8b949e]'
+                                  }`}
+                                >
+                                  <option value="pending">Pending</option>
+                                  <option value="approved">Approved</option>
+                                  <option value="denied">Denied</option>
+                                  <option value="spent">Spent</option>
+                                </select>
+                              </td>
+                              <td className="px-4 py-3 text-center">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex-1 h-1.5 bg-[#21262d] rounded-full overflow-hidden">
+                                    <div className={`h-full rounded-full ${
+                                      utilization > 90 ? 'bg-[#3fb950]' :
+                                      utilization > 50 ? 'bg-[#00d4ff]' :
+                                      'bg-[#d29922]'
+                                    }`} style={{ width: `${Math.min(100, utilization)}%` }} />
+                                  </div>
+                                  <span className="text-[10px] font-mono text-[#6e7681] w-10">{Math.round(utilization)}%</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex justify-end gap-2">
+                                  {item.receiptsLink && (
+                                    <a href={item.receiptsLink} target="_blank" rel="noopener noreferrer" className="text-[#00d4ff] text-xs hover:underline">Receipts</a>
+                                  )}
+                                  <button onClick={() => { setEditingLineItem(item); setLineItemForm(item); setShowModal('editLineItem') }} className="text-[#8b949e] hover:text-[#f0f6fc] text-xs">Edit</button>
+                                  <button onClick={() => { if(confirm('Delete this line item?')) { deleteLineItem(item.id); notify('Deleted') }}} className="text-[#f85149] text-xs hover:underline">Delete</button>
+                                </div>
+                              </td>
+                            </tr>
+                          )
+                        })}
+                        {(budgetData.lineItems || []).length === 0 && (
+                          <tr>
+                            <td colSpan={8} className="px-4 py-12 text-center text-[#6e7681]">
+                              No line items yet. Add your first line item to track funding.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {/* Line Items by Category Summary */}
+                <div className="grid md:grid-cols-5 gap-4">
+                  {(budgetCategories || []).slice(0, 5).map(cat => {
+                    const items = (budgetData.lineItems || []).filter(i => i.category === cat)
+                    const totalApproved = items.reduce((s, i) => s + (i.approved || 0), 0)
+                    const totalSpent = items.reduce((s, i) => s + (i.spent || 0), 0)
+                    return (
+                      <div key={cat} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
+                        <p className="text-xs text-[#6e7681] uppercase tracking-wider mb-2">{cat}</p>
+                        <p className="text-xl font-mono font-bold text-[#f0f6fc]">{items.length}</p>
+                        <p className="text-[10px] text-[#8b949e] mt-1">${totalSpent.toLocaleString()} / ${totalApproved.toLocaleString()}</p>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* FUNDING REQUESTS SUB-TAB */}
+            {budgetSubTab === 'requests' && (
+              <div className="space-y-6">
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg">
+                  <div className="px-6 py-4 border-b border-[#30363d] flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-[#d29922] rounded-full animate-pulse" />
+                      <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">AI-Assisted Funding Request Queue</span>
+                    </div>
+                    <span className="text-xs font-mono text-[#6e7681]">{(budgetData.fundingRequests || []).filter(r => r.status === 'pending').length} pending</span>
+                  </div>
+                  <div className="divide-y divide-[#21262d]">
+                    {(budgetData.fundingRequests || []).filter(r => r.status === 'pending').map(request => (
+                      <div key={request.id} className="p-6 hover:bg-[#21262d]/30 transition-colors">
+                        <div className="flex items-start justify-between mb-4">
+                          <div>
+                            <div className="flex items-center gap-3 mb-2">
+                              <h4 className="font-semibold text-[#f0f6fc]">{request.orgName}</h4>
+                              <span className="px-2 py-0.5 bg-[#21262d] border border-[#30363d] rounded text-[10px] text-[#8b949e] font-mono">{request.category}</span>
+                              {request.urgency === 'high' && (
+                                <span className="px-2 py-0.5 bg-[#f85149]/10 border border-[#f85149]/30 rounded text-[10px] text-[#f85149] font-mono">URGENT</span>
+                              )}
+                            </div>
+                            <p className="text-sm text-[#8b949e] mb-2">{request.description}</p>
+                            <p className="text-xs text-[#6e7681]"><strong className="text-[#8b949e]">Impact:</strong> {request.impactJustification}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-2xl font-mono font-bold text-[#00d4ff]">${(request.amount || 0).toLocaleString()}</p>
+                            <p className="text-[10px] text-[#6e7681] mt-1">{formatDate(request.submittedAt)}</p>
+                          </div>
+                        </div>
+
+                        {/* AI Scoring Section */}
+                        <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4 mb-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-1 h-1 bg-[#a371f7] rounded-full" />
+                              <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">AI Analysis</span>
+                            </div>
+                            <div className={`flex items-center gap-2 px-3 py-1 rounded-full ${
+                              request.aiScore >= 80 ? 'bg-[#3fb950]/10 border border-[#3fb950]/30' :
+                              request.aiScore >= 60 ? 'bg-[#d29922]/10 border border-[#d29922]/30' :
+                              'bg-[#f85149]/10 border border-[#f85149]/30'
+                            }`}>
+                              <span className={`text-lg font-mono font-bold ${
+                                request.aiScore >= 80 ? 'text-[#3fb950]' :
+                                request.aiScore >= 60 ? 'text-[#d29922]' :
+                                'text-[#f85149]'
+                              }`}>{request.aiScore}</span>
+                              <span className="text-[10px] text-[#6e7681]">/ 100</span>
+                            </div>
+                          </div>
+                          <p className={`text-sm font-medium mb-2 ${
+                            request.aiRecommendation?.includes('Approve') ? 'text-[#3fb950]' :
+                            request.aiRecommendation?.includes('Deny') ? 'text-[#f85149]' :
+                            request.aiRecommendation?.includes('Reallocate') ? 'text-[#a371f7]' :
+                            'text-[#d29922]'
+                          }`}>
+                            → {request.aiRecommendation}
+                          </p>
+                          {request.aiReasons && (
+                            <div className="flex flex-wrap gap-2">
+                              {request.aiReasons.map((reason, i) => (
+                                <span key={i} className="px-2 py-0.5 bg-[#21262d] rounded text-[10px] text-[#8b949e]">{reason}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => { reviewFundingRequest(request.id, 'approved'); notify('Request approved') }}
+                            className="px-4 py-2 bg-[#3fb950]/10 border border-[#3fb950]/50 rounded-lg text-[#3fb950] text-sm font-medium hover:bg-[#3fb950]/20 hover:border-[#3fb950] transition-all"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => { reviewFundingRequest(request.id, 'denied'); notify('Request denied') }}
+                            className="px-4 py-2 bg-[#f85149]/10 border border-[#f85149]/50 rounded-lg text-[#f85149] text-sm font-medium hover:bg-[#f85149]/20 hover:border-[#f85149] transition-all"
+                          >
+                            Deny
+                          </button>
+                          <button
+                            onClick={() => { reviewFundingRequest(request.id, 'reallocated', 'Reallocated from unused funds'); notify('Request reallocated') }}
+                            className="px-4 py-2 bg-[#a371f7]/10 border border-[#a371f7]/50 rounded-lg text-[#a371f7] text-sm font-medium hover:bg-[#a371f7]/20 hover:border-[#a371f7] transition-all"
+                          >
+                            Reallocate
+                          </button>
+                          <input
+                            type="text"
+                            placeholder="Add reviewer note..."
+                            className="flex-1 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#f0f6fc] placeholder-[#6e7681] focus:ring-1 focus:ring-[#00d4ff]"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && e.target.value) {
+                                reviewFundingRequest(request.id, 'approved', e.target.value)
+                                e.target.value = ''
+                                notify('Approved with note')
+                              }
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    {(budgetData.fundingRequests || []).filter(r => r.status === 'pending').length === 0 && (
+                      <div className="p-12 text-center text-[#6e7681]">
+                        <p className="text-sm">No pending funding requests</p>
+                        <p className="text-xs mt-2">New requests from organizations will appear here for review</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Recently Reviewed */}
+                {(budgetData.fundingRequests || []).filter(r => r.status !== 'pending').length > 0 && (
+                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Recently Reviewed</span>
+                    </div>
+                    <div className="space-y-2">
+                      {(budgetData.fundingRequests || []).filter(r => r.status !== 'pending').slice(-5).reverse().map(request => (
+                        <div key={request.id} className="flex items-center justify-between py-2 px-3 bg-[#0d1117] rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <span className={`w-2 h-2 rounded-full ${
+                              request.status === 'approved' ? 'bg-[#3fb950]' :
+                              request.status === 'denied' ? 'bg-[#f85149]' :
+                              'bg-[#a371f7]'
+                            }`} />
+                            <span className="text-sm text-[#f0f6fc]">{request.orgName}</span>
+                            <span className="text-xs text-[#6e7681]">${request.amount}</span>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-mono ${
+                            request.status === 'approved' ? 'bg-[#3fb950]/10 text-[#3fb950]' :
+                            request.status === 'denied' ? 'bg-[#f85149]/10 text-[#f85149]' :
+                            'bg-[#a371f7]/10 text-[#a371f7]'
+                          }`}>{request.status}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* REALLOCATIONS SUB-TAB */}
+            {budgetSubTab === 'reallocations' && (
+              <div className="space-y-6">
+                <div className="bg-[#161b22] border border-[#30363d] rounded-lg">
+                  <div className="px-6 py-4 border-b border-[#30363d] flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-[#a371f7] rounded-full" />
+                      <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Reallocation Suggestions</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setBudgetLoading(true)
+                        setTimeout(() => {
+                          scanForReallocations()
+                          setBudgetLoading(false)
+                          notify('Scan complete')
+                        }, 500)
+                      }}
+                      className="text-[10px] font-semibold text-[#00d4ff] uppercase tracking-widest hover:text-[#00d4ff]/80 transition"
+                    >
+                      {budgetLoading ? 'Scanning...' : 'Re-scan'}
+                    </button>
+                  </div>
+                  <div className="divide-y divide-[#21262d]">
+                    {(budgetData.reallocationSuggestions || []).filter(s => s.status === 'pending').map(suggestion => (
+                      <div key={suggestion.id} className="p-6 hover:bg-[#21262d]/30 transition-colors">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-4">
+                            <div className="text-center">
+                              <p className="text-sm font-medium text-[#f0f6fc]">{suggestion.fromCategory || suggestion.fromOrg}</p>
+                              <p className="text-[10px] text-[#6e7681] uppercase">From</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-px bg-[#30363d]" />
+                              <span className="text-xl font-mono font-bold text-[#a371f7]">${suggestion.amount}</span>
+                              <div className="w-8 h-px bg-[#30363d]" />
+                              <span className="text-[#6e7681]">→</span>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-sm font-medium text-[#f0f6fc]">{suggestion.toCategory || 'High-demand area'}</p>
+                              <p className="text-[10px] text-[#6e7681] uppercase">To</p>
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-sm text-[#8b949e] mb-4 bg-[#0d1117] px-4 py-3 rounded-lg">{suggestion.reason}</p>
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => { reviewReallocation(suggestion.id, 'approved'); notify('Reallocation approved') }}
+                            className="px-4 py-2 bg-[#3fb950]/10 border border-[#3fb950]/50 rounded-lg text-[#3fb950] text-sm font-medium hover:bg-[#3fb950]/20 transition-all"
+                          >
+                            Approve Reallocation
+                          </button>
+                          <button
+                            onClick={() => { reviewReallocation(suggestion.id, 'rejected'); notify('Reallocation rejected') }}
+                            className="px-4 py-2 bg-[#21262d] border border-[#30363d] rounded-lg text-[#8b949e] text-sm font-medium hover:border-[#8b949e] transition-all"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                    {(budgetData.reallocationSuggestions || []).filter(s => s.status === 'pending').length === 0 && (
+                      <div className="p-12 text-center text-[#6e7681]">
+                        <p className="text-sm">No pending reallocation suggestions</p>
+                        <p className="text-xs mt-2">Click "Scan Reallocations" to analyze budget utilization</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Approved Reallocations */}
+                {(budgetData.approvedReallocations || []).length > 0 && (
+                  <div className="bg-[#161b22] border border-[#3fb950]/30 rounded-lg p-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="w-1.5 h-1.5 bg-[#3fb950] rounded-full" />
+                      <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Approved Reallocations (Public)</span>
+                    </div>
+                    <div className="space-y-3">
+                      {(budgetData.approvedReallocations || []).map(r => (
+                        <div key={r.id} className="flex items-center justify-between py-3 px-4 bg-[#0d1117] rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm text-[#8b949e]">{r.fromCategory || r.fromOrg}</span>
+                            <span className="text-[#6e7681]">→</span>
+                            <span className="text-sm text-[#f0f6fc]">{r.toCategory}</span>
+                          </div>
+                          <span className="font-mono font-semibold text-[#3fb950]">${r.amount}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TRANSPARENCY SUB-TAB */}
+            {budgetSubTab === 'transparency' && (
+              <div className="space-y-6">
+                {/* Budget Transparency & Validation */}
+                <div className="bg-[#161b22] border border-[#00d4ff]/30 rounded-lg p-6">
+                  <div className="flex items-center gap-2 mb-6">
+                    <div className="w-1.5 h-1.5 bg-[#00d4ff] rounded-full" />
+                    <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Budget Transparency & Validation</span>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-6 mb-6">
+                    {/* CSV Export */}
+                    <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-5">
+                      <h4 className="font-medium text-[#f0f6fc] mb-2">Export Line Items (CSV)</h4>
+                      <p className="text-sm text-[#8b949e] mb-4">Download all line items for auditing, reporting, or external review.</p>
+                      <button
+                        onClick={() => {
+                          const csv = exportBudgetCSV()
+                          const blob = new Blob([csv], { type: 'text/csv' })
+                          const url = URL.createObjectURL(blob)
+                          const a = document.createElement('a')
+                          a.href = url
+                          a.download = `budget-line-items-${new Date().toISOString().split('T')[0]}.csv`
+                          a.click()
+                          notify('CSV exported')
+                        }}
+                        className="px-4 py-2 bg-[#00d4ff]/10 border border-[#00d4ff]/50 rounded-lg text-[#00d4ff] text-sm font-medium hover:bg-[#00d4ff]/20 transition-all"
+                      >
+                        Download CSV
+                      </button>
+                    </div>
+
+                    {/* Reproducibility Guide */}
+                    <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-5">
+                      <h4 className="font-medium text-[#f0f6fc] mb-2">Reproducibility Guide</h4>
+                      <p className="text-sm text-[#8b949e] mb-4">Step-by-step instructions for verifying budget allocations and spend.</p>
+                      <button
+                        onClick={() => {
+                          const guide = `BUDGET AUDIT REPRODUCIBILITY GUIDE
+==================================
+Generated: ${new Date().toISOString()}
+Semester: ${budgetData.semester || 'Spring 2026'}
+
+HOW TO AUDIT SPEND VS BUDGET:
+
+1. Export line items CSV from admin dashboard
+2. For each line item, verify:
+   - Receipts link contains valid documentation
+   - Spent amount matches sum of receipt totals
+   - Approved amount <= Requested amount
+   - Status reflects actual fund disbursement
+
+3. Category totals should match:
+   - Sum of approved line items per category
+   - Category "allocated" field in budget overview
+
+4. Cross-reference with:
+   - Bank/payment records
+   - Organization event records
+   - Physical receipt documentation
+
+CONTACT: sgbudget@unc.edu for questions
+
+---
+Public Data Model — Anyone Can Verify Allocation Transparency`
+                          const blob = new Blob([guide], { type: 'text/plain' })
+                          const url = URL.createObjectURL(blob)
+                          const a = document.createElement('a')
+                          a.href = url
+                          a.download = 'budget-audit-guide.txt'
+                          a.click()
+                          notify('Guide downloaded')
+                        }}
+                        className="px-4 py-2 bg-[#21262d] border border-[#30363d] rounded-lg text-[#8b949e] text-sm font-medium hover:border-[#8b949e] hover:text-[#f0f6fc] transition-all"
+                      >
+                        Download Guide
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Public Transparency Stats Preview */}
+                  <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="font-medium text-[#f0f6fc]">Public Transparency Page Preview</h4>
+                      <Link href="/budget-transparency" className="text-[10px] font-semibold text-[#00d4ff] uppercase tracking-widest hover:underline">
+                        View Public Page →
+                      </Link>
+                    </div>
+                    <div className="grid grid-cols-4 gap-4">
+                      {(() => {
+                        const stats = getBudgetSummaryStats ? getBudgetSummaryStats() : {}
+                        return (
+                          <>
+                            <div className="text-center p-3 bg-[#161b22] rounded-lg">
+                              <p className="text-xl font-mono font-bold text-[#3fb950]">{stats.utilizationRate || 0}%</p>
+                              <p className="text-[10px] text-[#6e7681] uppercase mt-1">Utilization Rate</p>
+                            </div>
+                            <div className="text-center p-3 bg-[#161b22] rounded-lg">
+                              <p className="text-xl font-mono font-bold text-[#00d4ff]">{stats.orgCount || 0}</p>
+                              <p className="text-[10px] text-[#6e7681] uppercase mt-1">Organizations Funded</p>
+                            </div>
+                            <div className="text-center p-3 bg-[#161b22] rounded-lg">
+                              <p className="text-xl font-mono font-bold text-[#a371f7]">${(stats.wasteReduction?.reallocatedFunds || 0).toLocaleString()}</p>
+                              <p className="text-[10px] text-[#6e7681] uppercase mt-1">Funds Reallocated</p>
+                            </div>
+                            <div className="text-center p-3 bg-[#161b22] rounded-lg">
+                              <p className="text-xl font-mono font-bold text-[#d29922]">{stats.wasteReduction?.avgProcessingHours || 0}h</p>
+                              <p className="text-[10px] text-[#6e7681] uppercase mt-1">Avg Processing Time</p>
+                            </div>
+                          </>
+                        )
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Footer Note */}
+                  <div className="mt-6 pt-6 border-t border-[#30363d] text-center">
+                    <p className="text-xs text-[#6e7681]">
+                      <span className="text-[#00d4ff]">●</span> Public data model — anyone can verify allocation transparency
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* MODALS */}
+            {showModal === 'lineItem' && (
+              <Modal title="Add Line Item" onClose={() => setShowModal(null)}>
+                <form onSubmit={(e) => {
+                  e.preventDefault()
+                  addLineItem(lineItemForm)
+                  setLineItemForm({ orgName: '', category: 'Events', requested: 0, approved: 0, receiptsLink: '', impactNotes: '' })
+                  setShowModal(null)
+                  notify('Line item added')
+                }} className="space-y-4">
+                  <Input label="Organization Name" value={lineItemForm.orgName} onChange={(e) => setLineItemForm({ ...lineItemForm, orgName: e.target.value })} required />
+                  <Select label="Category" value={lineItemForm.category} onChange={(e) => setLineItemForm({ ...lineItemForm, category: e.target.value })} options={
+                    (budgetCategories || ['Events', 'Travel', 'Merch', 'Programming', 'Equipment', 'Marketing', 'Food & Catering', 'Speakers & Guests', 'Supplies', 'Other']).map(c => ({ value: c, label: c }))
+                  } />
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input label="Requested Amount ($)" type="number" value={lineItemForm.requested} onChange={(e) => setLineItemForm({ ...lineItemForm, requested: parseFloat(e.target.value) || 0 })} required />
+                    <Input label="Approved Amount ($)" type="number" value={lineItemForm.approved} onChange={(e) => setLineItemForm({ ...lineItemForm, approved: parseFloat(e.target.value) || 0 })} />
+                  </div>
+                  <Input label="Receipts Link (optional)" value={lineItemForm.receiptsLink} onChange={(e) => setLineItemForm({ ...lineItemForm, receiptsLink: e.target.value })} placeholder="https://drive.google.com/..." />
+                  <div>
+                    <label className="block text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-2">Impact Notes</label>
+                    <textarea
+                      value={lineItemForm.impactNotes}
+                      onChange={(e) => setLineItemForm({ ...lineItemForm, impactNotes: e.target.value })}
+                      rows={3}
+                      placeholder="Describe the expected impact..."
+                      className="w-full px-4 py-3 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] placeholder-[#6e7681] resize-none focus:ring-1 focus:ring-[#00d4ff] text-sm"
+                    />
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <Button type="submit">Add Line Item</Button>
+                    <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
+                  </div>
+                </form>
+              </Modal>
+            )}
+
+            {showModal === 'editLineItem' && editingLineItem && (
+              <Modal title="Edit Line Item" onClose={() => { setShowModal(null); setEditingLineItem(null) }}>
+                <form onSubmit={(e) => {
+                  e.preventDefault()
+                  updateLineItem(editingLineItem.id, lineItemForm)
+                  setLineItemForm({ orgName: '', category: 'Events', requested: 0, approved: 0, receiptsLink: '', impactNotes: '' })
+                  setEditingLineItem(null)
+                  setShowModal(null)
+                  notify('Line item updated')
+                }} className="space-y-4">
+                  <Input label="Organization Name" value={lineItemForm.orgName} onChange={(e) => setLineItemForm({ ...lineItemForm, orgName: e.target.value })} required />
+                  <Select label="Category" value={lineItemForm.category} onChange={(e) => setLineItemForm({ ...lineItemForm, category: e.target.value })} options={
+                    (budgetCategories || ['Events', 'Travel', 'Merch', 'Programming', 'Equipment', 'Marketing', 'Food & Catering', 'Speakers & Guests', 'Supplies', 'Other']).map(c => ({ value: c, label: c }))
+                  } />
+                  <div className="grid grid-cols-2 gap-4">
+                    <Input label="Requested Amount ($)" type="number" value={lineItemForm.requested} onChange={(e) => setLineItemForm({ ...lineItemForm, requested: parseFloat(e.target.value) || 0 })} required />
+                    <Input label="Approved Amount ($)" type="number" value={lineItemForm.approved} onChange={(e) => setLineItemForm({ ...lineItemForm, approved: parseFloat(e.target.value) || 0 })} />
+                  </div>
+                  <Input label="Receipts Link" value={lineItemForm.receiptsLink || ''} onChange={(e) => setLineItemForm({ ...lineItemForm, receiptsLink: e.target.value })} />
+                  <div>
+                    <label className="block text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-2">Impact Notes</label>
+                    <textarea
+                      value={lineItemForm.impactNotes || ''}
+                      onChange={(e) => setLineItemForm({ ...lineItemForm, impactNotes: e.target.value })}
+                      rows={3}
+                      className="w-full px-4 py-3 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] resize-none focus:ring-1 focus:ring-[#00d4ff] text-sm"
+                    />
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <Button type="submit">Update</Button>
+                    <Button variant="secondary" type="button" onClick={() => { setShowModal(null); setEditingLineItem(null) }}>Cancel</Button>
+                  </div>
+                </form>
+              </Modal>
             )}
 
             {showModal === 'transaction' && (
@@ -949,7 +1625,7 @@ export default function AdminDashboard() {
                   <Input label="Description" value={transactionForm.description} onChange={(e) => setTransactionForm({ ...transactionForm, description: e.target.value })} required />
                   <Select label="Category" value={transactionForm.category} onChange={(e) => setTransactionForm({ ...transactionForm, category: e.target.value })} options={[
                     { value: '', label: 'Select...' },
-                    ...budgetData.categories.map(c => ({ value: c.name, label: c.name }))
+                    ...(budgetData.categories || []).map(c => ({ value: c.name, label: c.name }))
                   ]} />
                   <div className="flex gap-3 pt-2">
                     <Button type="submit">Add</Button>
