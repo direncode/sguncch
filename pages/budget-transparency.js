@@ -87,12 +87,20 @@ export default function BudgetTransparency() {
                 <div className="h-6 w-px bg-[#30363d]" />
                 <h1 className="text-[#f0f6fc] text-lg font-bold">Budget Transparency</h1>
               </div>
-              <button
-                onClick={handleExportCSV}
-                className="px-4 py-2 bg-[#21262d] border border-[#30363d] rounded-lg text-sm text-[#8b949e] hover:text-[#f0f6fc] hover:border-[#00d4ff] transition-all"
-              >
-                Export CSV
-              </button>
+              <div className="flex gap-3">
+                <Link
+                  href="/funding-request"
+                  className="px-4 py-2 bg-[#00d4ff] text-[#0d1117] rounded-lg text-sm font-semibold hover:bg-[#00d4ff]/90 transition-all"
+                >
+                  Request Funding
+                </Link>
+                <button
+                  onClick={handleExportCSV}
+                  className="px-4 py-2 bg-[#21262d] border border-[#30363d] rounded-lg text-sm text-[#8b949e] hover:text-[#f0f6fc] hover:border-[#00d4ff] transition-all"
+                >
+                  Export CSV
+                </button>
+              </div>
             </div>
           </div>
         </header>
@@ -308,6 +316,9 @@ export default function BudgetTransparency() {
                 Data updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
               </p>
               <div className="flex gap-4">
+                <Link href="/funding-request" className="text-sm text-[#00d4ff] hover:underline">
+                  Request Funding
+                </Link>
                 <Link href="/admin" className="text-sm text-[#00d4ff] hover:underline">
                   Admin Dashboard
                 </Link>
