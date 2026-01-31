@@ -499,33 +499,60 @@ export default function AdminDashboard() {
   // AI Validation function
   const runAiValidation = async (request) => {
     setValidatingId(request.id)
+    console.log('[AI Validation] Starting validation for request:', request.id, request.orgName)
+
     try {
+      console.log('[AI Validation] Sending POST to /api/validate-budget')
       const response = await fetch('/api/validate-budget', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ request, deepValidation: true }),
       })
 
+      console.log('[AI Validation] Response status:', response.status)
+
       // Check if response is OK before parsing JSON
       if (!response.ok) {
-        const errorText = await response.text()
-        console.error('API error:', response.status, errorText)
-        notify(`Validation API error: ${response.status}`, 'error')
+        let errorData
+        try {
+          errorData = await response.json()
+        } catch {
+          errorData = { message: await response.text() }
+        }
+        console.error('[AI Validation] API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        })
+
+        if (response.status === 405) {
+          // This is likely from browser prefetch - not a real error
+          console.log('[AI Validation] 405 error - this may be from browser prefetch, not your actual request')
+        }
+
+        notify(`Validation API error: ${response.status} - ${errorData.message || 'Unknown error'}`, 'error')
         setValidatingId(null)
         return
       }
 
       const data = await response.json()
+      console.log('[AI Validation] Success:', data)
       setAiValidation(prev => ({ ...prev, [request.id]: data }))
+
       if (data.aiValidation?.recommendation === 'REJECT') {
         notify('AI flagged this request as potentially unreasonable', 'warning')
       } else if (data.aiValidation?.recommendation === 'APPROVE') {
         notify('AI validated the amount as reasonable')
       } else if (data.aiValidation?.skipped) {
-        notify('AI validation skipped - API key not configured', 'warning')
+        console.log('[AI Validation] Skipped - reason:', data.aiValidation.reason)
+        notify(`AI validation skipped: ${data.aiValidation.reason}`, 'warning')
       }
     } catch (error) {
-      console.error('AI validation failed:', error)
+      console.error('[AI Validation] Request failed:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      })
       notify('AI validation failed - check console for details', 'error')
     }
     setValidatingId(null)
