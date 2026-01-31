@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import { useApp } from '../lib/store'
@@ -14,6 +14,8 @@ import {
 // ==========================================
 
 export default function BudgetTransparency() {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
   const {
     budgetLineItems,
     fundingRequests,
@@ -677,7 +679,7 @@ export default function BudgetTransparency() {
           <div className="mt-12 pt-8 border-t border-[#30363d]">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
               <p className="text-sm text-[#6e7681]">
-                Data updated: {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                Data updated: {mounted ? new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Loading...'}
               </p>
               <div className="flex gap-4">
                 <button

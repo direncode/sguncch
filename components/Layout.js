@@ -15,23 +15,28 @@ const navigation = [
 
 export default function Layout({ children }) {
   const router = useRouter()
-  const [time, setTime] = useState(new Date())
+  const [time, setTime] = useState(null)
   const [isOnline, setIsOnline] = useState(true)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
+    setTime(new Date())
     const timer = setInterval(() => setTime(new Date()), 1000)
     return () => clearInterval(timer)
   }, [])
 
   useEffect(() => {
-    setIsOnline(navigator.onLine)
-    const handleOnline = () => setIsOnline(true)
-    const handleOffline = () => setIsOnline(false)
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-    return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
+    if (typeof navigator !== 'undefined') {
+      setIsOnline(navigator.onLine)
+      const handleOnline = () => setIsOnline(true)
+      const handleOffline = () => setIsOnline(false)
+      window.addEventListener('online', handleOnline)
+      window.addEventListener('offline', handleOffline)
+      return () => {
+        window.removeEventListener('online', handleOnline)
+        window.removeEventListener('offline', handleOffline)
+      }
     }
   }, [])
 
@@ -55,7 +60,7 @@ export default function Layout({ children }) {
             <div className="flex items-center gap-6">
               <span className="text-[#8b949e]">LAT: 35.9049° N</span>
               <span className="text-[#8b949e]">LON: 79.0469° W</span>
-              <span className="text-[#00d4ff] font-semibold">{time.toLocaleTimeString('en-US', { hour12: false })}</span>
+              <span className="text-[#00d4ff] font-semibold">{mounted && time ? time.toLocaleTimeString('en-US', { hour12: false }) : '--:--:--'}</span>
             </div>
           </div>
 

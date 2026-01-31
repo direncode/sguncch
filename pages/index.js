@@ -9,11 +9,27 @@ import { Editable, EditModeToggle } from '../components/InlineEditor'
 
 // Live Clock Component
 const LiveClock = () => {
-  const [time, setTime] = useState(new Date())
+  const [time, setTime] = useState(null)
+  const [mounted, setMounted] = useState(false)
+
   useEffect(() => {
+    setMounted(true)
+    setTime(new Date())
     const timer = setInterval(() => setTime(new Date()), 1000)
     return () => clearInterval(timer)
   }, [])
+
+  // Avoid hydration mismatch
+  if (!mounted || !time) {
+    return (
+      <div className="font-mono text-sm text-[#8b949e]">
+        <span className="text-[#f0f6fc]">--:--:--</span>
+        <span className="mx-2 text-[#30363d]">|</span>
+        <span>Loading...</span>
+      </div>
+    )
+  }
+
   return (
     <div className="font-mono text-sm text-[#8b949e]">
       <span className="text-[#f0f6fc]">{time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
