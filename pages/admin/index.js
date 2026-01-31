@@ -53,11 +53,28 @@ const formatRelativeTime = (dateString) => {
 // LIVE CLOCK COMPONENT
 // ==========================================
 const LiveClock = () => {
-  const [time, setTime] = useState(new Date())
+  const [time, setTime] = useState(null)
+  const [mounted, setMounted] = useState(false)
+
   useEffect(() => {
+    setMounted(true)
+    setTime(new Date())
     const interval = setInterval(() => setTime(new Date()), 1000)
     return () => clearInterval(interval)
   }, [])
+
+  // Avoid hydration mismatch by not rendering until mounted
+  if (!mounted || !time) {
+    return (
+      <div className="flex items-center gap-3">
+        <div className="text-right">
+          <div className="text-[#f0f6fc] font-mono text-sm tracking-wide">--:--:--</div>
+          <div className="text-[10px] text-[#6e7681] uppercase tracking-widest">Loading...</div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex items-center gap-3">
       <div className="text-right">
@@ -76,18 +93,27 @@ const LiveClock = () => {
 // SYSTEM HEALTH MONITOR
 // ==========================================
 const SystemHealthMonitor = ({ policies, feedback, activityLog }) => {
+  const [mounted, setMounted] = useState(false)
+  const [recentActivity, setRecentActivity] = useState(0)
+
+  useEffect(() => {
+    setMounted(true)
+    // Calculate recent activity client-side to avoid hydration mismatch
+    const count = activityLog.filter(a => {
+      const diff = Date.now() - new Date(a.timestamp).getTime()
+      return diff < 3600000 // Last hour
+    }).length
+    setRecentActivity(count)
+  }, [activityLog])
+
   const overallProgress = getOverallProgress(policies)
   const statusCounts = getStatusCounts(policies)
   const newFeedback = feedback.filter(f => f.status === 'new').length
-  const recentActivity = activityLog.filter(a => {
-    const diff = Date.now() - new Date(a.timestamp).getTime()
-    return diff < 3600000 // Last hour
-  }).length
 
   const healthScore = Math.round(
     (overallProgress * 0.4) +
     ((statusCounts.completed / policies.length) * 100 * 0.3) +
-    (Math.min(recentActivity, 10) * 3)
+    (Math.min(mounted ? recentActivity : 0, 10) * 3)
   )
 
   const getHealthStatus = (score) => {
@@ -245,6 +271,9 @@ const ActivityStream = ({ activityLog, maxItems = 15 }) => {
 // INSIGHTS ENGINE
 // ==========================================
 const InsightsEngine = ({ policies, feedback, activityLog, budgetData }) => {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
   const insights = useMemo(() => {
     const results = []
     const overallProgress = getOverallProgress(policies)
@@ -275,10 +304,12 @@ const InsightsEngine = ({ policies, feedback, activityLog, budgetData }) => {
       results.push({ type: 'warning', title: 'Budget Alert', message: `${budgetUtilization.toFixed(0)}% of budget utilized.` })
     }
 
-    // Recent activity
-    const recentProgressUpdates = activityLog.filter(a => a.action === 'LOG_PROGRESS' && Date.now() - new Date(a.timestamp).getTime() < 86400000).length
-    if (recentProgressUpdates >= 5) {
-      results.push({ type: 'success', title: 'Active Team', message: `${recentProgressUpdates} progress updates in the last 24 hours.` })
+    // Recent activity (only calculate when mounted to avoid hydration mismatch)
+    if (mounted) {
+      const recentProgressUpdates = activityLog.filter(a => a.action === 'LOG_PROGRESS' && Date.now() - new Date(a.timestamp).getTime() < 86400000).length
+      if (recentProgressUpdates >= 5) {
+        results.push({ type: 'success', title: 'Active Team', message: `${recentProgressUpdates} progress updates in the last 24 hours.` })
+      }
     }
 
     // Department performance
@@ -292,7 +323,7 @@ const InsightsEngine = ({ policies, feedback, activityLog, budgetData }) => {
     }
 
     return results.slice(0, 4)
-  }, [policies, feedback, activityLog, budgetData])
+  }, [policies, feedback, activityLog, budgetData, mounted])
 
   if (insights.length === 0) return null
 
@@ -373,6 +404,15 @@ export default function AdminDashboard() {
   const [searchQuery, setSearchQuery] = useState('')
   const [showModal, setShowModal] = useState(null)
   const [toast, setToast] = useState(null)
+  const [isMounted, setIsMounted] = useState(false)
+  const [last24HoursCount, setLast24HoursCount] = useState(0)
+
+  // Set mounted state and calculate time-based values client-side only
+  useEffect(() => {
+    setIsMounted(true)
+    const count = activityLog.filter(a => Date.now() - new Date(a.timestamp).getTime() < 86400000).length
+    setLast24HoursCount(count)
+  }, [activityLog])
 
   // Edit Window state
   const [editWindow, setEditWindow] = useState({
@@ -465,16 +505,28 @@ export default function AdminDashboard() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ request, deepValidation: true }),
       })
+
+      // Check if response is OK before parsing JSON
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('API error:', response.status, errorText)
+        notify(`Validation API error: ${response.status}`, 'error')
+        setValidatingId(null)
+        return
+      }
+
       const data = await response.json()
       setAiValidation(prev => ({ ...prev, [request.id]: data }))
       if (data.aiValidation?.recommendation === 'REJECT') {
         notify('AI flagged this request as potentially unreasonable', 'warning')
       } else if (data.aiValidation?.recommendation === 'APPROVE') {
         notify('AI validated the amount as reasonable')
+      } else if (data.aiValidation?.skipped) {
+        notify('AI validation skipped - API key not configured', 'warning')
       }
     } catch (error) {
       console.error('AI validation failed:', error)
-      notify('AI validation failed', 'error')
+      notify('AI validation failed - check console for details', 'error')
     }
     setValidatingId(null)
   }
@@ -1031,7 +1083,7 @@ export default function AdminDashboard() {
                 <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mt-1">Items Created</p>
               </div>
               <div className="bg-[#161b22] border border-[#d29922]/30 rounded-lg p-4 text-center">
-                <p className="text-3xl font-mono font-bold text-[#d29922]">{activityLog.filter(a => Date.now() - new Date(a.timestamp).getTime() < 86400000).length}</p>
+                <p className="text-3xl font-mono font-bold text-[#d29922]">{last24HoursCount}</p>
                 <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mt-1">Last 24 Hours</p>
               </div>
             </div>
