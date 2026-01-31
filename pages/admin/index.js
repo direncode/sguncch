@@ -1429,8 +1429,6 @@ export default function AdminDashboard() {
 
                 {displayFundingRequests.filter(r => r.status === 'pending').map(request => {
                   const category = BUDGET_CATEGORIES.find(c => c.id === request.category)
-                  const score = request.aiScore?.score || 0
-                  const recommendation = request.aiScore?.recommendation
 
                   return (
                     <div key={request.id} className="bg-[#161b22] border border-[#30363d] rounded-xl p-5">
@@ -1451,74 +1449,108 @@ export default function AdminDashboard() {
                         </div>
                       </div>
 
-                      {/* AI Score Panel */}
+                      {/* AI Analysis Panel */}
                       <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4 mb-4">
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">AI Recommendation</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-2xl font-mono font-bold" style={{ color: recommendation?.color || '#6e7681' }}>{score}</span>
-                            <span className="text-sm text-[#6e7681]">/100</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <span className={`px-3 py-1 rounded-lg text-sm font-bold ${
-                            recommendation?.action === 'APPROVE' ? 'bg-[#3fb950]/20 text-[#3fb950] border border-[#3fb950]/30' :
-                            recommendation?.action === 'DENY' ? 'bg-[#f85149]/20 text-[#f85149] border border-[#f85149]/30' :
-                            recommendation?.action === 'FLAG' ? 'bg-[#f85149]/20 text-[#f85149] border border-[#f85149]/30' :
-                            recommendation?.action === 'REALLOCATE' ? 'bg-[#d29922]/20 text-[#d29922] border border-[#d29922]/30' :
-                            'bg-[#6e7681]/20 text-[#6e7681] border border-[#6e7681]/30'
-                          }`}>
-                            {recommendation?.action || 'REVIEW'}
-                          </span>
-                          <span className="text-sm text-[#8b949e]">{recommendation?.reason}</span>
-                        </div>
-
-                        {/* Price Reasonableness Factor */}
-                        {request.aiScore?.factors?.find(f => f.name === 'Price Reasonableness')?.status !== 'reasonable' && (
-                          <div className="mt-3 pt-3 border-t border-[#30363d]">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-xs text-[#f85149] font-semibold">Price Check Warning</p>
-                                <p className="text-xs text-[#8b949e] mt-1">
-                                  {request.aiScore?.factors?.find(f => f.name === 'Price Reasonableness')?.description}
-                                </p>
-                              </div>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => runAiValidation(request)}
-                                disabled={validatingId === request.id}
-                              >
-                                {validatingId === request.id ? 'Validating...' : 'Validate with AI'}
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* AI Validation Results */}
-                        {aiValidation[request.id]?.aiValidation && !aiValidation[request.id].aiValidation.skipped && (
-                          <div className="mt-3 pt-3 border-t border-[#30363d] space-y-2">
+                        {/* Show AI Results if available */}
+                        {aiValidation[request.id]?.aiValidation && !aiValidation[request.id].aiValidation.skipped ? (
+                          <div className="space-y-3">
                             <div className="flex items-center justify-between">
                               <span className="text-[10px] font-semibold text-[#a371f7] uppercase tracking-widest">LLAMA 3.3 Analysis</span>
-                              <span className={`px-2 py-0.5 rounded text-xs font-mono ${
-                                aiValidation[request.id].aiValidation.recommendation === 'APPROVE' ? 'bg-[#3fb950]/20 text-[#3fb950]' :
-                                aiValidation[request.id].aiValidation.recommendation === 'REJECT' ? 'bg-[#f85149]/20 text-[#f85149]' :
-                                'bg-[#d29922]/20 text-[#d29922]'
-                              }`}>
-                                {aiValidation[request.id].aiValidation.recommendation}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className={`px-3 py-1 rounded-lg text-sm font-bold ${
+                                  aiValidation[request.id].aiValidation.recommendation === 'APPROVE' ? 'bg-[#3fb950]/20 text-[#3fb950] border border-[#3fb950]/30' :
+                                  aiValidation[request.id].aiValidation.recommendation === 'REJECT' ? 'bg-[#f85149]/20 text-[#f85149] border border-[#f85149]/30' :
+                                  'bg-[#d29922]/20 text-[#d29922] border border-[#d29922]/30'
+                                }`}>
+                                  {aiValidation[request.id].aiValidation.recommendation}
+                                </span>
+                                {aiValidation[request.id].aiValidation.confidence && (
+                                  <span className="text-sm text-[#6e7681]">{aiValidation[request.id].aiValidation.confidence}% confidence</span>
+                                )}
+                              </div>
                             </div>
-                            <p className="text-xs text-[#8b949e]">{aiValidation[request.id].aiValidation.marketAnalysis}</p>
+                            <p className="text-sm text-[#8b949e]">{aiValidation[request.id].aiValidation.marketAnalysis}</p>
+                            {aiValidation[request.id].aiValidation.reasoning && (
+                              <p className="text-xs text-[#6e7681] italic">{aiValidation[request.id].aiValidation.reasoning}</p>
+                            )}
                             {aiValidation[request.id].aiValidation.suggestedRange && (
                               <p className="text-xs text-[#6e7681]">
                                 Market range: ${aiValidation[request.id].aiValidation.suggestedRange.min?.toLocaleString()} - ${aiValidation[request.id].aiValidation.suggestedRange.max?.toLocaleString()}
                               </p>
                             )}
                             {aiValidation[request.id].aiValidation.flags?.length > 0 && (
-                              <div className="flex flex-wrap gap-1 mt-1">
+                              <div className="flex flex-wrap gap-1 mt-2">
                                 {aiValidation[request.id].aiValidation.flags.map((flag, i) => (
                                   <span key={i} className="px-1.5 py-0.5 rounded text-[10px] bg-[#f85149]/10 text-[#f85149]">{flag}</span>
                                 ))}
+                              </div>
+                            )}
+                            {aiValidation[request.id].aiValidation.alternatives?.length > 0 && (
+                              <div className="mt-2 pt-2 border-t border-[#30363d]">
+                                <p className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-1">Alternatives</p>
+                                <ul className="text-xs text-[#8b949e] list-disc list-inside">
+                                  {aiValidation[request.id].aiValidation.alternatives.map((alt, i) => (
+                                    <li key={i}>{alt}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          /* Show pre-analysis and prompt to validate */
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Budget Analysis</span>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => runAiValidation(request)}
+                                disabled={validatingId === request.id}
+                                className="flex items-center gap-2"
+                              >
+                                {validatingId === request.id ? (
+                                  <>
+                                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                    </svg>
+                                    Analyzing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                    </svg>
+                                    Validate with AI
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+
+                            {/* Price Reasonableness Warning */}
+                            {request.aiScore?.factors?.find(f => f.name === 'Price Reasonableness')?.status !== 'reasonable' ? (
+                              <div className="p-3 bg-[#f85149]/10 border border-[#f85149]/30 rounded-lg">
+                                <p className="text-xs text-[#f85149] font-semibold flex items-center gap-2">
+                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                  </svg>
+                                  Price Check Warning
+                                </p>
+                                <p className="text-xs text-[#8b949e] mt-1">
+                                  {request.aiScore?.factors?.find(f => f.name === 'Price Reasonableness')?.description}
+                                </p>
+                              </div>
+                            ) : (
+                              <p className="text-xs text-[#6e7681]">
+                                Click "Validate with AI" to get a detailed analysis of this funding request using LLAMA 3.3.
+                              </p>
+                            )}
+
+                            {/* AI Validation Skipped Message */}
+                            {aiValidation[request.id]?.aiValidation?.skipped && (
+                              <div className="p-3 bg-[#d29922]/10 border border-[#d29922]/30 rounded-lg">
+                                <p className="text-xs text-[#d29922] font-semibold">AI Validation Skipped</p>
+                                <p className="text-xs text-[#8b949e] mt-1">{aiValidation[request.id].aiValidation.reason}</p>
                               </div>
                             )}
                           </div>

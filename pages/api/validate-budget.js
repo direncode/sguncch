@@ -59,7 +59,8 @@ export default async function handler(req, res) {
     const quickCheck = quickPriceCheck(
       request.category || 'events',
       request.amount,
-      request.description
+      request.description,
+      request.studentsImpacted
     )
 
     // If deep validation requested or quick check flags issues
