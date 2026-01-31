@@ -5,6 +5,7 @@ import DemoBanner from './DemoBanner'
 
 const navigation = [
   { name: 'Command', href: '/', icon: '◉' },
+  { name: 'Budget', href: '/budget', icon: '$' },
   { name: 'Wellness', href: '/wellness', icon: '♥' },
   { name: 'Basic Needs', href: '/basic-needs', icon: '◈' },
   { name: 'Academic', href: '/academic', icon: '◎' },
@@ -148,6 +149,9 @@ export default function Layout({ children }) {
             <div>
               <h3 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-4 pb-2 border-b border-[#21262d]">Quick Access</h3>
               <div className="space-y-2">
+                <Link href="/budget" className="flex items-center gap-2 text-xs text-[#8b949e] hover:text-[#00d4ff] transition">
+                  <span className="text-[#6e7681]">→</span> Budget & Funding
+                </Link>
                 <Link href="/communications" className="flex items-center gap-2 text-xs text-[#8b949e] hover:text-[#00d4ff] transition">
                   <span className="text-[#6e7681]">→</span> Transparency Dashboard
                 </Link>
