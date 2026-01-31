@@ -4,10 +4,10 @@
 // ============================================
 
 import { validateFundingRequest, quickPriceCheck } from '../../lib/groq'
-import { rateLimit, getClientIP } from '../../lib/rateLimit'
+import { createRateLimiter, getClientIP } from '../../lib/rateLimit'
 
 // Rate limit: 20 validation requests per minute per IP
-const limiter = rateLimit({
+const limiter = createRateLimiter({
   windowMs: 60 * 1000,
   maxAttempts: 20,
 })
