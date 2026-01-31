@@ -10,8 +10,11 @@ export default function DemoBanner() {
         <div className="flex items-center gap-2">
           <span className="font-bold">DEMO MODE</span>
           <span className="text-amber-900 text-sm hidden sm:inline">
-            | This is a demonstration platform. Data is stored locally and resets on clear.
+            | Data is stored locally.
           </span>
+          <Link href="/setup" className="text-sm bg-black/20 hover:bg-black/30 px-2 py-0.5 rounded hidden sm:inline">
+            Configure APIs
+          </Link>
         </div>
         <div className="flex items-center gap-3">
           {isAdmin ? (

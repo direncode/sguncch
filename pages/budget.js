@@ -44,6 +44,7 @@ export default function BudgetPage() {
   // Use sample data if no real data exists
   const displayLineItems = budgetLineItems?.length > 0 ? budgetLineItems : sampleBudgetLineItems
   const displayFundingRequests = fundingRequests?.length > 0 ? fundingRequests : sampleFundingRequests
+  const isUsingDemoData = budgetLineItems?.length === 0 && fundingRequests?.length === 0
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -254,6 +255,25 @@ export default function BudgetPage() {
           {/* OVERVIEW TAB */}
           {activeTab === 'overview' && (
             <div>
+              {/* Demo Data Notice */}
+              {isUsingDemoData && (
+                <div className="bg-[#d29922]/10 border border-[#d29922] rounded-lg p-4 mb-8 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-[#d29922] text-xl">ℹ</span>
+                    <div>
+                      <p className="text-[#f0f6fc] font-medium">Displaying Sample Data</p>
+                      <p className="text-sm text-[#8b949e]">Configure database and APIs to use real budget data.</p>
+                    </div>
+                  </div>
+                  <Link
+                    href="/setup"
+                    className="px-4 py-2 text-sm text-[#d29922] border border-[#d29922] rounded hover:bg-[#d29922]/10 transition-colors whitespace-nowrap"
+                  >
+                    Setup Guide
+                  </Link>
+                </div>
+              )}
+
               <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-8">
                 <Editable k="budget.overview.title">Budget Overview</Editable>
               </h2>
