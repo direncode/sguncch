@@ -430,7 +430,7 @@ export default function Home() {
                 <span>Spent: {((budgetData.spent / budgetData.total) * 100).toFixed(0)}%</span>
                 <span>Available: {(((budgetData.total - budgetData.spent) / budgetData.total) * 100).toFixed(0)}%</span>
               </div>
-              <Link href="/communications" className="flex items-center justify-center gap-2 mt-5 py-2.5 border border-[#30363d] rounded-lg text-xs text-[#8b949e] hover:text-[#00d4ff] hover:border-[#00d4ff] transition">
+              <Link href="/budget" className="flex items-center justify-center gap-2 mt-5 py-2.5 border border-[#30363d] rounded-lg text-xs text-[#8b949e] hover:text-[#00d4ff] hover:border-[#00d4ff] transition">
                 <Editable k="home.budget.viewDashboard">View Full Dashboard</Editable>
               </Link>
             </div>
@@ -468,6 +468,11 @@ export default function Home() {
             <div>
               <h3 className="text-sm font-semibold text-[#f0f6fc] uppercase tracking-widest mb-4"><Editable k="home.quickAccess.heading">Quick Access</Editable></h3>
               <div className="grid grid-cols-2 gap-3">
+                <Link href="/budget" className="bg-gradient-to-br from-[#388bfd]/20 to-[#388bfd]/5 border border-[#388bfd]/30 rounded-xl p-4 hover:border-[#388bfd] transition-all group">
+                  <span className="text-2xl">$</span>
+                  <p className="font-medium text-[#f0f6fc] text-sm mt-3 group-hover:text-[#388bfd] transition"><Editable k="home.quickAccess.budget">Budget</Editable></p>
+                  <p className="text-[10px] text-[#6e7681] mt-0.5"><Editable k="home.quickAccess.budgetDesc">Funding & Requests</Editable></p>
+                </Link>
                 <Link href="/wellness" className="bg-gradient-to-br from-[#3fb950]/20 to-[#3fb950]/5 border border-[#3fb950]/30 rounded-xl p-4 hover:border-[#3fb950] transition-all group">
                   <span className="text-2xl"></span>
                   <p className="font-medium text-[#f0f6fc] text-sm mt-3 group-hover:text-[#3fb950] transition"><Editable k="home.quickAccess.wellness">Wellness</Editable></p>
@@ -483,7 +488,7 @@ export default function Home() {
                   <p className="font-medium text-[#f0f6fc] text-sm mt-3 group-hover:text-[#a371f7] transition"><Editable k="home.quickAccess.academic">Academic</Editable></p>
                   <p className="text-[10px] text-[#6e7681] mt-0.5"><Editable k="home.quickAccess.academicDesc">Student Success</Editable></p>
                 </Link>
-                <Link href="/communications" className="bg-gradient-to-br from-[#00d4ff]/20 to-[#00d4ff]/5 border border-[#00d4ff]/30 rounded-xl p-4 hover:border-[#00d4ff] transition-all group">
+                <Link href="/communications" className="bg-gradient-to-br from-[#00d4ff]/20 to-[#00d4ff]/5 border border-[#00d4ff]/30 rounded-xl p-4 hover:border-[#00d4ff] transition-all group col-span-2">
                   <span className="text-2xl"></span>
                   <p className="font-medium text-[#f0f6fc] text-sm mt-3 group-hover:text-[#00d4ff] transition"><Editable k="home.quickAccess.transparency">Transparency</Editable></p>
                   <p className="text-[10px] text-[#6e7681] mt-0.5"><Editable k="home.quickAccess.transparencyDesc">Full Dashboard</Editable></p>
