@@ -1,201 +1,256 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import DemoBanner from './DemoBanner'
+import GridBackground from './GridBackground'
 
 const navigation = [
-  { name: 'Command', href: '/', icon: '◉' },
-  { name: 'Budget', href: '/budget', icon: '$' },
-  { name: 'Wellness', href: '/wellness', icon: '♥' },
-  { name: 'Basic Needs', href: '/basic-needs', icon: '◈' },
-  { name: 'Academic', href: '/academic', icon: '◎' },
-  { name: 'Comms', href: '/communications', icon: '◇' },
-  { name: 'Environment', href: '/environmental', icon: '◆' },
+  { name: 'Platforms', href: '/budget' },
+  { name: 'Resources', href: '/wellness' },
+  { name: 'Community', href: '/basic-needs' },
+  { name: 'Academic', href: '/academic' },
+  { name: 'Impact', href: '/communications' },
 ]
 
 export default function Layout({ children }) {
   const router = useRouter()
-  const [time, setTime] = useState(null)
-  const [isOnline, setIsOnline] = useState(true)
-  const [mounted, setMounted] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
-    setTime(new Date())
-    const timer = setInterval(() => setTime(new Date()), 1000)
-    return () => clearInterval(timer)
-  }, [])
-
-  useEffect(() => {
-    if (typeof navigator !== 'undefined') {
-      setIsOnline(navigator.onLine)
-      const handleOnline = () => setIsOnline(true)
-      const handleOffline = () => setIsOnline(false)
-      window.addEventListener('online', handleOnline)
-      window.addEventListener('offline', handleOffline)
-      return () => {
-        window.removeEventListener('online', handleOnline)
-        window.removeEventListener('offline', handleOffline)
-      }
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 50)
     }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  // Close menu on route change
+  useEffect(() => {
+    setMenuOpen(false)
+  }, [router.pathname])
 
   return (
-    <div className="min-h-screen bg-[#0a0e14]">
-      <DemoBanner />
+    <div className="min-h-screen bg-black">
+      <GridBackground />
 
-      {/* Command Center Header */}
-      <header className="bg-[#0d1117]/95 backdrop-blur-xl border-b border-[#30363d] sticky top-0 z-50">
-        <div className="max-w-[1600px] mx-auto">
-          {/* Top Bar - System Status */}
-          <div className="flex items-center justify-between px-6 py-2 border-b border-[#21262d] text-[10px] font-mono">
-            <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-[#3fb950] shadow-[0_0_8px_#3fb950]' : 'bg-[#f85149] shadow-[0_0_8px_#f85149]'} animate-pulse`} />
-                <span className="text-[#8b949e] uppercase tracking-wider">{isOnline ? 'System Online' : 'Offline'}</span>
-              </div>
-              <span className="text-[#6e7681]">|</span>
-              <span className="text-[#8b949e]">SESSION: <span className="text-[#00d4ff]">SG-2026-BOLD</span></span>
-            </div>
-            <div className="flex items-center gap-6">
-              <span className="text-[#8b949e]">LAT: 35.9049° N</span>
-              <span className="text-[#8b949e]">LON: 79.0469° W</span>
-              <span className="text-[#00d4ff] font-semibold">{mounted && time ? time.toLocaleTimeString('en-US', { hour12: false }) : '--:--:--'}</span>
-            </div>
-          </div>
-
-          {/* Main Nav Bar */}
-          <div className="flex items-center justify-between px-6 h-12">
+      {/* Navigation */}
+      <header
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+          scrolled ? 'bg-black/80 backdrop-blur-xl' : 'bg-transparent'
+        }`}
+      >
+        <nav className="max-w-[1600px] mx-auto px-6 lg:px-12">
+          <div className="flex items-center justify-between h-20">
+            {/* Logo */}
             <Link href="/" className="flex items-center gap-3 group">
-              <div className="w-8 h-8 rounded bg-gradient-to-br from-[#00d4ff] to-[#388bfd] flex items-center justify-center">
-                <span className="text-[#0a0e14] font-bold text-sm">PB</span>
+              <div className="relative w-10 h-10">
+                <div className="absolute inset-0 bg-white rounded-sm transition-transform duration-300 group-hover:rotate-45" />
+                <div className="absolute inset-2 bg-black rounded-sm transition-transform duration-300 group-hover:rotate-45" />
               </div>
-              <div className="flex flex-col">
-                <span className="text-[#f0f6fc] font-semibold text-sm tracking-tight leading-none">PROJECT BOLD</span>
-                <span className="text-[#6e7681] text-[10px] uppercase tracking-widest">Operations Platform</span>
-              </div>
+              <span className="text-white font-semibold text-lg tracking-tight hidden sm:block">
+                Project Bold
+              </span>
             </Link>
 
-            {/* Navigation */}
-            <nav className="hidden lg:flex items-center">
-              {navigation.map(item => {
-                const isActive = router.pathname === item.href || (item.href !== '/' && router.pathname.startsWith(item.href))
+            {/* Desktop Navigation */}
+            <div className="hidden lg:flex items-center gap-12">
+              {navigation.map((item) => {
+                const isActive = router.pathname === item.href ||
+                  (item.href !== '/' && router.pathname.startsWith(item.href))
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`flex items-center gap-2 px-4 py-2 text-xs font-medium uppercase tracking-wider transition-all border-b-2 ${
-                      isActive
-                        ? 'text-[#00d4ff] border-[#00d4ff] bg-[#00d4ff]/5'
-                        : 'text-[#8b949e] border-transparent hover:text-[#f0f6fc] hover:bg-[#21262d]'
-                    }`}
+                    className={`nav-link ${isActive ? 'active' : ''}`}
                   >
-                    <span className={isActive ? 'text-[#00d4ff]' : 'text-[#6e7681]'}>{item.icon}</span>
                     {item.name}
                   </Link>
                 )
               })}
-            </nav>
+            </div>
 
-            {/* Right Side Controls */}
-            <div className="flex items-center gap-4">
+            {/* Right side */}
+            <div className="flex items-center gap-6">
               <Link
                 href="/admin"
-                className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-[#8b949e] hover:text-[#f0f6fc] border border-[#30363d] rounded hover:border-[#00d4ff] hover:bg-[#00d4ff]/5 transition-all"
+                className="hidden sm:block text-sm text-gray-400 hover:text-white transition-colors"
               >
-                <span className="text-[#00d4ff]">⚙</span>
-                <span className="hidden sm:inline">Admin Console</span>
+                Admin
               </Link>
+              <Link
+                href="/funding-request"
+                className="btn-primary text-sm py-2 px-4"
+              >
+                Get Started
+              </Link>
+
+              {/* Mobile menu button */}
+              <button
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="lg:hidden p-2 text-white"
+                aria-label="Toggle menu"
+              >
+                <div className="w-6 h-5 relative flex flex-col justify-between">
+                  <span className={`w-full h-0.5 bg-white transition-all duration-300 ${menuOpen ? 'rotate-45 translate-y-2' : ''}`} />
+                  <span className={`w-full h-0.5 bg-white transition-all duration-300 ${menuOpen ? 'opacity-0' : ''}`} />
+                  <span className={`w-full h-0.5 bg-white transition-all duration-300 ${menuOpen ? '-rotate-45 -translate-y-2' : ''}`} />
+                </div>
+              </button>
             </div>
           </div>
+        </nav>
 
-          {/* Mobile nav */}
-          <div className="lg:hidden overflow-x-auto px-4 pb-3">
-            <div className="flex gap-1">
-              {navigation.map(item => {
-                const isActive = router.pathname === item.href || (item.href !== '/' && router.pathname.startsWith(item.href))
+        {/* Mobile Navigation */}
+        <div
+          className={`lg:hidden fixed inset-0 top-20 bg-black/95 backdrop-blur-xl transition-all duration-500 ${
+            menuOpen ? 'opacity-100 visible' : 'opacity-0 invisible'
+          }`}
+        >
+          <div className="px-6 py-12">
+            <div className="space-y-8">
+              {navigation.map((item, index) => {
+                const isActive = router.pathname === item.href
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
-                    className={`flex items-center gap-1.5 px-3 py-2 text-[10px] font-medium uppercase tracking-wider whitespace-nowrap rounded transition-all ${
-                      isActive
-                        ? 'bg-[#00d4ff]/10 text-[#00d4ff] border border-[#00d4ff]'
-                        : 'text-[#8b949e] border border-[#30363d] hover:bg-[#21262d]'
+                    className={`block text-3xl font-light transition-all duration-300 ${
+                      isActive ? 'text-white' : 'text-gray-500 hover:text-white'
                     }`}
+                    style={{
+                      transitionDelay: menuOpen ? `${index * 50}ms` : '0ms',
+                      transform: menuOpen ? 'translateX(0)' : 'translateX(-20px)',
+                      opacity: menuOpen ? 1 : 0
+                    }}
                   >
-                    <span>{item.icon}</span>
                     {item.name}
                   </Link>
                 )
               })}
+            </div>
+            <div className="mt-16 pt-8 border-t border-gray-800">
+              <Link
+                href="/admin"
+                className="block text-gray-500 hover:text-white transition-colors mb-4"
+              >
+                Admin Console
+              </Link>
+              <p className="text-sm text-gray-600">
+                UNC Student Government
+              </p>
             </div>
           </div>
         </div>
       </header>
 
-      <main>{children}</main>
+      {/* Main Content */}
+      <main className="relative z-10">
+        {children}
+      </main>
 
-      {/* Footer - Command Center Style */}
-      <footer className="bg-[#0d1117] border-t border-[#30363d] mt-16">
-        <div className="max-w-[1600px] mx-auto px-6 py-8">
-          <div className="grid md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-6 h-6 rounded bg-gradient-to-br from-[#00d4ff] to-[#388bfd] flex items-center justify-center">
-                  <span className="text-[#0a0e14] font-bold text-[10px]">PB</span>
+      {/* Footer */}
+      <footer className="relative z-10 border-t border-gray-900">
+        <div className="max-w-[1600px] mx-auto px-6 lg:px-12 py-20">
+          <div className="grid lg:grid-cols-12 gap-12">
+            {/* Brand */}
+            <div className="lg:col-span-4">
+              <Link href="/" className="flex items-center gap-3 mb-6">
+                <div className="relative w-8 h-8">
+                  <div className="absolute inset-0 bg-white rounded-sm" />
+                  <div className="absolute inset-1.5 bg-black rounded-sm" />
                 </div>
-                <span className="text-[#f0f6fc] font-semibold text-sm">PROJECT BOLD</span>
-              </div>
-              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-2">UNC Student Government</p>
-              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest">Operations Platform v2.0</p>
+                <span className="text-white font-semibold tracking-tight">
+                  Project Bold
+                </span>
+              </Link>
+              <p className="text-gray-500 text-sm max-w-xs">
+                Building the future of student governance through transparency,
+                innovation, and collective action.
+              </p>
             </div>
 
-            <div>
-              <h3 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-4 pb-2 border-b border-[#21262d]">Quick Access</h3>
-              <div className="space-y-2">
-                <Link href="/budget" className="flex items-center gap-2 text-xs text-[#8b949e] hover:text-[#00d4ff] transition">
-                  <span className="text-[#6e7681]">→</span> Budget & Funding
-                </Link>
-                <Link href="/communications" className="flex items-center gap-2 text-xs text-[#8b949e] hover:text-[#00d4ff] transition">
-                  <span className="text-[#6e7681]">→</span> Transparency Dashboard
-                </Link>
-                <Link href="/wellness" className="flex items-center gap-2 text-xs text-[#8b949e] hover:text-[#00d4ff] transition">
-                  <span className="text-[#6e7681]">→</span> Wellness Resources
-                </Link>
-                <Link href="/basic-needs" className="flex items-center gap-2 text-xs text-[#8b949e] hover:text-[#00d4ff] transition">
-                  <span className="text-[#6e7681]">→</span> Basic Needs Hub
-                </Link>
-              </div>
+            {/* Links */}
+            <div className="lg:col-span-2">
+              <h4 className="caption mb-6">Platforms</h4>
+              <ul className="space-y-3">
+                <li>
+                  <Link href="/budget" className="text-sm text-gray-400 hover:text-white transition-colors">
+                    Budget & Funding
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/wellness" className="text-sm text-gray-400 hover:text-white transition-colors">
+                    Wellness
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/basic-needs" className="text-sm text-gray-400 hover:text-white transition-colors">
+                    Basic Needs
+                  </Link>
+                </li>
+              </ul>
             </div>
 
-            <div>
-              <h3 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-4 pb-2 border-b border-[#21262d]">System</h3>
-              <div className="space-y-2 text-xs text-[#8b949e]">
-                <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#3fb950]" />
-                  <span>All Systems Operational</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[#6e7681]">→</span>
-                  <Link href="/admin" className="hover:text-[#00d4ff] transition">Admin Console</Link>
-                </div>
-              </div>
+            <div className="lg:col-span-2">
+              <h4 className="caption mb-6">Resources</h4>
+              <ul className="space-y-3">
+                <li>
+                  <Link href="/academic" className="text-sm text-gray-400 hover:text-white transition-colors">
+                    Academic Support
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/environmental" className="text-sm text-gray-400 hover:text-white transition-colors">
+                    Environmental
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/communications" className="text-sm text-gray-400 hover:text-white transition-colors">
+                    Communications
+                  </Link>
+                </li>
+              </ul>
             </div>
 
-            <div>
-              <h3 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-4 pb-2 border-b border-[#21262d]">Contact</h3>
-              <div className="space-y-2 text-xs">
-                <p className="text-[#8b949e] font-mono">student.government@unc.edu</p>
-                <p className="text-[#6e7681]">Suite 3514, FPG Student Union</p>
-                <p className="text-[#6e7681]">Chapel Hill, NC 27599</p>
-              </div>
+            <div className="lg:col-span-2">
+              <h4 className="caption mb-6">System</h4>
+              <ul className="space-y-3">
+                <li>
+                  <Link href="/admin" className="text-sm text-gray-400 hover:text-white transition-colors">
+                    Admin Console
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/funding-request" className="text-sm text-gray-400 hover:text-white transition-colors">
+                    Submit Request
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/budget-transparency" className="text-sm text-gray-400 hover:text-white transition-colors">
+                    Transparency
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            <div className="lg:col-span-2">
+              <h4 className="caption mb-6">Contact</h4>
+              <ul className="space-y-3 text-sm text-gray-400">
+                <li>student.government@unc.edu</li>
+                <li>Suite 3514, FPG Student Union</li>
+                <li>Chapel Hill, NC 27599</li>
+              </ul>
             </div>
           </div>
 
-          <div className="border-t border-[#21262d] mt-8 pt-6 flex items-center justify-between">
-            <p className="text-[10px] text-[#6e7681] uppercase tracking-widest">First, Best, For All — Together, We Go Bold</p>
-            <p className="text-[10px] text-[#6e7681] font-mono">© 2026 UNC SG</p>
+          {/* Bottom */}
+          <div className="mt-20 pt-8 border-t border-gray-900 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-sm text-gray-600">
+              © 2026 UNC Student Government. First, Best, For All.
+            </p>
+            <p className="text-sm text-gray-600">
+              Together, We Go Bold
+            </p>
           </div>
         </div>
       </footer>
