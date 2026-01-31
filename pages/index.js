@@ -473,23 +473,28 @@ export default function Home() {
                   <p className="font-medium text-[#f0f6fc] text-sm mt-3 group-hover:text-[#388bfd] transition"><Editable k="home.quickAccess.budget">Budget</Editable></p>
                   <p className="text-[10px] text-[#6e7681] mt-0.5"><Editable k="home.quickAccess.budgetDesc">Funding & Requests</Editable></p>
                 </Link>
+                <Link href="/environmental" className="bg-gradient-to-br from-[#238636]/20 to-[#238636]/5 border border-[#238636]/30 rounded-xl p-4 hover:border-[#238636] transition-all group">
+                  <span className="text-2xl">E</span>
+                  <p className="font-medium text-[#f0f6fc] text-sm mt-3 group-hover:text-[#238636] transition"><Editable k="home.quickAccess.environmental">Environmental</Editable></p>
+                  <p className="text-[10px] text-[#6e7681] mt-0.5"><Editable k="home.quickAccess.environmentalDesc">Sustainability</Editable></p>
+                </Link>
                 <Link href="/wellness" className="bg-gradient-to-br from-[#3fb950]/20 to-[#3fb950]/5 border border-[#3fb950]/30 rounded-xl p-4 hover:border-[#3fb950] transition-all group">
-                  <span className="text-2xl"></span>
+                  <span className="text-2xl">W</span>
                   <p className="font-medium text-[#f0f6fc] text-sm mt-3 group-hover:text-[#3fb950] transition"><Editable k="home.quickAccess.wellness">Wellness</Editable></p>
                   <p className="text-[10px] text-[#6e7681] mt-0.5"><Editable k="home.quickAccess.wellnessDesc">Crisis Support</Editable></p>
                 </Link>
                 <Link href="/basic-needs" className="bg-gradient-to-br from-[#d29922]/20 to-[#d29922]/5 border border-[#d29922]/30 rounded-xl p-4 hover:border-[#d29922] transition-all group">
-                  <span className="text-2xl"></span>
+                  <span className="text-2xl">B</span>
                   <p className="font-medium text-[#f0f6fc] text-sm mt-3 group-hover:text-[#d29922] transition"><Editable k="home.quickAccess.basicNeeds">Basic Needs</Editable></p>
                   <p className="text-[10px] text-[#6e7681] mt-0.5"><Editable k="home.quickAccess.basicNeedsDesc">Food & Housing</Editable></p>
                 </Link>
                 <Link href="/academic" className="bg-gradient-to-br from-[#a371f7]/20 to-[#a371f7]/5 border border-[#a371f7]/30 rounded-xl p-4 hover:border-[#a371f7] transition-all group">
-                  <span className="text-2xl"></span>
+                  <span className="text-2xl">A</span>
                   <p className="font-medium text-[#f0f6fc] text-sm mt-3 group-hover:text-[#a371f7] transition"><Editable k="home.quickAccess.academic">Academic</Editable></p>
                   <p className="text-[10px] text-[#6e7681] mt-0.5"><Editable k="home.quickAccess.academicDesc">Student Success</Editable></p>
                 </Link>
-                <Link href="/communications" className="bg-gradient-to-br from-[#00d4ff]/20 to-[#00d4ff]/5 border border-[#00d4ff]/30 rounded-xl p-4 hover:border-[#00d4ff] transition-all group col-span-2">
-                  <span className="text-2xl"></span>
+                <Link href="/communications" className="bg-gradient-to-br from-[#00d4ff]/20 to-[#00d4ff]/5 border border-[#00d4ff]/30 rounded-xl p-4 hover:border-[#00d4ff] transition-all group">
+                  <span className="text-2xl">T</span>
                   <p className="font-medium text-[#f0f6fc] text-sm mt-3 group-hover:text-[#00d4ff] transition"><Editable k="home.quickAccess.transparency">Transparency</Editable></p>
                   <p className="text-[10px] text-[#6e7681] mt-0.5"><Editable k="home.quickAccess.transparencyDesc">Full Dashboard</Editable></p>
                 </Link>
