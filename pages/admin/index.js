@@ -3,7 +3,15 @@ import { useRouter } from 'next/router'
 import Head from 'next/head'
 import Link from 'next/link'
 import { useApp } from '../../lib/store'
-import { departments, getOverallProgress, getStatusCounts } from '../../lib/data'
+import { departments, getOverallProgress, getStatusCounts, sampleBudgetLineItems, sampleFundingRequests } from '../../lib/data'
+import {
+  BUDGET_CATEGORIES,
+  REQUEST_STATUS,
+  exportLineItemsToCSV,
+  exportFundingRequestsToCSV,
+  generateAuditReport,
+  calculateWasteReductionStats,
+} from '../../lib/budgetEngine'
 import {
   MetricCard, StatusBadge, DonutChart, HorizontalBarChart, ProgressBar,
   LiveIndicator, Panel, AlertBanner, SearchInput, TabNav, Button
@@ -341,6 +349,22 @@ export default function AdminDashboard() {
     updateBudget, updateBudgetCategory, addBudgetTransaction,
     updateQuickStats,
     exportAllData, importData, resetAllData, clearActivityLog,
+    // Budget Enhancement
+    budgetLineItems,
+    addBudgetLineItem,
+    updateBudgetLineItem,
+    deleteBudgetLineItem,
+    recordLineItemSpending,
+    fundingRequests,
+    submitFundingRequest,
+    approveFundingRequest,
+    denyFundingRequest,
+    requestMoreInfo,
+    reallocations,
+    generateReallocations,
+    approveReallocation,
+    rejectReallocation,
+    dismissReallocation,
   } = useApp()
 
   const [activeTab, setActiveTab] = useState('command')
@@ -416,6 +440,20 @@ export default function AdminDashboard() {
   const [trainingForm, setTrainingForm] = useState({ type: 'mentalHealthFirstAid', title: '', date: '', location: '', capacity: 0 })
   const [transactionForm, setTransactionForm] = useState({ type: 'expense', amount: 0, description: '', category: '' })
   const [progressLogForm, setProgressLogForm] = useState({ policyId: null, progress: 0, note: '' })
+
+  // Budget Enhancement state
+  const [budgetSubTab, setBudgetSubTab] = useState('lineItems')
+  const [lineItemForm, setLineItemForm] = useState({
+    orgName: '', category: 'events', description: '', requested: 0, approved: 0, semester: 'Spring 2026', impactNotes: ''
+  })
+  const [fundingRequestForm, setFundingRequestForm] = useState({
+    orgName: '', category: 'events', amount: 0, description: '', justification: '', studentsImpacted: 0
+  })
+  const [reviewerNotes, setReviewerNotes] = useState('')
+
+  // Use sample data if no line items exist
+  const displayLineItems = budgetLineItems?.length > 0 ? budgetLineItems : sampleBudgetLineItems
+  const displayFundingRequests = fundingRequests?.length > 0 ? fundingRequests : sampleFundingRequests
 
   // Computed values
   const overallProgress = useMemo(() => getOverallProgress(policies), [policies])
@@ -1051,71 +1089,381 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* BUDGET TAB */}
+        {/* BUDGET TAB - Enhanced */}
         {activeTab === 'budget' && (
           <div className="space-y-6">
+            {/* Demo Mode Banner */}
+            <AlertBanner type="info" title="DEMO MODE" message="Showing sample data. Add real line items and funding requests to replace demo content." />
+
+            {/* Header */}
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-2xl font-bold text-[#f0f6fc]">Financial Management</h2>
-                <p className="text-[#8b949e] mt-1">Track spending, allocations, and transactions</p>
+                <h2 className="text-2xl font-bold text-[#f0f6fc]">Budget Management</h2>
+                <p className="text-[#8b949e] mt-1">Line-item tracking, funding requests, and reallocation engine</p>
               </div>
               <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  onClick={() => openEditWindow('budget', budgetData, 'Edit Budget', 'Financial Overview')}
-                >
-                  Open Editor
-                </Button>
-                <Button onClick={() => setShowModal('transaction')}>Add Transaction</Button>
+                <Button variant="outline" onClick={() => {
+                  const csv = exportLineItemsToCSV(displayLineItems)
+                  const blob = new Blob([csv], { type: 'text/csv' })
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement('a')
+                  a.href = url
+                  a.download = `budget-lineitems-${new Date().toISOString().split('T')[0]}.csv`
+                  a.click()
+                  notify('Line items exported')
+                }}>Export CSV</Button>
+                <Button onClick={() => setShowModal('lineItem')}>Add Line Item</Button>
               </div>
             </div>
 
-            <div className="grid md:grid-cols-3 gap-4">
-              <MetricCard label="Total Budget" value={`$${budgetData.total.toLocaleString()}`} color="green" />
-              <MetricCard label="Allocated" value={`$${budgetData.allocated.toLocaleString()}`} color="cyan" />
-              <MetricCard label="Spent" value={`$${budgetData.spent.toLocaleString()}`} color="yellow" subtitle={`${((budgetData.spent / budgetData.total) * 100).toFixed(1)}% utilized`} />
+            {/* Budget Overview Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <MetricCard
+                label="Total Allocated"
+                value={`$${displayLineItems.reduce((sum, i) => sum + (i.approved || 0), 0).toLocaleString()}`}
+                color="green"
+              />
+              <MetricCard
+                label="Total Spent"
+                value={`$${displayLineItems.reduce((sum, i) => sum + (i.spent || 0), 0).toLocaleString()}`}
+                color="yellow"
+              />
+              <MetricCard
+                label="Remaining"
+                value={`$${(displayLineItems.reduce((sum, i) => sum + (i.approved || 0), 0) - displayLineItems.reduce((sum, i) => sum + (i.spent || 0), 0)).toLocaleString()}`}
+                color="cyan"
+              />
+              <MetricCard
+                label="Pending Requests"
+                value={displayFundingRequests.filter(r => r.status === 'pending').length}
+                color="purple"
+              />
+              <MetricCard
+                label="Line Items"
+                value={displayLineItems.length}
+                color="blue"
+              />
             </div>
 
-            <Panel title="Category Breakdown" subtitle="Budget allocation by category">
-              <div className="space-y-6">
-                {budgetData.categories.map(cat => (
-                  <div key={cat.name}>
-                    <div className="flex justify-between mb-2">
-                      <span className="font-medium text-[#f0f6fc]">{cat.name}</span>
-                      <span className="text-sm font-mono text-[#8b949e]">${cat.spent.toLocaleString()} / ${cat.allocated.toLocaleString()}</span>
+            {/* Sub-Tab Navigation */}
+            <div className="flex gap-2 border-b border-[#30363d] pb-2">
+              {[
+                { id: 'lineItems', label: 'Line Items', count: displayLineItems.length },
+                { id: 'requests', label: 'Funding Requests', count: displayFundingRequests.filter(r => r.status === 'pending').length },
+                { id: 'reallocations', label: 'Reallocations', count: reallocations?.filter(r => r.status === 'suggested').length || 0 },
+                { id: 'audit', label: 'Audit & Reports' },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setBudgetSubTab(tab.id)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                    budgetSubTab === tab.id
+                      ? 'bg-[#00d4ff]/10 text-[#00d4ff] border border-[#00d4ff]/30'
+                      : 'text-[#8b949e] hover:text-[#f0f6fc] hover:bg-[#21262d]'
+                  }`}
+                >
+                  {tab.label}
+                  {tab.count !== undefined && tab.count > 0 && (
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-mono ${
+                      budgetSubTab === tab.id ? 'bg-[#00d4ff]/20' : 'bg-[#30363d]'
+                    }`}>{tab.count}</span>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* LINE ITEMS SUB-TAB */}
+            {budgetSubTab === 'lineItems' && (
+              <div className="space-y-4">
+                {displayLineItems.map(item => {
+                  const category = BUDGET_CATEGORIES.find(c => c.id === item.category)
+                  const utilization = item.approved > 0 ? (item.spent / item.approved) * 100 : 0
+                  return (
+                    <div key={item.id} className="bg-[#161b22] border border-[#30363d] rounded-xl p-5 hover:border-[#8b949e]/30 transition-all">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-start gap-4">
+                          <div className="w-3 h-3 rounded-full mt-2" style={{ backgroundColor: category?.color || '#6e7681' }} />
+                          <div>
+                            <h3 className="font-semibold text-[#f0f6fc] text-lg">{item.orgName}</h3>
+                            <p className="text-sm text-[#8b949e] mt-1">{item.description}</p>
+                            <div className="flex items-center gap-3 mt-2">
+                              <span className="text-[10px] text-[#6e7681] uppercase tracking-widest">{category?.name || item.category}</span>
+                              <span className="text-[10px] text-[#6e7681]">{item.semester}</span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <StatusBadge status={
+                            item.status === 'spent' ? 'success' :
+                            item.status === 'approved' ? 'info' : 'warning'
+                          }>{item.status}</StatusBadge>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-4 gap-4 mb-4">
+                        <div className="bg-[#0d1117] rounded-lg p-3">
+                          <p className="text-[10px] text-[#6e7681] uppercase tracking-widest">Requested</p>
+                          <p className="text-lg font-mono font-bold text-[#8b949e]">${item.requested?.toLocaleString()}</p>
+                        </div>
+                        <div className="bg-[#0d1117] rounded-lg p-3">
+                          <p className="text-[10px] text-[#6e7681] uppercase tracking-widest">Approved</p>
+                          <p className="text-lg font-mono font-bold text-[#3fb950]">${item.approved?.toLocaleString()}</p>
+                        </div>
+                        <div className="bg-[#0d1117] rounded-lg p-3">
+                          <p className="text-[10px] text-[#6e7681] uppercase tracking-widest">Spent</p>
+                          <p className="text-lg font-mono font-bold text-[#d29922]">${item.spent?.toLocaleString()}</p>
+                        </div>
+                        <div className="bg-[#0d1117] rounded-lg p-3">
+                          <p className="text-[10px] text-[#6e7681] uppercase tracking-widest">Remaining</p>
+                          <p className="text-lg font-mono font-bold text-[#00d4ff]">${((item.approved || 0) - (item.spent || 0)).toLocaleString()}</p>
+                        </div>
+                      </div>
+
+                      <div className="mb-4">
+                        <div className="flex justify-between mb-2">
+                          <span className="text-xs text-[#6e7681]">Utilization</span>
+                          <span className="text-xs font-mono text-[#8b949e]">{utilization.toFixed(1)}%</span>
+                        </div>
+                        <ProgressBar value={item.spent || 0} max={item.approved || 1} color={utilization > 90 ? 'red' : utilization > 70 ? 'yellow' : 'green'} showLabel={false} size="sm" />
+                      </div>
+
+                      {item.impactNotes && (
+                        <p className="text-sm text-[#8b949e] italic border-t border-[#30363d] pt-3">{item.impactNotes}</p>
+                      )}
                     </div>
-                    <ProgressBar value={cat.spent} max={cat.allocated} color={cat.spent / cat.allocated > 0.9 ? 'red' : cat.spent / cat.allocated > 0.7 ? 'yellow' : 'green'} showLabel={false} size="md" />
-                    <div className="grid grid-cols-2 gap-3 mt-3">
-                      <div>
-                        <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Allocated</label>
-                        <input type="number" value={cat.allocated} onChange={(e) => updateBudgetCategory(cat.name, { allocated: parseFloat(e.target.value) || 0 })} className="w-full mt-2 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] font-mono focus:ring-1 focus:ring-[#00d4ff]" />
+                  )
+                })}
+              </div>
+            )}
+
+            {/* FUNDING REQUESTS SUB-TAB */}
+            {budgetSubTab === 'requests' && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <p className="text-[#8b949e]">{displayFundingRequests.filter(r => r.status === 'pending').length} pending requests</p>
+                  <Button variant="outline" onClick={() => {
+                    const csv = exportFundingRequestsToCSV(displayFundingRequests)
+                    const blob = new Blob([csv], { type: 'text/csv' })
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = `funding-requests-${new Date().toISOString().split('T')[0]}.csv`
+                    a.click()
+                    notify('Funding requests exported')
+                  }}>Export Requests</Button>
+                </div>
+
+                {displayFundingRequests.filter(r => r.status === 'pending').map(request => {
+                  const category = BUDGET_CATEGORIES.find(c => c.id === request.category)
+                  const score = request.aiScore?.score || 0
+                  const recommendation = request.aiScore?.recommendation
+
+                  return (
+                    <div key={request.id} className="bg-[#161b22] border border-[#30363d] rounded-xl p-5">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <h3 className="font-semibold text-[#f0f6fc] text-lg">{request.orgName}</h3>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-mono" style={{ backgroundColor: `${category?.color}20`, color: category?.color, border: `1px solid ${category?.color}40` }}>
+                              {category?.name || request.category}
+                            </span>
+                          </div>
+                          <p className="text-[#8b949e]">{request.description}</p>
+                          <p className="text-sm text-[#6e7681] mt-2 italic">{request.justification}</p>
+                        </div>
+                        <div className="text-right ml-4">
+                          <p className="text-2xl font-mono font-bold text-[#f0f6fc]">${request.amount?.toLocaleString()}</p>
+                          <p className="text-xs text-[#6e7681]">{request.studentsImpacted} students impacted</p>
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Spent</label>
-                        <input type="number" value={cat.spent} onChange={(e) => updateBudgetCategory(cat.name, { spent: parseFloat(e.target.value) || 0 })} className="w-full mt-2 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] font-mono focus:ring-1 focus:ring-[#00d4ff]" />
+
+                      {/* AI Score Panel */}
+                      <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4 mb-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">AI Recommendation</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-2xl font-mono font-bold" style={{ color: recommendation?.color || '#6e7681' }}>{score}</span>
+                            <span className="text-sm text-[#6e7681]">/100</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className={`px-3 py-1 rounded-lg text-sm font-bold ${
+                            recommendation?.action === 'APPROVE' ? 'bg-[#3fb950]/20 text-[#3fb950] border border-[#3fb950]/30' :
+                            recommendation?.action === 'DENY' ? 'bg-[#f85149]/20 text-[#f85149] border border-[#f85149]/30' :
+                            recommendation?.action === 'REALLOCATE' ? 'bg-[#d29922]/20 text-[#d29922] border border-[#d29922]/30' :
+                            'bg-[#6e7681]/20 text-[#6e7681] border border-[#6e7681]/30'
+                          }`}>
+                            {recommendation?.action || 'REVIEW'}
+                          </span>
+                          <span className="text-sm text-[#8b949e]">{recommendation?.reason}</span>
+                        </div>
                       </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex gap-3">
+                        <Button onClick={() => {
+                          approveFundingRequest(request.id, request.amount, reviewerNotes)
+                          setReviewerNotes('')
+                          notify('Request approved')
+                        }}>Approve</Button>
+                        <Button variant="danger" onClick={() => {
+                          denyFundingRequest(request.id, reviewerNotes)
+                          setReviewerNotes('')
+                          notify('Request denied')
+                        }}>Deny</Button>
+                        <input
+                          type="text"
+                          placeholder="Add reviewer notes..."
+                          value={reviewerNotes}
+                          onChange={(e) => setReviewerNotes(e.target.value)}
+                          className="flex-1 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#f0f6fc] placeholder-[#6e7681] focus:ring-1 focus:ring-[#00d4ff]"
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
+
+                {displayFundingRequests.filter(r => r.status === 'pending').length === 0 && (
+                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-12 text-center">
+                    <p className="text-[#6e7681]">No pending funding requests</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* REALLOCATIONS SUB-TAB */}
+            {budgetSubTab === 'reallocations' && (
+              <div className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <p className="text-[#8b949e]">Mid-semester reallocation suggestions based on spending patterns</p>
+                  <Button onClick={() => {
+                    generateReallocations()
+                    notify('Reallocations analyzed')
+                  }}>Analyze Reallocations</Button>
+                </div>
+
+                {(reallocations || []).filter(r => r.status === 'suggested').map(realloc => (
+                  <div key={realloc.id} className="bg-[#161b22] border border-[#d29922]/30 rounded-xl p-5">
+                    <div className="flex items-center gap-4 mb-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3">
+                          <span className="px-2 py-1 rounded text-sm font-mono bg-[#f85149]/10 text-[#f85149]">{realloc.fromCategoryName}</span>
+                          <span className="text-[#6e7681]">&rarr;</span>
+                          <span className="px-2 py-1 rounded text-sm font-mono bg-[#3fb950]/10 text-[#3fb950]">{realloc.toCategoryName}</span>
+                        </div>
+                      </div>
+                      <p className="text-2xl font-mono font-bold text-[#d29922]">${realloc.amount?.toLocaleString()}</p>
+                    </div>
+                    <p className="text-[#8b949e] mb-3">{realloc.reason}</p>
+                    <p className="text-sm text-[#3fb950] mb-4">{realloc.impact}</p>
+                    <div className="flex gap-3">
+                      <Button size="sm" onClick={() => {
+                        approveReallocation(realloc.id)
+                        notify('Reallocation approved')
+                      }}>Approve</Button>
+                      <Button size="sm" variant="secondary" onClick={() => {
+                        dismissReallocation(realloc.id)
+                        notify('Suggestion dismissed')
+                      }}>Dismiss</Button>
                     </div>
                   </div>
                 ))}
-              </div>
-            </Panel>
 
-            {budgetData.transactions?.length > 0 && (
-              <Panel title="Recent Transactions" subtitle={`${budgetData.transactions.length} total transactions`}>
-                <div className="space-y-1">
-                  {budgetData.transactions.slice(-10).reverse().map(tx => (
-                    <div key={tx.id} className="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-[#21262d] transition-colors">
-                      <div>
-                        <p className="font-medium text-[#f0f6fc]">{tx.description}</p>
-                        <p className="text-xs font-mono text-[#6e7681]">{formatDate(tx.date)} · {tx.category || 'Uncategorized'}</p>
+                {(reallocations || []).filter(r => r.status === 'suggested').length === 0 && (
+                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-12 text-center">
+                    <p className="text-[#6e7681] mb-4">No reallocation suggestions available</p>
+                    <Button variant="outline" onClick={() => {
+                      generateReallocations()
+                      notify('Analyzing budget patterns...')
+                    }}>Generate Suggestions</Button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* AUDIT SUB-TAB */}
+            {budgetSubTab === 'audit' && (
+              <div className="space-y-6">
+                <Panel title="Budget Audit Report" subtitle="Comprehensive spending analysis">
+                  {(() => {
+                    const report = generateAuditReport(budgetData, displayLineItems, displayFundingRequests, reallocations || [])
+                    const wasteStats = calculateWasteReductionStats(displayLineItems, reallocations || [])
+                    return (
+                      <div className="space-y-6">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="bg-[#0d1117] rounded-lg p-4">
+                            <p className="text-[10px] text-[#6e7681] uppercase tracking-widest">Total Allocated</p>
+                            <p className="text-2xl font-mono font-bold text-[#3fb950]">${report.summary.totalAllocated.toLocaleString()}</p>
+                          </div>
+                          <div className="bg-[#0d1117] rounded-lg p-4">
+                            <p className="text-[10px] text-[#6e7681] uppercase tracking-widest">Total Spent</p>
+                            <p className="text-2xl font-mono font-bold text-[#d29922]">${report.summary.totalSpent.toLocaleString()}</p>
+                          </div>
+                          <div className="bg-[#0d1117] rounded-lg p-4">
+                            <p className="text-[10px] text-[#6e7681] uppercase tracking-widest">Utilization Rate</p>
+                            <p className="text-2xl font-mono font-bold text-[#00d4ff]">{report.summary.utilizationRate}%</p>
+                          </div>
+                          <div className="bg-[#0d1117] rounded-lg p-4">
+                            <p className="text-[10px] text-[#6e7681] uppercase tracking-widest">Funds Reallocated</p>
+                            <p className="text-2xl font-mono font-bold text-[#a371f7]">${report.summary.totalReallocated.toLocaleString()}</p>
+                          </div>
+                        </div>
+
+                        <div>
+                          <h4 className="text-sm font-semibold text-[#f0f6fc] mb-3">Category Breakdown</h4>
+                          <div className="space-y-3">
+                            {report.categoryBreakdown.map(cat => (
+                              <div key={cat.category} className="flex items-center justify-between p-3 bg-[#0d1117] rounded-lg">
+                                <span className="text-[#f0f6fc]">{cat.category}</span>
+                                <div className="flex items-center gap-4">
+                                  <span className="text-sm font-mono text-[#8b949e]">${cat.spent.toLocaleString()} / ${cat.allocated.toLocaleString()}</span>
+                                  <span className={`text-sm font-mono ${parseFloat(cat.utilizationRate) > 80 ? 'text-[#3fb950]' : parseFloat(cat.utilizationRate) > 50 ? 'text-[#d29922]' : 'text-[#f85149]'}`}>
+                                    {cat.utilizationRate}%
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
+                            <h4 className="text-sm font-semibold text-[#f0f6fc] mb-3">Request Statistics</h4>
+                            <div className="space-y-2">
+                              <div className="flex justify-between"><span className="text-[#6e7681]">Total Requests</span><span className="font-mono text-[#f0f6fc]">{report.requestStats.total}</span></div>
+                              <div className="flex justify-between"><span className="text-[#6e7681]">Pending</span><span className="font-mono text-[#d29922]">{report.requestStats.pending}</span></div>
+                              <div className="flex justify-between"><span className="text-[#6e7681]">Approved</span><span className="font-mono text-[#3fb950]">{report.requestStats.approved}</span></div>
+                              <div className="flex justify-between"><span className="text-[#6e7681]">Denied</span><span className="font-mono text-[#f85149]">{report.requestStats.denied}</span></div>
+                            </div>
+                          </div>
+                          <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
+                            <h4 className="text-sm font-semibold text-[#f0f6fc] mb-3">Efficiency Metrics</h4>
+                            <div className="space-y-2">
+                              <div className="flex justify-between"><span className="text-[#6e7681]">Current Efficiency</span><span className="font-mono text-[#3fb950]">{wasteStats.efficiency.current}%</span></div>
+                              <div className="flex justify-between"><span className="text-[#6e7681]">Previous Period</span><span className="font-mono text-[#8b949e]">{wasteStats.efficiency.previous}%</span></div>
+                              <div className="flex justify-between"><span className="text-[#6e7681]">Improvement</span><span className="font-mono text-[#00d4ff]">+{wasteStats.efficiency.improvement}%</span></div>
+                              <div className="flex justify-between"><span className="text-[#6e7681]">Waste Reduced</span><span className="font-mono text-[#a371f7]">${wasteStats.wasteReduced.toLocaleString()}</span></div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                          <Button variant="outline" onClick={() => {
+                            const reportData = JSON.stringify(report, null, 2)
+                            const blob = new Blob([reportData], { type: 'application/json' })
+                            const url = URL.createObjectURL(blob)
+                            const a = document.createElement('a')
+                            a.href = url
+                            a.download = `budget-audit-${new Date().toISOString().split('T')[0]}.json`
+                            a.click()
+                            notify('Audit report exported')
+                          }}>Export Audit Report</Button>
+                        </div>
                       </div>
-                      <span className={`font-mono font-semibold ${tx.type === 'expense' ? 'text-[#f85149]' : 'text-[#3fb950]'}`}>
-                        {tx.type === 'expense' ? '-' : '+'}${tx.amount.toLocaleString()}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </Panel>
+                    )
+                  })()}
+                </Panel>
+              </div>
             )}
           </div>
         )}
@@ -1472,6 +1820,49 @@ export default function AdminDashboard() {
             ]} />
             <div className="flex gap-3 pt-2">
               <Button type="submit">Add Transaction</Button>
+              <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
+      {showModal === 'lineItem' && (
+        <Modal title="Add Budget Line Item" onClose={() => setShowModal(null)} size="lg">
+          <form onSubmit={(e) => {
+            e.preventDefault()
+            addBudgetLineItem({
+              ...lineItemForm,
+              spent: 0,
+              status: 'approved',
+            })
+            setLineItemForm({ orgName: '', category: 'events', description: '', requested: 0, approved: 0, semester: 'Spring 2026', impactNotes: '' })
+            setShowModal(null)
+            notify('Line item added')
+          }} className="space-y-4">
+            <Input label="Organization Name" value={lineItemForm.orgName} onChange={(e) => setLineItemForm({ ...lineItemForm, orgName: e.target.value })} placeholder="e.g., Carolina Cupboard" required />
+            <Select label="Category" value={lineItemForm.category} onChange={(e) => setLineItemForm({ ...lineItemForm, category: e.target.value })} options={BUDGET_CATEGORIES.map(c => ({ value: c.id, label: c.name }))} />
+            <Input label="Description" value={lineItemForm.description} onChange={(e) => setLineItemForm({ ...lineItemForm, description: e.target.value })} placeholder="Brief description of the allocation" required />
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="Amount Requested" type="number" value={lineItemForm.requested} onChange={(e) => setLineItemForm({ ...lineItemForm, requested: parseFloat(e.target.value) || 0 })} required />
+              <Input label="Amount Approved" type="number" value={lineItemForm.approved} onChange={(e) => setLineItemForm({ ...lineItemForm, approved: parseFloat(e.target.value) || 0 })} required />
+            </div>
+            <Select label="Semester" value={lineItemForm.semester} onChange={(e) => setLineItemForm({ ...lineItemForm, semester: e.target.value })} options={[
+              { value: 'Spring 2026', label: 'Spring 2026' },
+              { value: 'Fall 2026', label: 'Fall 2026' },
+              { value: 'Spring 2027', label: 'Spring 2027' },
+            ]} />
+            <div>
+              <label className="block text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-2">Impact Notes</label>
+              <textarea
+                value={lineItemForm.impactNotes}
+                onChange={(e) => setLineItemForm({ ...lineItemForm, impactNotes: e.target.value })}
+                rows={3}
+                placeholder="Describe the expected impact (e.g., students reached, outcomes)"
+                className="w-full px-4 py-3 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] placeholder-[#6e7681] resize-none focus:ring-1 focus:ring-[#00d4ff] focus:border-[#00d4ff] text-sm"
+              />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button type="submit">Add Line Item</Button>
               <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
             </div>
           </form>
