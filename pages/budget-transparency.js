@@ -426,30 +426,22 @@ export default function BudgetTransparency() {
                     </button>
                   </div>
 
-                  {/* AI Score */}
-                  {submissionResult.aiScore && (
+                  {/* Context Check */}
+                  {submissionResult.contextCheck && (
                     <div className="mt-4 p-4 bg-[#0d1117] border border-[#30363d] rounded-lg">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm text-[#6e7681]">AI Assessment Score</span>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="text-2xl font-mono font-bold"
-                            style={{ color: submissionResult.aiScore.recommendation?.color || '#6e7681' }}
-                          >
-                            {submissionResult.aiScore.score}
-                          </span>
-                          <span className="text-[#6e7681]">/100</span>
-                        </div>
+                        <span className="text-sm text-[#6e7681]">Context Check</span>
+                        <span className={`px-3 py-1 rounded text-xs font-bold ${
+                          submissionResult.contextCheck.flag === 'PASS'
+                            ? 'bg-[#3fb950]/20 text-[#3fb950]'
+                            : 'bg-[#d29922]/20 text-[#d29922]'
+                        }`}>
+                          {submissionResult.contextCheck.flag === 'PASS' ? 'Realistic' : 'Needs Review'}
+                        </span>
                       </div>
-                      <div className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold ${
-                        submissionResult.aiScore.recommendation?.action === 'APPROVE'
-                          ? 'bg-[#3fb950]/20 text-[#3fb950]'
-                          : submissionResult.aiScore.recommendation?.action === 'DENY'
-                          ? 'bg-[#f85149]/20 text-[#f85149]'
-                          : 'bg-[#d29922]/20 text-[#d29922]'
-                      }`}>
-                        {submissionResult.aiScore.recommendation?.action || 'REVIEW'}
-                      </div>
+                      {submissionResult.contextCheck.note && (
+                        <p className="text-sm text-[#8b949e]">{submissionResult.contextCheck.note}</p>
+                      )}
                     </div>
                   )}
 

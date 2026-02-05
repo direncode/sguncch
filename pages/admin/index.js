@@ -1527,22 +1527,27 @@ export default function AdminDashboard() {
                               </Button>
                             </div>
 
-                            {/* Price Reasonableness Warning */}
-                            {request.aiScore?.factors?.find(f => f.name === 'Price Reasonableness')?.status !== 'reasonable' ? (
-                              <div className="p-3 bg-[#f85149]/10 border border-[#f85149]/30 rounded-lg">
-                                <p className="text-xs text-[#f85149] font-semibold flex items-center gap-2">
+                            {/* Context Check Warning */}
+                            {request.contextCheck?.flag === 'FLAG' ? (
+                              <div className="p-3 bg-[#d29922]/10 border border-[#d29922]/30 rounded-lg">
+                                <p className="text-xs text-[#d29922] font-semibold flex items-center gap-2">
                                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                   </svg>
-                                  Price Check Warning
+                                  Context Check: Needs Review
                                 </p>
                                 <p className="text-xs text-[#8b949e] mt-1">
-                                  {request.aiScore?.factors?.find(f => f.name === 'Price Reasonableness')?.description}
+                                  {request.contextCheck?.note}
                                 </p>
+                              </div>
+                            ) : request.contextCheck?.flag === 'PASS' ? (
+                              <div className="p-3 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded-lg">
+                                <p className="text-xs text-[#3fb950] font-semibold">Context Check: Realistic</p>
+                                <p className="text-xs text-[#8b949e] mt-1">{request.contextCheck?.note}</p>
                               </div>
                             ) : (
                               <p className="text-xs text-[#6e7681]">
-                                Click "Validate with AI" to get a detailed analysis of this funding request using LLAMA 3.3.
+                                Click "Validate with AI" to check if this amount is realistic using LLAMA 3.3.
                               </p>
                             )}
 

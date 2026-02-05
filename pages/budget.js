@@ -561,18 +561,25 @@ export default function BudgetPage() {
                         <h3 className="text-xl font-bold text-white mb-3"><Editable k="budget.request.success.title">Request Submitted!</Editable></h3>
                         <p className="text-gray-400 mb-6">Your request for ${submissionResult.amount?.toLocaleString()} has been submitted.</p>
 
-                        {/* AI Score Display */}
-                        {submissionResult.aiScore && (
+                        {/* Context Check Display */}
+                        {submissionResult.contextCheck && (
                           <div className="card p-6 mb-8 text-left">
-                            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">AI Assessment</p>
-                            <div className="flex items-center justify-between">
-                              <span className="text-2xl font-mono font-bold text-white">
-                                {submissionResult.aiScore.score}/100
-                              </span>
-                              <span className="px-3 py-1 rounded text-xs font-mono bg-white/10 text-white">
-                                {submissionResult.aiScore.recommendation?.action}
+                            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Context Check</p>
+                            <div className="flex items-center justify-between mb-3">
+                              <span className={`px-3 py-1 rounded text-xs font-mono ${
+                                submissionResult.contextCheck.flag === 'PASS'
+                                  ? 'bg-green-500/20 text-green-400'
+                                  : 'bg-yellow-500/20 text-yellow-400'
+                              }`}>
+                                {submissionResult.contextCheck.flag === 'PASS' ? 'Realistic' : 'Needs Review'}
                               </span>
                             </div>
+                            {submissionResult.contextCheck.note && (
+                              <p className="text-sm text-gray-400">{submissionResult.contextCheck.note}</p>
+                            )}
+                            {submissionResult.contextCheck.marketContext && (
+                              <p className="text-sm text-gray-500 mt-2 italic">{submissionResult.contextCheck.marketContext}</p>
+                            )}
                           </div>
                         )}
 
@@ -768,17 +775,21 @@ export default function BudgetPage() {
                             </div>
                           </div>
 
-                          {/* AI Score */}
-                          {req.aiScore && (
+                          {/* Context Check */}
+                          {req.contextCheck && (
                             <div className="flex items-center justify-between card p-4">
                               <div className="flex items-center gap-4">
-                                <span className="text-xs text-gray-500 uppercase"><Editable k="budget.pending.aiScore">AI Score:</Editable></span>
-                                <span className="font-mono font-bold text-white">
-                                  {req.aiScore.score}/100
+                                <span className="text-xs text-gray-500 uppercase"><Editable k="budget.pending.contextCheck">Context:</Editable></span>
+                                <span className="text-sm text-gray-400">
+                                  {req.contextCheck.note}
                                 </span>
                               </div>
-                              <span className="px-3 py-1 rounded text-xs font-mono bg-white/10 text-white">
-                                {req.aiScore.recommendation?.action}
+                              <span className={`px-3 py-1 rounded text-xs font-mono ${
+                                req.contextCheck.flag === 'PASS'
+                                  ? 'bg-green-500/20 text-green-400'
+                                  : 'bg-yellow-500/20 text-yellow-400'
+                              }`}>
+                                {req.contextCheck.flag === 'PASS' ? 'Realistic' : 'Review'}
                               </span>
                             </div>
                           )}

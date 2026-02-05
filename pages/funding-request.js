@@ -428,52 +428,37 @@ export default function FundingRequest() {
                     <p className="text-[#8b949e]">Your funding request has been received and scored.</p>
                   </div>
 
-                  {/* AI Score Display */}
-                  {submissionResult?.aiScore && (
+                  {/* Context Check Display */}
+                  {submissionResult?.contextCheck && (
                     <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-6 mb-6">
                       <div className="flex items-center justify-between mb-4">
-                        <span className="text-sm text-[#6e7681]">AI Assessment Score</span>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="text-3xl font-mono font-bold"
-                            style={{ color: submissionResult.aiScore.recommendation?.color || '#6e7681' }}
-                          >
-                            {submissionResult.aiScore.score}
-                          </span>
-                          <span className="text-lg text-[#6e7681]">/100</span>
-                        </div>
+                        <span className="text-sm text-[#6e7681]">Context Check</span>
+                        <span className={`px-3 py-1.5 rounded-lg text-sm font-bold ${
+                          submissionResult.contextCheck.flag === 'PASS'
+                            ? 'bg-[#3fb950]/20 text-[#3fb950] border border-[#3fb950]/30'
+                            : 'bg-[#d29922]/20 text-[#d29922] border border-[#d29922]/30'
+                        }`}>
+                          {submissionResult.contextCheck.flag === 'PASS' ? 'Realistic' : 'Needs Review'}
+                        </span>
                       </div>
 
-                      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold ${
-                        submissionResult.aiScore.recommendation?.action === 'APPROVE'
-                          ? 'bg-[#3fb950]/20 text-[#3fb950] border border-[#3fb950]/30'
-                          : submissionResult.aiScore.recommendation?.action === 'DENY'
-                          ? 'bg-[#f85149]/20 text-[#f85149] border border-[#f85149]/30'
-                          : 'bg-[#d29922]/20 text-[#d29922] border border-[#d29922]/30'
-                      }`}>
-                        Recommendation: {submissionResult.aiScore.recommendation?.action || 'REVIEW'}
-                      </div>
-
-                      {submissionResult.aiScore.recommendation?.reason && (
-                        <p className="text-sm text-[#8b949e] mt-3">
-                          {submissionResult.aiScore.recommendation.reason}
+                      {submissionResult.contextCheck.note && (
+                        <p className="text-sm text-[#8b949e]">
+                          {submissionResult.contextCheck.note}
                         </p>
                       )}
 
-                      {/* Score Breakdown */}
-                      {submissionResult.aiScore.breakdown && (
+                      {submissionResult.contextCheck.marketContext && (
+                        <p className="text-sm text-[#6e7681] mt-3 italic">
+                          {submissionResult.contextCheck.marketContext}
+                        </p>
+                      )}
+
+                      {submissionResult.contextCheck.typicalRange && (
                         <div className="mt-4 pt-4 border-t border-[#30363d]">
-                          <p className="text-xs text-[#6e7681] mb-2">Score Breakdown:</p>
-                          <div className="grid grid-cols-2 gap-2 text-xs">
-                            {Object.entries(submissionResult.aiScore.breakdown).map(([key, value]) => (
-                              <div key={key} className="flex justify-between">
-                                <span className="text-[#8b949e] capitalize">{key.replace(/([A-Z])/g, ' $1')}</span>
-                                <span className={`font-mono ${value >= 0 ? 'text-[#3fb950]' : 'text-[#f85149]'}`}>
-                                  {value >= 0 ? '+' : ''}{value}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
+                          <p className="text-xs text-[#6e7681]">
+                            Typical range for this category: ${submissionResult.contextCheck.typicalRange.min?.toLocaleString()} - ${submissionResult.contextCheck.typicalRange.max?.toLocaleString()}
+                          </p>
                         </div>
                       )}
                     </div>
