@@ -340,7 +340,6 @@ export default function BasicNeedsPage() {
                 <Reveal delay={50}>
                   <div className="card-highlight p-6">
                     <div className="flex items-center gap-3 mb-4">
-                      <span className="text-2xl"></span>
                       <div>
                         <h4 className="font-semibold text-white"><Editable k="basicneeds.markets.pit.name">The Pit Market</Editable></h4>
                         <p className="text-sm text-gray-400"><Editable k="basicneeds.markets.pit.subtitle">Main campus location</Editable></p>
@@ -357,7 +356,6 @@ export default function BasicNeedsPage() {
                 <Reveal delay={100}>
                   <div className="card p-6">
                     <div className="flex items-center gap-3 mb-4">
-                      <span className="text-2xl"></span>
                       <div>
                         <h4 className="font-semibold text-white"><Editable k="basicneeds.markets.south.name">South Campus Stand</Editable></h4>
                         <p className="text-sm text-gray-400"><Editable k="basicneeds.markets.south.subtitle">Chase Farm partnership</Editable></p>
@@ -378,19 +376,18 @@ export default function BasicNeedsPage() {
               </Reveal>
               <div className="grid md:grid-cols-4 gap-4 mb-16">
                 {[
-                  { emoji: '', key: 'product1', label: 'Fresh Vegetables' },
-                  { emoji: '', key: 'product2', label: 'Seasonal Fruits' },
-                  { emoji: '', key: 'product3', label: 'Farm Fresh Eggs' },
-                  { emoji: '', key: 'product4', label: 'Local Honey' },
-                  { emoji: '', key: 'product5', label: 'Artisan Breads' },
-                  { emoji: '', key: 'product6', label: 'Local Cheeses' },
-                  { emoji: '', key: 'product7', label: 'Fresh Herbs' },
-                  { emoji: '', key: 'product8', label: 'Prepared Foods' },
+                  { key: 'product1', label: 'Fresh Vegetables' },
+                  { key: 'product2', label: 'Seasonal Fruits' },
+                  { key: 'product3', label: 'Farm Fresh Eggs' },
+                  { key: 'product4', label: 'Local Honey' },
+                  { key: 'product5', label: 'Artisan Breads' },
+                  { key: 'product6', label: 'Local Cheeses' },
+                  { key: 'product7', label: 'Fresh Herbs' },
+                  { key: 'product8', label: 'Prepared Foods' },
                 ].map((item, i) => (
                   <Reveal key={item.key} delay={i * 30}>
                     <div className="card p-4 text-center">
-                      <span className="text-2xl">{item.emoji}</span>
-                      <p className="text-sm text-white mt-2"><Editable k={`basicneeds.markets.${item.key}`}>{item.label}</Editable></p>
+                      <p className="text-sm text-white"><Editable k={`basicneeds.markets.${item.key}`}>{item.label}</Editable></p>
                     </div>
                   </Reveal>
                 ))}

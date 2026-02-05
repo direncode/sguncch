@@ -308,9 +308,6 @@ export default function AcademicPage() {
               <div className="grid md:grid-cols-2 gap-6 mb-10">
                 <Reveal>
                   <div className="card-highlight p-6">
-                    <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center mb-4">
-                      <span className="text-2xl"></span>
-                    </div>
                     <h3 className="font-semibold text-white text-lg mb-2"><Editable k="academic.mentorship.findMentor.title">Find a Mentor</Editable></h3>
                     <p className="text-sm text-gray-400 mb-4"><Editable k="academic.mentorship.findMentor.description" multiline>Connect with trained peer mentors across all subjects. Get personalized guidance and support for your academic journey.</Editable></p>
                     <a
@@ -324,9 +321,6 @@ export default function AcademicPage() {
 
                 <Reveal delay={100}>
                   <div className="card p-6">
-                    <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center mb-4">
-                      <span className="text-2xl"></span>
-                    </div>
                     <h3 className="font-semibold text-white text-lg mb-2"><Editable k="academic.mentorship.becomeMentor.title">Become a Mentor</Editable></h3>
                     <p className="text-sm text-gray-400 mb-4"><Editable k="academic.mentorship.becomeMentor.description" multiline>Share your expertise and help fellow students succeed. Gain leadership experience and make a difference.</Editable></p>
                     <button className="btn-secondary">
@@ -696,9 +690,6 @@ export default function AcademicPage() {
               <div className="grid md:grid-cols-3 gap-6 mb-10">
                 <Reveal>
                   <div className="card p-6">
-                    <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center mb-4">
-                      <span className="text-2xl"></span>
-                    </div>
                     <h4 className="font-semibold text-white mb-2"><Editable k="academic.strengths.benefits.discovery.title">Self-Discovery</Editable></h4>
                     <p className="text-sm text-gray-400"><Editable k="academic.strengths.benefits.discovery.description" multiline>Identify your natural talents and understand how they can be developed into strengths.</Editable></p>
                   </div>
@@ -706,9 +697,6 @@ export default function AcademicPage() {
 
                 <Reveal delay={50}>
                   <div className="card p-6">
-                    <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center mb-4">
-                      <span className="text-2xl"></span>
-                    </div>
                     <h4 className="font-semibold text-white mb-2"><Editable k="academic.strengths.benefits.career.title">Career Pathways</Editable></h4>
                     <p className="text-sm text-gray-400"><Editable k="academic.strengths.benefits.career.description" multiline>Get personalized recommendations for majors and careers that align with your strengths.</Editable></p>
                   </div>
@@ -716,9 +704,6 @@ export default function AcademicPage() {
 
                 <Reveal delay={100}>
                   <div className="card p-6">
-                    <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center mb-4">
-                      <span className="text-2xl"></span>
-                    </div>
                     <h4 className="font-semibold text-white mb-2"><Editable k="academic.strengths.benefits.team.title">Team Building</Editable></h4>
                     <p className="text-sm text-gray-400"><Editable k="academic.strengths.benefits.team.description" multiline>Understand how to work effectively with others by recognizing complementary strengths.</Editable></p>
                   </div>

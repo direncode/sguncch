@@ -368,54 +368,26 @@ export default function EnvironmentalPage() {
               <div className="grid md:grid-cols-2 gap-6 mb-12">
                 <Reveal delay={50}>
                   <div className="card p-6">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <span className="text-2xl"></span>
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-white"><Editable k="environmental.sustainWeek.event1.name">Zero-Waste Challenges</Editable></h4>
-                        <p className="text-sm text-gray-400 mt-1"><Editable k="environmental.sustainWeek.event1.description">Campus-wide competitions to reduce waste and track impact</Editable></p>
-                      </div>
-                    </div>
+                    <h4 className="font-semibold text-white"><Editable k="environmental.sustainWeek.event1.name">Zero-Waste Challenges</Editable></h4>
+                    <p className="text-sm text-gray-400 mt-1"><Editable k="environmental.sustainWeek.event1.description">Campus-wide competitions to reduce waste and track impact</Editable></p>
                   </div>
                 </Reveal>
                 <Reveal delay={100}>
                   <div className="card p-6">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <span className="text-2xl"></span>
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-white"><Editable k="environmental.sustainWeek.event2.name">Sustainable Fashion Pop-Up</Editable></h4>
-                        <p className="text-sm text-gray-400 mt-1"><Editable k="environmental.sustainWeek.event2.description">Clothing swap and thrift market in the Pit</Editable></p>
-                      </div>
-                    </div>
+                    <h4 className="font-semibold text-white"><Editable k="environmental.sustainWeek.event2.name">Sustainable Fashion Pop-Up</Editable></h4>
+                    <p className="text-sm text-gray-400 mt-1"><Editable k="environmental.sustainWeek.event2.description">Clothing swap and thrift market in the Pit</Editable></p>
                   </div>
                 </Reveal>
                 <Reveal delay={150}>
                   <div className="card p-6">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <span className="text-2xl"></span>
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-white"><Editable k="environmental.sustainWeek.event3.name">Faculty Sustainability Panels</Editable></h4>
-                        <p className="text-sm text-gray-400 mt-1"><Editable k="environmental.sustainWeek.event3.description">Discussions on climate research and campus initiatives</Editable></p>
-                      </div>
-                    </div>
+                    <h4 className="font-semibold text-white"><Editable k="environmental.sustainWeek.event3.name">Faculty Sustainability Panels</Editable></h4>
+                    <p className="text-sm text-gray-400 mt-1"><Editable k="environmental.sustainWeek.event3.description">Discussions on climate research and campus initiatives</Editable></p>
                   </div>
                 </Reveal>
                 <Reveal delay={200}>
                   <div className="card p-6">
-                    <div className="flex items-start gap-4">
-                      <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <span className="text-2xl"></span>
-                      </div>
-                      <div>
-                        <h4 className="font-semibold text-white"><Editable k="environmental.sustainWeek.event4.name">Litter Cleanup Day</Editable></h4>
-                        <p className="text-sm text-gray-400 mt-1"><Editable k="environmental.sustainWeek.event4.description">Service project cleaning up campus and surrounding areas</Editable></p>
-                      </div>
-                    </div>
+                    <h4 className="font-semibold text-white"><Editable k="environmental.sustainWeek.event4.name">Litter Cleanup Day</Editable></h4>
+                    <p className="text-sm text-gray-400 mt-1"><Editable k="environmental.sustainWeek.event4.description">Service project cleaning up campus and surrounding areas</Editable></p>
                   </div>
                 </Reveal>
               </div>
@@ -784,15 +756,14 @@ export default function EnvironmentalPage() {
               </Reveal>
               <div className="grid md:grid-cols-4 gap-4 mb-12">
                 {[
-                  { key: 'item1', icon: '', name: 'Furniture', examples: 'Chairs, desks, lamps, shelves' },
-                  { key: 'item2', icon: '', name: 'Electronics', examples: 'Chargers, cables, small appliances' },
-                  { key: 'item3', icon: '', name: 'School Supplies', examples: 'Notebooks, binders, organizers' },
-                  { key: 'item4', icon: '', name: 'Dorm Items', examples: 'Bedding, storage, decor' },
+                  { key: 'item1', name: 'Furniture', examples: 'Chairs, desks, lamps, shelves' },
+                  { key: 'item2', name: 'Electronics', examples: 'Chargers, cables, small appliances' },
+                  { key: 'item3', name: 'School Supplies', examples: 'Notebooks, binders, organizers' },
+                  { key: 'item4', name: 'Dorm Items', examples: 'Bedding, storage, decor' },
                 ].map((item, index) => (
                   <Reveal key={item.key} delay={index * 50}>
                     <div className="card p-5 text-center">
-                      <span className="text-3xl">{item.icon}</span>
-                      <p className="text-white font-medium mt-3"><Editable k={`environmental.moveout.${item.key}.name`}>{item.name}</Editable></p>
+                      <p className="text-white font-medium"><Editable k={`environmental.moveout.${item.key}.name`}>{item.name}</Editable></p>
                       <p className="text-xs text-gray-500 mt-1"><Editable k={`environmental.moveout.${item.key}.examples`}>{item.examples}</Editable></p>
                     </div>
                   </Reveal>

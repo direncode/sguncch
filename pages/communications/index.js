@@ -383,9 +383,6 @@ export default function CommunicationsPage() {
               <div className="grid md:grid-cols-2 gap-8 mb-16">
                 <Reveal>
                   <div className="card-highlight p-8">
-                    <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center mb-6">
-                      <span className="text-2xl"></span>
-                    </div>
                     <h3 className="text-xl font-semibold text-white mb-3"><Editable k="communications.whoIsCarolina.shareStory.title">Share Your Story</Editable></h3>
                     <p className="text-gray-400 mb-6"><Editable k="communications.whoIsCarolina.shareStory.description">Be featured in our campaign! Share what makes your Carolina experience unique.</Editable></p>
                     <button
@@ -399,9 +396,6 @@ export default function CommunicationsPage() {
 
                 <Reveal delay={100}>
                   <div className="card p-8">
-                    <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center mb-6">
-                      <span className="text-2xl"></span>
-                    </div>
                     <h3 className="text-xl font-semibold text-white mb-3"><Editable k="communications.whoIsCarolina.nominate.title">Nominate Someone</Editable></h3>
                     <p className="text-gray-400 mb-6"><Editable k="communications.whoIsCarolina.nominate.description">Know someone with an inspiring story? Nominate them to be featured!</Editable></p>
                     <button
@@ -600,9 +594,6 @@ export default function CommunicationsPage() {
               <div className="grid md:grid-cols-2 gap-8 mb-16">
                 <Reveal>
                   <div className="card-highlight p-8">
-                    <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center mb-6">
-                      <span className="text-2xl"></span>
-                    </div>
                     <h3 className="text-xl font-semibold text-white mb-3"><Editable k="communications.podcast.beGuest.title">Be a Guest</Editable></h3>
                     <p className="text-gray-400 mb-6"><Editable k="communications.podcast.beGuest.description">Share your Carolina story and inspire other students. We're always looking for interesting guests!</Editable></p>
                     <button
@@ -616,9 +607,6 @@ export default function CommunicationsPage() {
 
                 <Reveal delay={100}>
                   <div className="card p-8">
-                    <div className="w-12 h-12 bg-white/10 rounded-lg flex items-center justify-center mb-6">
-                      <span className="text-2xl"></span>
-                    </div>
                     <h3 className="text-xl font-semibold text-white mb-3"><Editable k="communications.podcast.nominateGuest.title">Nominate a Guest</Editable></h3>
                     <p className="text-gray-400 mb-6"><Editable k="communications.podcast.nominateGuest.description">Know someone with an amazing story? Let us know who you'd like to hear from!</Editable></p>
                     <button
@@ -690,19 +678,18 @@ export default function CommunicationsPage() {
               </Reveal>
               <div className="grid md:grid-cols-4 gap-4 mb-16">
                 {[
-                  { name: 'Visual Arts', icon: '', count: 0 },
-                  { name: 'Dance', icon: '', count: 0 },
-                  { name: 'Theater', icon: '', count: 0 },
-                  { name: 'Comedy', icon: '', count: 0 },
-                  { name: 'Music', icon: '', count: 0 },
-                  { name: 'Film', icon: '', count: 0 },
-                  { name: 'Writing', icon: '', count: 0 },
-                  { name: 'Other', icon: '', count: 0 },
+                  { name: 'Visual Arts', count: 0 },
+                  { name: 'Dance', count: 0 },
+                  { name: 'Theater', count: 0 },
+                  { name: 'Comedy', count: 0 },
+                  { name: 'Music', count: 0 },
+                  { name: 'Film', count: 0 },
+                  { name: 'Writing', count: 0 },
+                  { name: 'Other', count: 0 },
                 ].map((cat, i) => (
                   <Reveal key={i} delay={i * 50}>
                     <div className="card p-5 text-center cursor-pointer group">
-                      <span className="text-3xl">{cat.icon}</span>
-                      <p className="text-white font-medium mt-3 group-hover:text-gray-300 transition-colors">{cat.name}</p>
+                      <p className="text-white font-medium group-hover:text-gray-300 transition-colors">{cat.name}</p>
                       <p className="text-xs text-gray-500 mt-1">{cat.count} spotlights</p>
                     </div>
                   </Reveal>
