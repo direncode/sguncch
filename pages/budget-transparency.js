@@ -1,309 +1,560 @@
-import { useState } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import Head from 'next/head'
-import Layout from '../components/Layout'
-import { Input, Select, Textarea } from '../components/FormInput'
+import Link from 'next/link'
 import { useApp } from '../lib/store'
-import { budgetCategories, sgPriorities } from '../lib/data'
+import { sampleBudgetLineItems, sampleFundingRequests } from '../lib/data'
+import {
+  BUDGET_CATEGORIES,
+  exportLineItemsToCSV,
+} from '../lib/budgetEngine'
 
-export default function BudgetTransparencyPage() {
-  const [activeTab, setActiveTab] = useState('overview')
+// ==========================================
+// PUBLIC BUDGET TRANSPARENCY PAGE
+// With Integrated Funding Request Form
+// ==========================================
+
+export default function BudgetTransparency() {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+  const {
+    budgetLineItems,
+    fundingRequests,
+    submitFundingRequest,
+  } = useApp()
+
+  const [selectedCategory, setSelectedCategory] = useState('all')
+  const [viewMode, setViewMode] = useState('overview')
   const [showRequestForm, setShowRequestForm] = useState(false)
-  const [submitted, setSubmitted] = useState(null)
-  const { budgetData, getBudgetSummaryStats, submitFundingRequest, checkRateLimit } = useApp()
 
-  const [requestForm, setRequestForm] = useState({
+  // Funding request form state
+  const [form, setForm] = useState({
     orgName: '',
+    category: 'events',
     amount: '',
-    category: 'Events',
     description: '',
-    impactJustification: '',
-    priority: 'Community Building',
-    urgency: 'normal'
+    justification: '',
+    studentsImpacted: '',
+    contactEmail: '',
   })
+  const [submissionResult, setSubmissionResult] = useState(null)
+  const [error, setError] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const stats = getBudgetSummaryStats ? getBudgetSummaryStats() : {
-    totalRequested: 0,
-    totalApproved: 0,
-    totalSpent: 0,
-    utilizationRate: 0,
-    categoryStats: {},
-    wasteReduction: { reallocatedFunds: 0, unusedRecovered: 0, duplicatesPrevented: 0, aiSavings: 0, avgProcessingHours: 0, fastProcessed: 0 },
-    orgCount: 0,
-    pendingRequests: 0
+  // Use sample data if no real data exists
+  const displayLineItems = budgetLineItems?.length > 0 ? budgetLineItems : sampleBudgetLineItems
+  const displayFundingRequests = fundingRequests?.length > 0 ? fundingRequests : sampleFundingRequests
+
+  // Calculate statistics
+  const stats = useMemo(() => {
+    const categoryStats = {}
+
+    // Initialize all categories
+    for (const cat of BUDGET_CATEGORIES) {
+      categoryStats[cat.id] = {
+        id: cat.id,
+        name: cat.name,
+        color: cat.color,
+        allocated: 0,
+        spent: 0,
+        pending: 0,
+        count: 0,
+      }
+    }
+
+    // Sum up line items
+    for (const item of displayLineItems) {
+      if (categoryStats[item.category]) {
+        categoryStats[item.category].allocated += item.approved || 0
+        categoryStats[item.category].spent += item.spent || 0
+        categoryStats[item.category].count++
+      }
+    }
+
+    // Sum up pending requests
+    const pendingRequests = displayFundingRequests.filter(r => r.status === 'pending')
+    for (const req of pendingRequests) {
+      if (categoryStats[req.category]) {
+        categoryStats[req.category].pending += req.amount || 0
+      }
+    }
+
+    const totalAllocated = Object.values(categoryStats).reduce((sum, c) => sum + c.allocated, 0)
+    const totalSpent = Object.values(categoryStats).reduce((sum, c) => sum + c.spent, 0)
+    const totalPending = Object.values(categoryStats).reduce((sum, c) => sum + c.pending, 0)
+    const totalRemaining = totalAllocated - totalSpent
+
+    return {
+      categories: Object.values(categoryStats),
+      categoryStats,
+      totalAllocated,
+      totalSpent,
+      totalPending,
+      totalRemaining,
+      utilizationRate: totalAllocated > 0 ? (totalSpent / totalAllocated) * 100 : 0,
+      lineItemCount: displayLineItems.length,
+      pendingCount: pendingRequests.length,
+    }
+  }, [displayLineItems, displayFundingRequests])
+
+  // Filter line items by category
+  const filteredItems = useMemo(() => {
+    if (selectedCategory === 'all') return displayLineItems
+    return displayLineItems.filter(item => item.category === selectedCategory)
+  }, [displayLineItems, selectedCategory])
+
+  // Export CSV handler
+  const handleExportCSV = () => {
+    const csv = exportLineItemsToCSV(displayLineItems)
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `sg-budget-${new Date().toISOString().split('T')[0]}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
-  const tabs = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'spending', label: 'Spending by Category' },
-    { id: 'reallocations', label: 'Reallocations' },
-    { id: 'request', label: 'Request Funding' },
-  ]
-
-  const handleFormSubmit = (e) => {
+  // Handle funding request submission
+  const handleSubmitRequest = async (e) => {
     e.preventDefault()
+    setError('')
+    setIsSubmitting(true)
 
-    if (!checkRateLimit || !checkRateLimit(requestForm.orgName)) {
-      setSubmitted({ type: 'error', message: 'Rate limit exceeded. Maximum 10 requests per organization per week.' })
+    if (!form.orgName || !form.amount || !form.description || !form.justification) {
+      setError('Please fill in all required fields')
+      setIsSubmitting(false)
+      return
+    }
+
+    const amount = parseFloat(form.amount)
+    if (isNaN(amount) || amount <= 0) {
+      setError('Please enter a valid amount')
+      setIsSubmitting(false)
       return
     }
 
     const result = submitFundingRequest({
-      ...requestForm,
-      amount: parseFloat(requestForm.amount) || 0
+      orgName: form.orgName,
+      category: form.category,
+      amount: amount,
+      description: form.description,
+      justification: form.justification,
+      studentsImpacted: parseInt(form.studentsImpacted) || 0,
+      contactEmail: form.contactEmail,
     })
 
-    if (result?.success) {
-      setSubmitted({ type: 'success', message: `Request submitted! AI Score: ${result.request.aiScore}/100. You'll hear back within 24-48 hours.` })
-      setRequestForm({
-        orgName: '',
-        amount: '',
-        category: 'Events',
-        description: '',
-        impactJustification: '',
-        priority: 'Community Building',
-        urgency: 'normal'
-      })
-      setShowRequestForm(false)
+    setIsSubmitting(false)
+
+    if (result.success) {
+      setSubmissionResult(result.request)
     } else {
-      setSubmitted({ type: 'error', message: result?.error || 'Failed to submit request. Please try again.' })
+      setError(result.error || 'Failed to submit request. Please try again.')
     }
   }
 
+  // Reset form for new request
+  const handleNewRequest = () => {
+    setForm({
+      orgName: '',
+      category: 'events',
+      amount: '',
+      description: '',
+      justification: '',
+      studentsImpacted: '',
+      contactEmail: '',
+    })
+    setSubmissionResult(null)
+    setError('')
+  }
+
+  // Get selected category availability
+  const selectedCategoryStats = stats.categoryStats[form.category] || {}
+  const categoryAvailable = (selectedCategoryStats.allocated || 0) - (selectedCategoryStats.spent || 0)
+
   return (
-    <Layout>
+    <>
       <Head>
         <title>Budget Transparency | Project Bold</title>
+        <meta name="description" content="Transparent view of Student Government budget allocations, spending, and fund utilization. Request funding directly." />
       </Head>
 
-      {/* Hero */}
-      <div className="relative bg-[#0a0e14] border-b border-[#30363d] overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" style={{
-            backgroundImage: 'linear-gradient(#00d4ff 1px, transparent 1px), linear-gradient(90deg, #00d4ff 1px, transparent 1px)',
-            backgroundSize: '60px 60px'
-          }} />
-        </div>
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#00d4ff]/10 blur-3xl rounded-full" />
-        <div className="relative max-w-6xl mx-auto px-6 py-16">
-          <p className="text-[#00d4ff] text-xs font-medium tracking-widest uppercase mb-4">Financial Transparency</p>
-          <h1 className="text-4xl md:text-5xl font-bold text-[#f0f6fc] tracking-tight mb-4">
-            Budget Transparency
-          </h1>
-          <p className="text-[#8b949e] text-lg max-w-2xl leading-relaxed">
-            See exactly how Student Government allocates and spends your student fees.
-            Maximum transparency, minimum waste, rapid response to student needs.
-          </p>
-        </div>
-      </div>
+      <div className="min-h-screen bg-[#0a0e14]">
+        {/* Header */}
+        <header className="bg-[#0d1117] border-b border-[#30363d] sticky top-0 z-40">
+          <div className="max-w-7xl mx-auto px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <Link href="/" className="text-[#8b949e] hover:text-[#00d4ff] transition-colors text-sm">
+                  &larr; Back to Home
+                </Link>
+                <div className="h-6 w-px bg-[#30363d]" />
+                <h1 className="text-[#f0f6fc] text-lg font-bold">Budget Transparency</h1>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { setShowRequestForm(!showRequestForm); setSubmissionResult(null); }}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                    showRequestForm
+                      ? 'bg-[#21262d] text-[#8b949e] border border-[#30363d]'
+                      : 'bg-[#00d4ff] text-[#0d1117] hover:bg-[#00d4ff]/90'
+                  }`}
+                >
+                  {showRequestForm ? 'Hide Form' : 'Request Funding'}
+                </button>
+                <button
+                  onClick={handleExportCSV}
+                  className="px-4 py-2 bg-[#21262d] border border-[#30363d] rounded-lg text-sm text-[#8b949e] hover:text-[#f0f6fc] hover:border-[#00d4ff] transition-all"
+                >
+                  Export CSV
+                </button>
+              </div>
+            </div>
+          </div>
+        </header>
 
-      {/* Tabs */}
-      <div className="bg-[#0d1117] sticky top-16 z-40 border-b border-[#30363d]">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="flex gap-0 overflow-x-auto">
-            {tabs.map(tab => (
+        <main className="max-w-7xl mx-auto px-6 py-8">
+          {/* Demo Banner */}
+          <div className="bg-[#00d4ff]/10 border border-[#00d4ff]/30 rounded-lg p-4 mb-8">
+            <p className="text-[#00d4ff] text-sm">
+              <strong>DEMO MODE:</strong> Sample budget data shown. Submit funding requests to see them appear in the admin dashboard.
+            </p>
+          </div>
+
+          {/* Funding Request Form - Inline */}
+          {showRequestForm && (
+            <div className="mb-8">
+              {!submissionResult ? (
+                <div className="bg-[#161b22] border border-[#00d4ff]/30 rounded-xl p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-xl font-semibold text-[#f0f6fc]">Submit Funding Request</h2>
+                      <p className="text-sm text-[#8b949e] mt-1">Your request will be scored and queued for Finance Committee review</p>
+                    </div>
+                    <button
+                      onClick={() => setShowRequestForm(false)}
+                      className="w-8 h-8 rounded-lg bg-[#21262d] border border-[#30363d] flex items-center justify-center hover:border-[#8b949e] text-[#8b949e] hover:text-[#f0f6fc] transition-all"
+                    >
+                      &times;
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleSubmitRequest}>
+                    <div className="grid lg:grid-cols-3 gap-6">
+                      {/* Form Fields */}
+                      <div className="lg:col-span-2 space-y-4">
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-2">
+                              Organization Name *
+                            </label>
+                            <input
+                              type="text"
+                              value={form.orgName}
+                              onChange={(e) => setForm({ ...form, orgName: e.target.value })}
+                              placeholder="e.g., Carolina Gaming Club"
+                              required
+                              className="w-full px-4 py-2.5 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] placeholder-[#6e7681] focus:ring-1 focus:ring-[#00d4ff] focus:border-[#00d4ff] text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-2">
+                              Amount Requested *
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6e7681]">$</span>
+                              <input
+                                type="number"
+                                value={form.amount}
+                                onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                                placeholder="0.00"
+                                min="1"
+                                step="0.01"
+                                required
+                                className="w-full pl-7 pr-4 py-2.5 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] placeholder-[#6e7681] focus:ring-1 focus:ring-[#00d4ff] focus:border-[#00d4ff] text-sm font-mono"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-2">
+                              Category *
+                            </label>
+                            <select
+                              value={form.category}
+                              onChange={(e) => setForm({ ...form, category: e.target.value })}
+                              className="w-full px-4 py-2.5 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] focus:ring-1 focus:ring-[#00d4ff] text-sm"
+                            >
+                              {BUDGET_CATEGORIES.map(cat => (
+                                <option key={cat.id} value={cat.id}>{cat.name}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-2">
+                              Students Impacted
+                            </label>
+                            <input
+                              type="number"
+                              value={form.studentsImpacted}
+                              onChange={(e) => setForm({ ...form, studentsImpacted: e.target.value })}
+                              placeholder="e.g., 200"
+                              min="0"
+                              className="w-full px-4 py-2.5 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] placeholder-[#6e7681] focus:ring-1 focus:ring-[#00d4ff] focus:border-[#00d4ff] text-sm font-mono"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-2">
+                            Brief Description *
+                          </label>
+                          <input
+                            type="text"
+                            value={form.description}
+                            onChange={(e) => setForm({ ...form, description: e.target.value })}
+                            placeholder="e.g., Spring Gaming Tournament prizes and equipment"
+                            required
+                            className="w-full px-4 py-2.5 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] placeholder-[#6e7681] focus:ring-1 focus:ring-[#00d4ff] focus:border-[#00d4ff] text-sm"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-2">
+                            Justification & Impact *
+                          </label>
+                          <textarea
+                            value={form.justification}
+                            onChange={(e) => setForm({ ...form, justification: e.target.value })}
+                            placeholder="Explain why this funding is needed and how it will benefit students..."
+                            rows={3}
+                            required
+                            className="w-full px-4 py-2.5 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] placeholder-[#6e7681] focus:ring-1 focus:ring-[#00d4ff] focus:border-[#00d4ff] text-sm resize-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-2">
+                            Contact Email
+                          </label>
+                          <input
+                            type="email"
+                            value={form.contactEmail}
+                            onChange={(e) => setForm({ ...form, contactEmail: e.target.value })}
+                            placeholder="you@email.unc.edu"
+                            className="w-full px-4 py-2.5 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] placeholder-[#6e7681] focus:ring-1 focus:ring-[#00d4ff] focus:border-[#00d4ff] text-sm"
+                          />
+                        </div>
+
+                        {error && (
+                          <div className="bg-[#f85149]/10 border border-[#f85149]/30 rounded-lg p-3">
+                            <p className="text-[#f85149] text-sm">{error}</p>
+                          </div>
+                        )}
+
+                        <button
+                          type="submit"
+                          disabled={isSubmitting}
+                          className="w-full px-6 py-3 bg-[#00d4ff] text-[#0d1117] font-semibold rounded-lg hover:bg-[#00d4ff]/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isSubmitting ? 'Submitting...' : 'Submit Request'}
+                        </button>
+                      </div>
+
+                      {/* Category Budget Info */}
+                      <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4 h-fit">
+                        <h3 className="text-sm font-semibold text-[#f0f6fc] mb-4">Selected Category Budget</h3>
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: BUDGET_CATEGORIES.find(c => c.id === form.category)?.color || '#6e7681' }} />
+                            <span className="text-[#f0f6fc] font-medium">
+                              {BUDGET_CATEGORIES.find(c => c.id === form.category)?.name}
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-[#6e7681]">Allocated</span>
+                            <span className="font-mono text-[#3fb950]">${(selectedCategoryStats.allocated || 0).toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-[#6e7681]">Spent</span>
+                            <span className="font-mono text-[#d29922]">${(selectedCategoryStats.spent || 0).toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-[#6e7681]">Pending</span>
+                            <span className="font-mono text-[#a371f7]">${(selectedCategoryStats.pending || 0).toLocaleString()}</span>
+                          </div>
+                          <div className="border-t border-[#30363d] pt-3 mt-3">
+                            <div className="flex justify-between">
+                              <span className="text-[#f0f6fc] font-medium">Available</span>
+                              <span className="font-mono font-bold text-[#00d4ff]">${categoryAvailable.toLocaleString()}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 pt-4 border-t border-[#30363d]">
+                          <p className="text-xs text-[#6e7681]">
+                            Rate limit: 10 requests per org per week
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </form>
+                </div>
+              ) : (
+                /* Success State */
+                <div className="bg-[#161b22] border border-[#3fb950]/30 rounded-xl p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 bg-[#3fb950]/10 rounded-full flex items-center justify-center shrink-0">
+                        <svg className="w-6 h-6 text-[#3fb950]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-semibold text-[#f0f6fc]">Request Submitted Successfully</h2>
+                        <p className="text-[#8b949e] text-sm mt-1">
+                          Your request for <strong className="text-[#f0f6fc]">${submissionResult.amount?.toLocaleString()}</strong> has been queued for review.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowRequestForm(false)}
+                      className="w-8 h-8 rounded-lg bg-[#21262d] border border-[#30363d] flex items-center justify-center hover:border-[#8b949e] text-[#8b949e] hover:text-[#f0f6fc] transition-all"
+                    >
+                      &times;
+                    </button>
+                  </div>
+
+                  {/* AI Score */}
+                  {submissionResult.aiScore && (
+                    <div className="mt-4 p-4 bg-[#0d1117] border border-[#30363d] rounded-lg">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-[#6e7681]">AI Assessment Score</span>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className="text-2xl font-mono font-bold"
+                            style={{ color: submissionResult.aiScore.recommendation?.color || '#6e7681' }}
+                          >
+                            {submissionResult.aiScore.score}
+                          </span>
+                          <span className="text-[#6e7681]">/100</span>
+                        </div>
+                      </div>
+                      <div className={`inline-flex items-center px-2 py-1 rounded text-xs font-bold ${
+                        submissionResult.aiScore.recommendation?.action === 'APPROVE'
+                          ? 'bg-[#3fb950]/20 text-[#3fb950]'
+                          : submissionResult.aiScore.recommendation?.action === 'DENY'
+                          ? 'bg-[#f85149]/20 text-[#f85149]'
+                          : 'bg-[#d29922]/20 text-[#d29922]'
+                      }`}>
+                        {submissionResult.aiScore.recommendation?.action || 'REVIEW'}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 mt-4">
+                    <button
+                      onClick={handleNewRequest}
+                      className="px-4 py-2 bg-[#21262d] border border-[#30363d] rounded-lg text-[#f0f6fc] hover:bg-[#30363d] transition-all text-sm font-medium"
+                    >
+                      Submit Another
+                    </button>
+                    <Link
+                      href="/admin"
+                      className="px-4 py-2 bg-[#00d4ff]/10 border border-[#00d4ff]/30 rounded-lg text-[#00d4ff] hover:bg-[#00d4ff]/20 transition-all text-sm font-medium"
+                    >
+                      View in Admin Dashboard
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Overview Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+            <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-6">
+              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-2">Total Allocated</p>
+              <p className="text-3xl font-mono font-bold text-[#3fb950]">${stats.totalAllocated.toLocaleString()}</p>
+            </div>
+            <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-6">
+              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-2">Total Spent</p>
+              <p className="text-3xl font-mono font-bold text-[#d29922]">${stats.totalSpent.toLocaleString()}</p>
+            </div>
+            <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-6">
+              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-2">Remaining</p>
+              <p className="text-3xl font-mono font-bold text-[#00d4ff]">${stats.totalRemaining.toLocaleString()}</p>
+            </div>
+            <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-6">
+              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-2">Utilization</p>
+              <p className="text-3xl font-mono font-bold text-[#a371f7]">{stats.utilizationRate.toFixed(1)}%</p>
+            </div>
+            <div className="bg-[#161b22] border border-[#d29922]/30 rounded-xl p-6">
+              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-2">Pending Requests</p>
+              <p className="text-3xl font-mono font-bold text-[#d29922]">{stats.pendingCount}</p>
+              <p className="text-xs text-[#6e7681] mt-1">${stats.totalPending.toLocaleString()} total</p>
+            </div>
+          </div>
+
+          {/* View Toggle */}
+          <div className="flex gap-2 mb-6">
+            {[
+              { id: 'overview', label: 'Category Overview' },
+              { id: 'details', label: 'All Line Items' },
+            ].map(view => (
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-4 text-xs font-medium tracking-wider uppercase whitespace-nowrap transition-all border-b-2 ${
-                  activeTab === tab.id
-                    ? 'border-[#00d4ff] text-[#00d4ff]'
-                    : 'border-transparent text-[#8b949e] hover:text-[#f0f6fc] hover:border-[#30363d]'
+                key={view.id}
+                onClick={() => setViewMode(view.id)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  viewMode === view.id
+                    ? 'bg-[#00d4ff]/10 text-[#00d4ff] border border-[#00d4ff]/30'
+                    : 'text-[#8b949e] hover:text-[#f0f6fc] hover:bg-[#21262d] border border-transparent'
                 }`}
               >
-                {tab.label}
+                {view.label}
               </button>
             ))}
           </div>
-        </div>
-      </div>
 
-      <main className="bg-[#0d1117] min-h-screen">
-        <div className="max-w-6xl mx-auto px-6 py-12">
-          {submitted && (
-            <div className={`mb-8 bg-[#161b22] border rounded-lg p-5 ${
-              submitted.type === 'success' ? 'border-[#3fb950]' : 'border-[#f85149]'
-            }`}>
-              <p className={`font-medium ${submitted.type === 'success' ? 'text-[#3fb950]' : 'text-[#f85149]'}`}>
-                {submitted.message}
-              </p>
-              <button onClick={() => setSubmitted(null)} className="text-[#00d4ff] text-sm font-medium mt-3 hover:underline">
-                Dismiss
-              </button>
-            </div>
-          )}
-
-          {/* Overview Tab */}
-          {activeTab === 'overview' && (
-            <div>
-              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-8">Budget Overview</h2>
-
-              {/* Key Metrics */}
-              <div className="grid md:grid-cols-4 gap-4 mb-10">
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <div className="flex items-start justify-between mb-3">
-                    <span className="px-2.5 py-1 rounded text-xs font-mono border bg-[#3fb950]/10 text-[#3fb950] border-[#3fb950]">
-                      UTILIZATION
-                    </span>
-                  </div>
-                  <p className="text-3xl font-mono font-bold text-[#3fb950]">{stats.utilizationRate}%</p>
-                  <p className="text-xs text-[#8b949e] mt-2">Budget actively spent</p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <div className="flex items-start justify-between mb-3">
-                    <span className="px-2.5 py-1 rounded text-xs font-mono border bg-[#00d4ff]/10 text-[#00d4ff] border-[#00d4ff]">
-                      FUNDED
-                    </span>
-                  </div>
-                  <p className="text-3xl font-mono font-bold text-[#00d4ff]">{stats.orgCount}</p>
-                  <p className="text-xs text-[#8b949e] mt-2">Organizations this semester</p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <div className="flex items-start justify-between mb-3">
-                    <span className="px-2.5 py-1 rounded text-xs font-mono border bg-[#a371f7]/10 text-[#a371f7] border-[#a371f7]">
-                      REALLOCATED
-                    </span>
-                  </div>
-                  <p className="text-3xl font-mono font-bold text-[#a371f7]">${stats.wasteReduction.reallocatedFunds.toLocaleString()}</p>
-                  <p className="text-xs text-[#8b949e] mt-2">Redirected to high-impact</p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <div className="flex items-start justify-between mb-3">
-                    <span className="px-2.5 py-1 rounded text-xs font-mono border bg-[#d29922]/10 text-[#d29922] border-[#d29922]">
-                      PROCESSING
-                    </span>
-                  </div>
-                  <p className="text-3xl font-mono font-bold text-[#d29922]">{stats.wasteReduction.avgProcessingHours}h</p>
-                  <p className="text-xs text-[#8b949e] mt-2">Avg request to decision</p>
-                </div>
-              </div>
-
-              {/* Visual Budget Breakdown */}
-              <div className="grid lg:grid-cols-2 gap-8 mb-10">
-                {/* Pie Chart Representation */}
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                  <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-6">Allocation vs Spend</h3>
-                  <div className="flex items-center justify-center py-4">
-                    <div className="relative w-48 h-48">
-                      <svg viewBox="0 0 100 100" className="transform -rotate-90">
-                        <circle cx="50" cy="50" r="40" fill="none" stroke="#21262d" strokeWidth="10" />
-                        <circle
-                          cx="50" cy="50" r="40" fill="none" stroke="#00d4ff" strokeWidth="10"
-                          strokeDasharray={`${((budgetData?.allocated || 0) / (budgetData?.total || 1)) * 251.2} 251.2`}
-                          className="transition-all duration-500"
-                        />
-                        <circle cx="50" cy="50" r="30" fill="none" stroke="#21262d" strokeWidth="8" />
-                        <circle
-                          cx="50" cy="50" r="30" fill="none" stroke="#3fb950" strokeWidth="8"
-                          strokeDasharray={`${((budgetData?.spent || 0) / (budgetData?.total || 1)) * 188.4} 188.4`}
-                          className="transition-all duration-500"
-                        />
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="text-center">
-                          <p className="text-3xl font-mono font-bold text-[#f0f6fc]">
-                            ${((budgetData?.total || 0) / 1000).toFixed(0)}k
-                          </p>
-                          <p className="text-[10px] text-[#6e7681] uppercase tracking-wider">total budget</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex justify-center gap-6 mt-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded bg-[#00d4ff]" />
-                      <span className="text-xs text-[#8b949e]">Allocated</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded bg-[#3fb950]" />
-                      <span className="text-xs text-[#8b949e]">Spent</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Waste Reduction Impact */}
-                <div className="bg-[#161b22] border border-[#3fb950] rounded-lg p-6">
-                  <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-6">Waste Reduction Impact</h3>
-                  <p className="text-sm text-[#8b949e] mb-6">
-                    Our AI-assisted funding system and mid-semester reallocation engine help us reduce waste and maximize impact.
-                  </p>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between py-3 px-4 bg-[#21262d] rounded-lg">
-                      <div>
-                        <p className="text-sm font-medium text-[#f0f6fc]">Duplicate Requests Prevented</p>
-                        <p className="text-xs text-[#6e7681]">AI detects similar recent requests</p>
-                      </div>
-                      <span className="text-xl font-mono font-bold text-[#00d4ff]">{stats.wasteReduction.duplicatesPrevented}</span>
-                    </div>
-                    <div className="flex items-center justify-between py-3 px-4 bg-[#21262d] rounded-lg">
-                      <div>
-                        <p className="text-sm font-medium text-[#f0f6fc]">Unused Funds Recovered</p>
-                        <p className="text-xs text-[#6e7681]">Mid-semester reallocation</p>
-                      </div>
-                      <span className="text-xl font-mono font-bold text-[#3fb950]">${stats.wasteReduction.unusedRecovered.toLocaleString()}</span>
-                    </div>
-                    <div className="flex items-center justify-between py-3 px-4 bg-[#21262d] rounded-lg">
-                      <div>
-                        <p className="text-sm font-medium text-[#f0f6fc]">Fast-Tracked Requests</p>
-                        <p className="text-xs text-[#6e7681]">Processed within 24 hours</p>
-                      </div>
-                      <span className="text-xl font-mono font-bold text-[#a371f7]">{stats.wasteReduction.fastProcessed}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Summary Cards */}
-              <div className="grid md:grid-cols-3 gap-4">
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 hover:border-[#00d4ff] transition-colors cursor-pointer"
-                  onClick={() => setActiveTab('spending')}>
-                  <h4 className="font-semibold text-[#f0f6fc] mb-1">View Spending Breakdown</h4>
-                  <p className="text-sm text-[#8b949e]">See how funds are distributed across categories</p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 hover:border-[#00d4ff] transition-colors cursor-pointer"
-                  onClick={() => setActiveTab('reallocations')}>
-                  <h4 className="font-semibold text-[#f0f6fc] mb-1">View Reallocations</h4>
-                  <p className="text-sm text-[#8b949e]">See recent fund redistributions</p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 hover:border-[#00d4ff] transition-colors cursor-pointer"
-                  onClick={() => setActiveTab('request')}>
-                  <h4 className="font-semibold text-[#f0f6fc] mb-1">Request Funding</h4>
-                  <p className="text-sm text-[#8b949e]">Submit a rapid funding request</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Spending by Category Tab */}
-          {activeTab === 'spending' && (
-            <div>
-              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">Spending by Category</h2>
-              <p className="text-[#8b949e] mb-8">How SG funds are allocated and spent across major categories</p>
-
-              {/* Category Progress Bars */}
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6 mb-10">
-                <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-6">Category Breakdown</h3>
-                <div className="space-y-6">
-                  {(budgetData?.categories || []).map(cat => {
+          {/* Category Overview */}
+          {viewMode === 'overview' && (
+            <div className="space-y-6">
+              <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-6">
+                <h2 className="text-lg font-semibold text-[#f0f6fc] mb-4">Spending by Category</h2>
+                <div className="space-y-4">
+                  {stats.categories.filter(c => c.allocated > 0).map(cat => {
                     const utilization = cat.allocated > 0 ? (cat.spent / cat.allocated) * 100 : 0
                     return (
-                      <div key={cat.name}>
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="font-medium text-[#f0f6fc]">{cat.name}</span>
+                      <div key={cat.id} className="space-y-2">
+                        <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <span className={`px-2 py-0.5 rounded text-xs font-mono border ${
-                              utilization > 90 ? 'bg-[#3fb950]/10 text-[#3fb950] border-[#3fb950]' :
-                              utilization > 50 ? 'bg-[#00d4ff]/10 text-[#00d4ff] border-[#00d4ff]' :
-                              'bg-[#d29922]/10 text-[#d29922] border-[#d29922]'
-                            }`}>{Math.round(utilization)}%</span>
-                            <span className="text-sm font-mono text-[#8b949e]">${cat.spent.toLocaleString()} / ${cat.allocated.toLocaleString()}</span>
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: cat.color }} />
+                            <span className="text-[#f0f6fc] font-medium">{cat.name}</span>
+                            <span className="text-xs text-[#6e7681]">({cat.count} items)</span>
+                            {cat.pending > 0 && (
+                              <span className="text-xs text-[#d29922]">+${cat.pending.toLocaleString()} pending</span>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <span className="text-sm font-mono text-[#8b949e]">
+                              ${cat.spent.toLocaleString()} / ${cat.allocated.toLocaleString()}
+                            </span>
+                            <span className={`ml-3 text-sm font-mono ${
+                              utilization > 80 ? 'text-[#f85149]' : utilization > 50 ? 'text-[#d29922]' : 'text-[#3fb950]'
+                            }`}>
+                              {utilization.toFixed(0)}%
+                            </span>
                           </div>
                         </div>
-                        <div className="h-2 bg-[#21262d] rounded overflow-hidden">
-                          <div className={`h-full rounded transition-all ${
-                            utilization > 90 ? 'bg-[#3fb950]' :
-                            utilization > 50 ? 'bg-[#00d4ff]' :
-                            'bg-[#d29922]'
-                          }`} style={{ width: `${Math.min(100, utilization)}%` }} />
+                        <div className="h-2 bg-[#21262d] rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{
+                              width: `${Math.min(utilization, 100)}%`,
+                              backgroundColor: cat.color,
+                            }}
+                          />
                         </div>
                       </div>
                     )
@@ -311,234 +562,143 @@ export default function BudgetTransparencyPage() {
                 </div>
               </div>
 
-              {/* Summary Stats */}
-              <div className="grid md:grid-cols-3 gap-4">
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <p className="text-xs text-[#6e7681] uppercase tracking-wider mb-2">Total Budget</p>
-                  <p className="text-2xl font-mono font-bold text-[#3fb950]">${(budgetData?.total || 0).toLocaleString()}</p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <p className="text-xs text-[#6e7681] uppercase tracking-wider mb-2">Total Allocated</p>
-                  <p className="text-2xl font-mono font-bold text-[#00d4ff]">${(budgetData?.allocated || 0).toLocaleString()}</p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <p className="text-xs text-[#6e7681] uppercase tracking-wider mb-2">Total Spent</p>
-                  <p className="text-2xl font-mono font-bold text-[#d29922]">${(budgetData?.spent || 0).toLocaleString()}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Reallocations Tab */}
-          {activeTab === 'reallocations' && (
-            <div>
-              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">Fund Reallocations</h2>
-              <p className="text-[#8b949e] mb-8">We actively move unused funds to where they're needed most</p>
-
-              {(budgetData?.approvedReallocations || []).length > 0 ? (
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg">
-                  <div className="px-6 py-4 border-b border-[#30363d] flex items-center gap-3">
-                    <span className="px-2.5 py-1 rounded text-xs font-mono border bg-[#3fb950]/10 text-[#3fb950] border-[#3fb950]">
-                      APPROVED
-                    </span>
-                    <span className="text-sm text-[#8b949e]">Recent fund redistributions</span>
-                  </div>
-                  <div className="divide-y divide-[#30363d]">
-                    {(budgetData.approvedReallocations || []).map(r => (
-                      <div key={r.id} className="p-5 flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="text-center min-w-[100px]">
-                            <p className="text-sm text-[#8b949e]">{r.fromCategory || r.fromOrg}</p>
-                            <p className="text-[10px] text-[#6e7681] uppercase">From</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-px bg-[#30363d]" />
-                            <span className="text-[#6e7681]">→</span>
-                            <div className="w-6 h-px bg-[#30363d]" />
-                          </div>
-                          <div className="text-center min-w-[100px]">
-                            <p className="text-sm font-medium text-[#f0f6fc]">{r.toCategory}</p>
-                            <p className="text-[10px] text-[#6e7681] uppercase">To</p>
-                          </div>
-                        </div>
-                        <span className="font-mono font-bold text-[#a371f7] text-lg">+${r.amount.toLocaleString()}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-12 text-center">
-                  <div className="w-12 h-12 bg-[#21262d] rounded-full flex items-center justify-center mx-auto mb-4">
-                    <span className="text-2xl">📊</span>
-                  </div>
-                  <p className="text-[#8b949e]">No reallocations yet this semester</p>
-                  <p className="text-xs text-[#6e7681] mt-2">Reallocations are made mid-semester when unused funds are identified</p>
-                </div>
-              )}
-
-              {/* Reallocation Stats */}
-              <div className="grid md:grid-cols-2 gap-4 mt-8">
-                <div className="bg-[#161b22] border border-[#a371f7] rounded-lg p-5">
-                  <p className="text-xs text-[#6e7681] uppercase tracking-wider mb-2">Total Reallocated This Semester</p>
-                  <p className="text-3xl font-mono font-bold text-[#a371f7]">${stats.wasteReduction.reallocatedFunds.toLocaleString()}</p>
-                </div>
-                <div className="bg-[#161b22] border border-[#3fb950] rounded-lg p-5">
-                  <p className="text-xs text-[#6e7681] uppercase tracking-wider mb-2">Unused Funds Recovered</p>
-                  <p className="text-3xl font-mono font-bold text-[#3fb950]">${stats.wasteReduction.unusedRecovered.toLocaleString()}</p>
+              {/* Methodology Section */}
+              <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-6">
+                <h2 className="text-lg font-semibold text-[#f0f6fc] mb-4">How We Allocate Funds</h2>
+                <div className="prose prose-invert prose-sm max-w-none">
+                  <p className="text-[#8b949e] leading-relaxed">
+                    Student Government allocates funding based on a transparent, rule-based scoring system that evaluates:
+                  </p>
+                  <ul className="text-[#8b949e] mt-3 space-y-2">
+                    <li><strong className="text-[#f0f6fc]">Urgency (0-25 points):</strong> Emergency and safety-related requests receive priority</li>
+                    <li><strong className="text-[#f0f6fc]">SG Priority Alignment (0-20 points):</strong> Initiatives aligned with wellness, basic needs, and academic support score higher</li>
+                    <li><strong className="text-[#f0f6fc]">Budget Availability (0-20 points):</strong> Requests within available category budgets are preferred</li>
+                    <li><strong className="text-[#f0f6fc]">Impact Assessment (0-15 points):</strong> Number of students reached and community benefit</li>
+                    <li><strong className="text-[#f0f6fc]">Duplicate Check (-30 to 0 points):</strong> Similar recent requests are flagged to prevent redundancy</li>
+                  </ul>
+                  <p className="text-[#8b949e] mt-4">
+                    All funding decisions are reviewed by the Finance Committee before final approval. Mid-semester, we analyze spending patterns
+                    and suggest reallocations from underutilized categories to high-demand areas.
+                  </p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Request Funding Tab */}
-          {activeTab === 'request' && (
-            <div>
-              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2">Rapid Funding Request</h2>
-              <p className="text-[#8b949e] mb-8">Submit a funding request for your organization. Our AI-assisted system scores and routes requests for fast review.</p>
+          {/* Line Item Details */}
+          {viewMode === 'details' && (
+            <div className="space-y-4">
+              {/* Category Filter */}
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  onClick={() => setSelectedCategory('all')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    selectedCategory === 'all'
+                      ? 'bg-[#00d4ff]/10 text-[#00d4ff] border border-[#00d4ff]/30'
+                      : 'text-[#8b949e] hover:text-[#f0f6fc] bg-[#21262d] border border-[#30363d]'
+                  }`}
+                >
+                  All Categories
+                </button>
+                {BUDGET_CATEGORIES.map(cat => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all flex items-center gap-2 ${
+                      selectedCategory === cat.id
+                        ? 'bg-[#00d4ff]/10 text-[#00d4ff] border border-[#00d4ff]/30'
+                        : 'text-[#8b949e] hover:text-[#f0f6fc] bg-[#21262d] border border-[#30363d]'
+                    }`}
+                  >
+                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
 
-              <div className="grid lg:grid-cols-2 gap-8">
-                {/* Request Form */}
-                <div className="bg-[#161b22] border border-[#00d4ff] rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-[#f0f6fc] mb-6">Submit Request</h3>
-
-                  <form onSubmit={handleFormSubmit} className="space-y-4">
-                    <Input
-                      label="Organization Name"
-                      value={requestForm.orgName}
-                      onChange={(e) => setRequestForm({ ...requestForm, orgName: e.target.value })}
-                      required
-                      placeholder="Your registered organization name"
-                    />
-                    <Input
-                      label="Requested Amount ($)"
-                      type="number"
-                      value={requestForm.amount}
-                      onChange={(e) => setRequestForm({ ...requestForm, amount: e.target.value })}
-                      required
-                      min="1"
-                      placeholder="0"
-                    />
-                    <Select
-                      label="Category"
-                      value={requestForm.category}
-                      onChange={(e) => setRequestForm({ ...requestForm, category: e.target.value })}
-                      required
-                      options={(budgetCategories || ['Events', 'Travel', 'Merch', 'Programming', 'Equipment', 'Marketing', 'Food & Catering', 'Speakers & Guests', 'Supplies', 'Other']).map(c => ({ value: c, label: c }))}
-                    />
-                    <Select
-                      label="SG Priority Area"
-                      value={requestForm.priority}
-                      onChange={(e) => setRequestForm({ ...requestForm, priority: e.target.value })}
-                      required
-                      options={(sgPriorities || ['Student Wellness', 'Basic Needs', 'Academic Support', 'Diversity & Inclusion', 'Sustainability', 'Community Building', 'Leadership Development', 'Crisis Response']).map(p => ({ value: p, label: p }))}
-                    />
-                    <Select
-                      label="Urgency"
-                      value={requestForm.urgency}
-                      onChange={(e) => setRequestForm({ ...requestForm, urgency: e.target.value })}
-                      options={[
-                        { value: 'normal', label: 'Normal' },
-                        { value: 'high', label: 'High (Crisis/Time-Sensitive)' }
-                      ]}
-                    />
-                    <Textarea
-                      label="Event/Initiative Description"
-                      value={requestForm.description}
-                      onChange={(e) => setRequestForm({ ...requestForm, description: e.target.value })}
-                      required
-                      rows={2}
-                      placeholder="Brief description of what this funding is for..."
-                    />
-                    <Textarea
-                      label="Impact Justification (Improves AI Score)"
-                      value={requestForm.impactJustification}
-                      onChange={(e) => setRequestForm({ ...requestForm, impactJustification: e.target.value })}
-                      required
-                      rows={3}
-                      placeholder="How many students will benefit? What outcomes do you expect?"
-                    />
-                    <p className="text-xs text-[#6e7681]">Tip: Detailed justifications (20+ words) receive higher AI scores</p>
-
-                    <button
-                      type="submit"
-                      className="w-full bg-[#00d4ff] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#33ddff] transition-colors"
-                    >
-                      Submit Funding Request
-                    </button>
-                  </form>
-                </div>
-
-                {/* Info Panel */}
-                <div className="space-y-6">
-                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-[#f0f6fc] mb-4">How It Works</h3>
-                    <div className="space-y-4">
-                      {[
-                        { step: 1, title: 'Submit Request', desc: 'Fill out the form with your funding details' },
-                        { step: 2, title: 'AI Analysis', desc: 'Our system scores based on priority, impact, and budget' },
-                        { step: 3, title: 'Admin Review', desc: 'Requests are queued for one-click approve/deny' },
-                        { step: 4, title: 'Notification', desc: "You'll hear back within 24-48 hours" },
-                      ].map(item => (
-                        <div key={item.step} className="flex gap-3">
-                          <div className="w-6 h-6 bg-[#00d4ff] text-[#0d1117] rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">
-                            {item.step}
-                          </div>
-                          <div>
-                            <p className="font-medium text-[#f0f6fc] text-sm">{item.title}</p>
-                            <p className="text-xs text-[#8b949e]">{item.desc}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="bg-[#161b22] border border-[#d29922] rounded-lg p-6">
-                    <div className="flex items-center gap-3 mb-4">
-                      <span className="px-2.5 py-1 rounded text-xs font-mono border bg-[#d29922]/10 text-[#d29922] border-[#d29922]">
-                        RATE LIMIT
-                      </span>
-                    </div>
-                    <p className="text-sm text-[#8b949e]">
-                      Organizations are limited to <strong className="text-[#f0f6fc]">10 requests per week</strong> to ensure fair access and prevent spam.
-                    </p>
-                  </div>
-
-                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                    <h4 className="font-semibold text-[#f0f6fc] mb-3">What Improves Your AI Score?</h4>
-                    <ul className="space-y-2 text-sm text-[#8b949e]">
-                      <li className="flex items-center gap-2">
-                        <span className="text-[#3fb950]">✓</span> Alignment with SG priorities
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="text-[#3fb950]">✓</span> High urgency (wellness/crisis)
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="text-[#3fb950]">✓</span> Detailed impact justification
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="text-[#3fb950]">✓</span> Budget availability
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="text-[#f85149]">✗</span> Duplicate recent requests
-                      </li>
-                    </ul>
-                  </div>
+              {/* Line Items Table */}
+              <div className="bg-[#161b22] border border-[#30363d] rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-[#30363d]">
+                        <th className="text-left px-6 py-4 text-[10px] text-[#6e7681] uppercase tracking-widest font-semibold">Organization</th>
+                        <th className="text-left px-6 py-4 text-[10px] text-[#6e7681] uppercase tracking-widest font-semibold">Category</th>
+                        <th className="text-left px-6 py-4 text-[10px] text-[#6e7681] uppercase tracking-widest font-semibold">Description</th>
+                        <th className="text-right px-6 py-4 text-[10px] text-[#6e7681] uppercase tracking-widest font-semibold">Approved</th>
+                        <th className="text-right px-6 py-4 text-[10px] text-[#6e7681] uppercase tracking-widest font-semibold">Spent</th>
+                        <th className="text-right px-6 py-4 text-[10px] text-[#6e7681] uppercase tracking-widest font-semibold">Utilization</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredItems.map(item => {
+                        const category = BUDGET_CATEGORIES.find(c => c.id === item.category)
+                        const utilization = item.approved > 0 ? (item.spent / item.approved) * 100 : 0
+                        return (
+                          <tr key={item.id} className="border-b border-[#21262d] hover:bg-[#21262d]/50 transition-colors">
+                            <td className="px-6 py-4">
+                              <p className="text-[#f0f6fc] font-medium">{item.orgName}</p>
+                              <p className="text-xs text-[#6e7681]">{item.semester}</p>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: category?.color || '#6e7681' }} />
+                                <span className="text-sm text-[#8b949e]">{category?.name || item.category}</span>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-sm text-[#8b949e]">{item.description}</p>
+                              {item.impactNotes && (
+                                <p className="text-xs text-[#6e7681] italic mt-1">{item.impactNotes}</p>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <span className="font-mono text-[#3fb950]">${item.approved?.toLocaleString()}</span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <span className="font-mono text-[#d29922]">${item.spent?.toLocaleString()}</span>
+                            </td>
+                            <td className="px-6 py-4 text-right">
+                              <span className={`font-mono ${
+                                utilization > 90 ? 'text-[#f85149]' : utilization > 70 ? 'text-[#d29922]' : 'text-[#3fb950]'
+                              }`}>
+                                {utilization.toFixed(0)}%
+                              </span>
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Footer Note */}
-          <div className="mt-12 bg-[#161b22] border border-[#30363d] rounded-lg p-6 text-center">
-            <p className="text-sm text-[#8b949e] mb-2">
-              <span className="text-[#00d4ff]">●</span> Public data model — anyone can verify allocation transparency
-            </p>
-            <p className="text-xs text-[#6e7681]">
-              Questions about budget allocations? Contact <a href="mailto:student.government@unc.edu" className="text-[#00d4ff] hover:underline">student.government@unc.edu</a>
-            </p>
+          {/* Footer */}
+          <div className="mt-12 pt-8 border-t border-[#30363d]">
+            <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+              <p className="text-sm text-[#6e7681]">
+                Data updated: {mounted ? new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'Loading...'}
+              </p>
+              <div className="flex gap-4">
+                <button
+                  onClick={() => { setShowRequestForm(true); setSubmissionResult(null); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  className="text-sm text-[#00d4ff] hover:underline"
+                >
+                  Request Funding
+                </button>
+                <Link href="/admin" className="text-sm text-[#00d4ff] hover:underline">
+                  Admin Dashboard
+                </Link>
+                <Link href="/" className="text-sm text-[#00d4ff] hover:underline">
+                  Back to Home
+                </Link>
+              </div>
+            </div>
           </div>
-        </div>
-      </main>
-    </Layout>
+        </main>
+      </div>
+    </>
   )
 }
