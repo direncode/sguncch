@@ -4,7 +4,7 @@ import { useRouter } from 'next/router'
 import GridBackground from './GridBackground'
 
 const navigation = [
-  { name: 'Platforms', href: '/budget' },
+  { name: 'Budget', href: '/budget' },
   { name: 'Resources', href: '/wellness' },
   { name: 'Community', href: '/basic-needs' },
   { name: 'Academic', href: '/academic' },
@@ -171,7 +171,7 @@ export default function Layout({ children }) {
 
             {/* Links */}
             <div className="lg:col-span-2">
-              <h4 className="caption mb-6">Platforms</h4>
+              <h4 className="caption mb-6">Quick Links</h4>
               <ul className="space-y-3">
                 <li>
                   <Link href="/budget" className="text-sm text-gray-400 hover:text-white transition-colors">

@@ -142,7 +142,7 @@ export default function Home() {
                 </svg>
               </Link>
               <Link href="/budget" className="btn-secondary">
-                Explore Platforms
+                View Budget
               </Link>
             </div>
           </div>
@@ -244,12 +244,12 @@ export default function Home() {
         <div className="max-w-[1600px] mx-auto px-6 lg:px-12">
           <Reveal>
             <div className="max-w-2xl mb-20">
-              <span className="caption mb-6 block">Platforms</span>
+              <span className="caption mb-6 block">Departments</span>
               <h2 className="section-title mb-6">
                 Built for transparency
               </h2>
               <p className="body-large">
-                Our platforms are designed with one goal: making student government
+                Our departments are designed with one goal: making student government
                 accessible to everyone.
               </p>
             </div>
