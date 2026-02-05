@@ -12,6 +12,96 @@ import {
 } from '../../lib/budgetEngine'
 
 // ==========================================
+// PREDEFINED MILESTONE TEMPLATES
+// ==========================================
+const MILESTONE_TEMPLATES = {
+  'research-planning': {
+    name: 'Research & Planning',
+    milestones: [
+      { title: 'Initial research and data gathering', weight: 15 },
+      { title: 'Stakeholder interviews and feedback', weight: 15 },
+      { title: 'Draft proposal document', weight: 20 },
+      { title: 'Review with advisors', weight: 10 },
+      { title: 'Finalize plan and timeline', weight: 10 },
+    ]
+  },
+  'partnership-outreach': {
+    name: 'Partnership & Outreach',
+    milestones: [
+      { title: 'Identify potential partners', weight: 10 },
+      { title: 'Initial outreach and meetings', weight: 20 },
+      { title: 'Draft partnership agreements', weight: 20 },
+      { title: 'Negotiate terms and finalize', weight: 15 },
+      { title: 'Onboard partners and launch', weight: 15 },
+    ]
+  },
+  'program-launch': {
+    name: 'Program Launch',
+    milestones: [
+      { title: 'Define program structure', weight: 15 },
+      { title: 'Develop materials and resources', weight: 20 },
+      { title: 'Recruit and train staff/volunteers', weight: 20 },
+      { title: 'Marketing and promotion', weight: 15 },
+      { title: 'Launch and initial operations', weight: 15 },
+      { title: 'Gather feedback and iterate', weight: 15 },
+    ]
+  },
+  'digital-platform': {
+    name: 'Digital Platform',
+    milestones: [
+      { title: 'Requirements gathering', weight: 10 },
+      { title: 'Design and wireframes', weight: 15 },
+      { title: 'Development phase 1 (core features)', weight: 25 },
+      { title: 'Development phase 2 (additional features)', weight: 20 },
+      { title: 'Testing and QA', weight: 15 },
+      { title: 'Launch and monitoring', weight: 15 },
+    ]
+  },
+  'event-series': {
+    name: 'Event Series',
+    milestones: [
+      { title: 'Event planning and logistics', weight: 20 },
+      { title: 'Secure venue and vendors', weight: 15 },
+      { title: 'Marketing and registrations', weight: 20 },
+      { title: 'Execute first event', weight: 20 },
+      { title: 'Post-event analysis', weight: 10 },
+      { title: 'Iterate for future events', weight: 15 },
+    ]
+  },
+  'advocacy-campaign': {
+    name: 'Advocacy Campaign',
+    milestones: [
+      { title: 'Research and position development', weight: 15 },
+      { title: 'Build coalition and supporters', weight: 20 },
+      { title: 'Draft proposal/petition', weight: 15 },
+      { title: 'Present to administration', weight: 20 },
+      { title: 'Negotiate and follow up', weight: 15 },
+      { title: 'Implementation and monitoring', weight: 15 },
+    ]
+  },
+  'infrastructure': {
+    name: 'Infrastructure Project',
+    milestones: [
+      { title: 'Site assessment and planning', weight: 15 },
+      { title: 'Budget approval and funding', weight: 20 },
+      { title: 'Procurement and contracting', weight: 15 },
+      { title: 'Installation/construction', weight: 25 },
+      { title: 'Testing and quality check', weight: 10 },
+      { title: 'Launch and maintenance plan', weight: 15 },
+    ]
+  },
+  'simple-task': {
+    name: 'Simple Task List',
+    milestones: [
+      { title: 'Task 1', weight: 25 },
+      { title: 'Task 2', weight: 25 },
+      { title: 'Task 3', weight: 25 },
+      { title: 'Task 4', weight: 25 },
+    ]
+  },
+}
+
+// ==========================================
 // SCROLL REVEAL HOOK
 // ==========================================
 function useScrollReveal() {
@@ -114,6 +204,8 @@ export default function AdminConsole() {
     fundingRequests,
     reallocations,
     // Actions
+    addPolicy,
+    deletePolicy,
     updatePolicy,
     logPolicyProgress,
     addAnnouncement,
@@ -467,6 +559,9 @@ export default function AdminConsole() {
               <div className="space-y-4">
                 {filteredPolicies.map((policy, i) => {
                   const dept = defaultDepartments.find(d => d.id === policy.department)
+                  const milestones = policy.milestones || []
+                  const completedMilestones = milestones.filter(m => m.completed).length
+                  const hasMilestones = milestones.length > 0
                   return (
                     <Reveal key={policy.id} delay={i * 30}>
                       <div className="bg-white/5 border border-gray-800 rounded-xl p-6 hover:bg-white/[0.07] transition-all">
@@ -481,10 +576,18 @@ export default function AdminConsole() {
                               }`}>
                                 {policy.status?.replace('_', ' ').toUpperCase()}
                               </span>
+                              {policy.priority === 'high' && (
+                                <span className="px-2 py-0.5 rounded text-xs font-mono bg-red-500/20 text-red-400">
+                                  HIGH
+                                </span>
+                              )}
                             </div>
-                            <p className="text-sm text-gray-400 mb-3">{policy.description}</p>
+                            <p className="text-sm text-gray-400 mb-3 line-clamp-2">{policy.description}</p>
                             <div className="flex items-center gap-4 text-xs text-gray-500">
                               <span>{dept?.name || policy.department}</span>
+                              {hasMilestones && (
+                                <span>{completedMilestones}/{milestones.length} milestones</span>
+                              )}
                               <span>Updated {formatDate(policy.lastUpdated)}</span>
                             </div>
                           </div>
@@ -493,6 +596,31 @@ export default function AdminConsole() {
                             <p className="text-xs text-gray-500">Progress</p>
                           </div>
                         </div>
+
+                        {/* Milestones Preview */}
+                        {hasMilestones && (
+                          <div className="mb-4 p-3 bg-black/30 rounded-lg">
+                            <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                              <span>Milestones</span>
+                              <span>{completedMilestones} of {milestones.length} complete</span>
+                            </div>
+                            <div className="flex gap-1">
+                              {milestones.slice(0, 10).map((m, idx) => (
+                                <div
+                                  key={m.id || idx}
+                                  className={`flex-1 h-2 rounded ${
+                                    m.completed ? 'bg-green-500' : 'bg-gray-700'
+                                  }`}
+                                  title={m.title}
+                                />
+                              ))}
+                              {milestones.length > 10 && (
+                                <span className="text-xs text-gray-600 ml-1">+{milestones.length - 10}</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
                         <div className="flex items-center gap-4">
                           <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
                             <div
@@ -507,15 +635,17 @@ export default function AdminConsole() {
                             >
                               Edit
                             </button>
-                            <button
-                              onClick={() => {
-                                const newProgress = Math.min(100, policy.progress + 10)
-                                logPolicyProgress(policy.id, newProgress, `Progress updated to ${newProgress}%`)
-                              }}
-                              className="px-3 py-1.5 bg-green-500/20 border border-green-500/30 rounded text-xs text-green-400 hover:bg-green-500/30 transition-all"
-                            >
-                              +10%
-                            </button>
+                            {!hasMilestones && (
+                              <button
+                                onClick={() => {
+                                  const newProgress = Math.min(100, policy.progress + 10)
+                                  logPolicyProgress(policy.id, newProgress, `Progress updated to ${newProgress}%`)
+                                }}
+                                className="px-3 py-1.5 bg-green-500/20 border border-green-500/30 rounded text-xs text-green-400 hover:bg-green-500/30 transition-all"
+                              >
+                                +10%
+                              </button>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -1083,12 +1213,16 @@ export default function AdminConsole() {
                   if (editingPolicy) {
                     updatePolicy(editingPolicy.id, data)
                   } else {
-                    // For new policies, we'd need an addPolicy function
-                    // For now, just log
-                    logActivity('CREATE_POLICY', 'platform', `Created new policy: ${data.title}`)
+                    addPolicy(data)
                   }
                   setShowPolicyModal(false)
                 }}
+                onDelete={editingPolicy ? () => {
+                  if (confirm(`Delete "${editingPolicy.title}"? This cannot be undone.`)) {
+                    deletePolicy(editingPolicy.id)
+                    setShowPolicyModal(false)
+                  }
+                } : null}
                 onCancel={() => setShowPolicyModal(false)}
               />
             </div>
@@ -1134,27 +1268,96 @@ export default function AdminConsole() {
 }
 
 // ==========================================
-// POLICY FORM COMPONENT
+// POLICY FORM COMPONENT WITH MILESTONES
 // ==========================================
-function PolicyForm({ policy, onSave, onCancel }) {
+function PolicyForm({ policy, onSave, onDelete, onCancel }) {
   const [form, setForm] = useState({
     title: policy?.title || '',
     description: policy?.description || '',
     department: policy?.department || 'wellness',
     status: policy?.status || 'planned',
-    progress: policy?.progress || 0,
+    priority: policy?.priority || 'medium',
+    milestones: policy?.milestones || [],
   })
+  const [showTemplates, setShowTemplates] = useState(false)
+  const [newMilestone, setNewMilestone] = useState('')
+
+  // Calculate progress from milestones
+  const calculatedProgress = useMemo(() => {
+    if (form.milestones.length === 0) return policy?.progress || 0
+    const totalWeight = form.milestones.reduce((sum, m) => sum + (m.weight || 1), 0)
+    const completedWeight = form.milestones.reduce((sum, m) => m.completed ? sum + (m.weight || 1) : sum, 0)
+    return totalWeight > 0 ? Math.round((completedWeight / totalWeight) * 100) : 0
+  }, [form.milestones, policy?.progress])
 
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!form.title) return alert('Title is required')
-    onSave(form)
+    onSave({
+      ...form,
+      progress: calculatedProgress,
+    })
+  }
+
+  const applyTemplate = (templateId) => {
+    const template = MILESTONE_TEMPLATES[templateId]
+    if (template) {
+      setForm({
+        ...form,
+        milestones: template.milestones.map((m, i) => ({
+          id: `ms-${Date.now()}-${i}`,
+          title: m.title,
+          weight: m.weight,
+          completed: false,
+        }))
+      })
+      setShowTemplates(false)
+    }
+  }
+
+  const addMilestone = () => {
+    if (!newMilestone.trim()) return
+    setForm({
+      ...form,
+      milestones: [
+        ...form.milestones,
+        {
+          id: `ms-${Date.now()}`,
+          title: newMilestone.trim(),
+          weight: 10,
+          completed: false,
+        }
+      ]
+    })
+    setNewMilestone('')
+  }
+
+  const updateMilestone = (id, updates) => {
+    setForm({
+      ...form,
+      milestones: form.milestones.map(m => m.id === id ? { ...m, ...updates } : m)
+    })
+  }
+
+  const deleteMilestone = (id) => {
+    setForm({
+      ...form,
+      milestones: form.milestones.filter(m => m.id !== id)
+    })
+  }
+
+  const moveMilestone = (index, direction) => {
+    const newMilestones = [...form.milestones]
+    const newIndex = index + direction
+    if (newIndex < 0 || newIndex >= newMilestones.length) return
+    [newMilestones[index], newMilestones[newIndex]] = [newMilestones[newIndex], newMilestones[index]]
+    setForm({ ...form, milestones: newMilestones })
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
-        <label className="block text-sm text-gray-400 mb-2">Policy Title</label>
+        <label className="block text-sm text-gray-400 mb-2">Policy Title *</label>
         <input
           type="text"
           value={form.title}
@@ -1175,7 +1378,7 @@ function PolicyForm({ policy, onSave, onCancel }) {
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <div>
           <label className="block text-sm text-gray-400 mb-2">Department</label>
           <select
@@ -1201,20 +1404,164 @@ function PolicyForm({ policy, onSave, onCancel }) {
             <option value="completed">Completed</option>
           </select>
         </div>
+
+        <div>
+          <label className="block text-sm text-gray-400 mb-2">Priority</label>
+          <select
+            value={form.priority}
+            onChange={(e) => setForm({ ...form, priority: e.target.value })}
+            className="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg text-white focus:border-white focus:outline-none"
+          >
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
       </div>
 
+      {/* Milestones Section */}
+      <div className="pt-4 border-t border-gray-800">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <label className="block text-sm text-gray-400">Progress Milestones</label>
+            <p className="text-xs text-gray-600">Track progress with checkable milestones</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-2xl font-mono font-bold text-white">{calculatedProgress}%</span>
+            <button
+              type="button"
+              onClick={() => setShowTemplates(!showTemplates)}
+              className="px-3 py-1.5 bg-white/10 border border-gray-700 rounded text-xs text-white hover:bg-white/20 transition-all"
+            >
+              {showTemplates ? 'Hide Templates' : 'Use Template'}
+            </button>
+          </div>
+        </div>
+
+        {/* Template Selection */}
+        {showTemplates && (
+          <div className="mb-4 p-4 bg-black/50 border border-gray-800 rounded-lg">
+            <p className="text-xs text-gray-500 mb-3">Choose a predefined template:</p>
+            <div className="grid grid-cols-2 gap-2">
+              {Object.entries(MILESTONE_TEMPLATES).map(([id, template]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => applyTemplate(id)}
+                  className="p-3 bg-white/5 border border-gray-700 rounded-lg text-left hover:bg-white/10 transition-all"
+                >
+                  <p className="text-sm text-white">{template.name}</p>
+                  <p className="text-xs text-gray-500">{template.milestones.length} milestones</p>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Milestones List */}
+        <div className="space-y-2 mb-4 max-h-[300px] overflow-y-auto">
+          {form.milestones.map((milestone, index) => (
+            <div
+              key={milestone.id}
+              className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
+                milestone.completed
+                  ? 'bg-green-500/10 border-green-500/30'
+                  : 'bg-black/30 border-gray-800'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={milestone.completed}
+                onChange={(e) => updateMilestone(milestone.id, { completed: e.target.checked })}
+                className="w-5 h-5 rounded border-gray-600 bg-black text-green-500 focus:ring-green-500"
+              />
+              <input
+                type="text"
+                value={milestone.title}
+                onChange={(e) => updateMilestone(milestone.id, { title: e.target.value })}
+                className={`flex-1 bg-transparent border-none text-sm focus:outline-none ${
+                  milestone.completed ? 'text-gray-500 line-through' : 'text-white'
+                }`}
+              />
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  value={milestone.weight}
+                  onChange={(e) => updateMilestone(milestone.id, { weight: parseInt(e.target.value) || 1 })}
+                  className="w-12 px-2 py-1 bg-black/50 border border-gray-700 rounded text-xs text-center text-gray-400 focus:outline-none focus:border-white"
+                  min="1"
+                  max="100"
+                  title="Weight (importance)"
+                />
+                <span className="text-xs text-gray-600">wt</span>
+              </div>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => moveMilestone(index, -1)}
+                  disabled={index === 0}
+                  className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveMilestone(index, 1)}
+                  disabled={index === form.milestones.length - 1}
+                  className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  onClick={() => deleteMilestone(milestone.id)}
+                  className="w-6 h-6 flex items-center justify-center text-red-400 hover:text-red-300"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          ))}
+          {form.milestones.length === 0 && (
+            <p className="text-center text-gray-600 py-4 text-sm">No milestones. Add one below or use a template.</p>
+          )}
+        </div>
+
+        {/* Add Milestone */}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newMilestone}
+            onChange={(e) => setNewMilestone(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addMilestone())}
+            className="flex-1 px-4 py-2 bg-black border border-gray-800 rounded-lg text-sm text-white placeholder-gray-600 focus:border-white focus:outline-none"
+            placeholder="Add a new milestone..."
+          />
+          <button
+            type="button"
+            onClick={addMilestone}
+            className="px-4 py-2 bg-white/10 border border-gray-700 rounded-lg text-sm text-white hover:bg-white/20 transition-all"
+          >
+            Add
+          </button>
+        </div>
+      </div>
+
+      {/* Progress Bar Preview */}
       <div>
-        <label className="block text-sm text-gray-400 mb-2">Progress ({form.progress}%)</label>
-        <input
-          type="range"
-          min="0"
-          max="100"
-          value={form.progress}
-          onChange={(e) => setForm({ ...form, progress: parseInt(e.target.value) })}
-          className="w-full"
-        />
+        <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+          <span>Overall Progress</span>
+          <span>{calculatedProgress}%</span>
+        </div>
+        <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-white rounded-full transition-all"
+            style={{ width: `${calculatedProgress}%` }}
+          />
+        </div>
       </div>
 
+      {/* Actions */}
       <div className="flex gap-4 pt-4">
         <button
           type="submit"
@@ -1222,6 +1569,15 @@ function PolicyForm({ policy, onSave, onCancel }) {
         >
           {policy ? 'Save Changes' : 'Create Policy'}
         </button>
+        {onDelete && (
+          <button
+            type="button"
+            onClick={onDelete}
+            className="px-6 py-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 hover:bg-red-500/30 transition-all"
+          >
+            Delete
+          </button>
+        )}
         <button
           type="button"
           onClick={onCancel}
