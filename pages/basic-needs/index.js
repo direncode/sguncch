@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Head from 'next/head'
 import Layout from '../../components/Layout'
 import { Input, Select, Textarea } from '../../components/FormInput'
@@ -12,6 +12,50 @@ import {
   externalLinks,
   campusLocations,
 } from '../../lib/integrations'
+
+// Scroll reveal hook
+function useScrollReveal() {
+  const [revealed, setRevealed] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setRevealed(true)
+        }
+      },
+      { threshold: 0.1, rootMargin: '-50px' }
+    )
+
+    if (ref.current) {
+      observer.observe(ref.current)
+    }
+
+    return () => observer.disconnect()
+  }, [])
+
+  return [ref, revealed]
+}
+
+// Reveal component
+function Reveal({ children, delay = 0, className = '' }) {
+  const [ref, revealed] = useScrollReveal()
+
+  return (
+    <div
+      ref={ref}
+      className={`transition-all duration-1000 ${className}`}
+      style={{
+        opacity: revealed ? 1 : 0,
+        transform: revealed ? 'translateY(0)' : 'translateY(40px)',
+        transitionDelay: `${delay}ms`
+      }}
+    >
+      {children}
+    </div>
+  )
+}
 
 export default function BasicNeedsPage() {
   const [activeTab, setActiveTab] = useState('overview')
@@ -116,19 +160,19 @@ export default function BasicNeedsPage() {
   const getPolicy = (id) => deptPolicies.find(p => p.id === id)
 
   const PolicyProgress = ({ policy }) => (
-    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 mb-8">
+    <div className="card p-6 mb-8">
       <div className="flex items-start justify-between mb-4">
-        <span className={`px-2.5 py-1 rounded text-xs font-mono border ${
-          policy?.status === 'completed' ? 'bg-[#3fb950]/10 text-[#3fb950] border-[#3fb950]' :
-          policy?.status === 'in_progress' ? 'bg-[#58a6ff]/10 text-[#58a6ff] border-[#58a6ff]' :
-          'bg-[#21262d] text-[#6e7681] border-[#30363d]'
+        <span className={`px-3 py-1 rounded text-xs font-mono tracking-wider ${
+          policy?.status === 'completed' ? 'bg-white/10 text-white' :
+          policy?.status === 'in_progress' ? 'bg-white/5 text-gray-300' :
+          'bg-white/5 text-gray-500'
         }`}>
           {policy?.status === 'in_progress' ? <Editable k="basicneeds.status.inprogress">IN PROGRESS</Editable> : policy?.status === 'completed' ? <Editable k="basicneeds.status.completed">COMPLETED</Editable> : <Editable k="basicneeds.status.planned">PLANNED</Editable>}
         </span>
-        <span className="text-[#8b949e] font-mono text-sm">{policy?.progress || 0}% <Editable k="basicneeds.status.complete">Complete</Editable></span>
+        <span className="text-gray-400 font-mono text-sm">{policy?.progress || 0}% <Editable k="basicneeds.status.complete">Complete</Editable></span>
       </div>
-      <div className="h-2 bg-[#21262d] rounded overflow-hidden">
-        <div className="h-full bg-[#d29922] rounded transition-all" style={{ width: `${policy?.progress || 0}%` }} />
+      <div className="h-1 bg-gray-800 rounded overflow-hidden">
+        <div className="h-full bg-white rounded transition-all" style={{ width: `${policy?.progress || 0}%` }} />
       </div>
     </div>
   )
@@ -139,37 +183,36 @@ export default function BasicNeedsPage() {
         <title>Basic Needs | Project Bold</title>
       </Head>
 
-      {/* Hero */}
-      <div className="relative bg-[#0a0e14] border-b border-[#30363d] overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" style={{
-            backgroundImage: 'linear-gradient(#d29922 1px, transparent 1px), linear-gradient(90deg, #d29922 1px, transparent 1px)',
-            backgroundSize: '40px 40px'
-          }} />
+      {/* Hero Section */}
+      <section className="min-h-[60vh] flex items-center relative overflow-hidden border-b border-gray-900">
+        <div className="max-w-[1600px] mx-auto px-6 lg:px-12 py-24 lg:py-32">
+          <Reveal>
+            <span className="caption mb-6 block">
+              <Editable k="basicneeds.hero.label">Basic Needs</Editable>
+            </span>
+          </Reveal>
+          <Reveal delay={100}>
+            <h1 className="hero-title mb-6">
+              <Editable k="basicneeds.hero.title">Supporting Every Tar Heel</Editable>
+            </h1>
+          </Reveal>
+          <Reveal delay={200}>
+            <p className="hero-subtitle max-w-2xl mb-10">
+              <Editable k="basicneeds.hero.description" multiline>Food security, grocery access, affordable dining, and housing education. No student should struggle to meet basic needs.</Editable>
+            </p>
+          </Reveal>
         </div>
-        <div className="absolute top-0 right-0 w-96 h-96 bg-[#d29922]/10 blur-3xl rounded-full" />
-        <div className="relative max-w-6xl mx-auto px-6 py-16">
-          <p className="text-[#d29922] text-xs font-medium tracking-widest uppercase mb-4">
-            <Editable k="basicneeds.hero.label">Basic Needs</Editable>
-          </p>
-          <h1 className="text-4xl md:text-5xl font-bold text-[#f0f6fc] tracking-tight mb-4">
-            <Editable k="basicneeds.hero.title">Supporting Every Tar Heel</Editable>
-          </h1>
-          <p className="text-[#8b949e] text-lg max-w-2xl leading-relaxed">
-            <Editable k="basicneeds.hero.description" multiline>Food security, grocery access, affordable dining, and housing education. No student should struggle to meet basic needs.</Editable>
-          </p>
-        </div>
-      </div>
+      </section>
 
       {/* Emergency Banner */}
-      <div className="bg-[#b62324] border-b border-[#da3633]">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-3">
+      <div className="bg-red-900/30 border-b border-red-800/50">
+        <div className="max-w-[1600px] mx-auto px-6 lg:px-12 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-            <p className="font-semibold text-white uppercase text-sm tracking-wide"><Editable k="basicneeds.emergency.prompt">Need immediate help?</Editable></p>
+            <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse" />
+            <p className="font-medium text-white text-sm tracking-wide"><Editable k="basicneeds.emergency.prompt">Need immediate help?</Editable></p>
           </div>
           <div className="flex flex-wrap gap-3 text-sm">
-            <a href="tel:919-966-4042" className="bg-white text-[#b62324] px-4 py-2 rounded font-mono font-bold hover:bg-[#f0f6fc] transition-colors">
+            <a href="tel:919-966-4042" className="btn-primary text-sm py-2 px-4">
               <Editable k="basicneeds.emergency.deanphone">Dean of Students: 919-966-4042</Editable>
             </a>
           </div>
@@ -177,17 +220,17 @@ export default function BasicNeedsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="bg-[#0d1117] sticky top-16 z-40 border-b border-[#30363d]">
-        <div className="max-w-6xl mx-auto px-6">
+      <div className="sticky top-20 z-40 bg-black/80 backdrop-blur-xl border-b border-gray-900">
+        <div className="max-w-[1600px] mx-auto px-6 lg:px-12">
           <div className="flex gap-0 overflow-x-auto">
             {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-4 text-xs font-medium tracking-wider uppercase whitespace-nowrap transition-all border-b-2 ${
+                className={`px-5 py-4 text-xs font-medium tracking-widest uppercase whitespace-nowrap transition-all border-b-2 ${
                   activeTab === tab.id
-                    ? 'border-[#d29922] text-[#d29922]'
-                    : 'border-transparent text-[#8b949e] hover:text-[#f0f6fc] hover:border-[#30363d]'
+                    ? 'border-white text-white'
+                    : 'border-transparent text-gray-500 hover:text-white hover:border-gray-700'
                 }`}
               >
                 {tab.label}
@@ -197,71 +240,84 @@ export default function BasicNeedsPage() {
         </div>
       </div>
 
-      <main className="bg-[#0d1117] min-h-screen">
-        <div className="max-w-6xl mx-auto px-6 py-12">
+      <main className="section-padding">
+        <div className="max-w-[1600px] mx-auto px-6 lg:px-12">
           {submitted && (
-            <div className="mb-8 bg-[#161b22] border border-[#d29922] rounded-lg p-5">
-              <p className="text-[#f0f6fc] font-medium">
-                {submitted === 'shuttle' && <Editable k="basicneeds.submitted.shuttle" multiline>Your shuttle reservation has been confirmed! Check your email for details.</Editable>}
-                {submitted === 'swipe' && <Editable k="basicneeds.submitted.swipe" multiline>Thank you! Your meal swipe share has been registered.</Editable>}
-              </p>
-              <button onClick={() => setSubmitted(null)} className="text-[#d29922] text-sm font-medium mt-3 hover:underline">
-                <Editable k="basicneeds.submitted.dismiss">Dismiss</Editable>
-              </button>
-            </div>
+            <Reveal>
+              <div className="card-highlight p-6 mb-8">
+                <p className="text-white font-medium">
+                  {submitted === 'shuttle' && <Editable k="basicneeds.submitted.shuttle" multiline>Your shuttle reservation has been confirmed! Check your email for details.</Editable>}
+                  {submitted === 'swipe' && <Editable k="basicneeds.submitted.swipe" multiline>Thank you! Your meal swipe share has been registered.</Editable>}
+                </p>
+                <button onClick={() => setSubmitted(null)} className="text-gray-400 text-sm font-medium mt-3 hover:text-white transition-colors">
+                  <Editable k="basicneeds.submitted.dismiss">Dismiss</Editable>
+                </button>
+              </div>
+            </Reveal>
           )}
 
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div>
-              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-8"><Editable k="basicneeds.overview.title">Basic Needs Initiatives</Editable></h2>
+              <Reveal>
+                <h2 className="section-title mb-8"><Editable k="basicneeds.overview.title">Basic Needs Initiatives</Editable></h2>
+              </Reveal>
 
-              <div className="grid md:grid-cols-2 gap-5 mb-12">
-                {deptPolicies.map(policy => (
-                  <div key={policy.id} className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 hover:border-[#d29922] transition-colors cursor-pointer"
-                    onClick={() => setActiveTab(
-                      policy.id === 'farmers-markets' ? 'farmers-markets' :
-                      policy.id === 'food-security-hub' ? 'food-security' :
-                      policy.id === 'plus-swipe-expansion' ? 'plus-swipe' :
-                      policy.id === 'grocery-shuttle' ? 'grocery-shuttle' :
-                      policy.id === 'offcampus-education' ? 'offcampus-living' : 'overview'
-                    )}>
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="font-semibold text-[#f0f6fc] pr-4">{policy.title}</h3>
-                      <span className={`px-2 py-0.5 rounded text-xs font-mono border flex-shrink-0 ${
-                        policy.status === 'completed' ? 'bg-[#3fb950]/10 text-[#3fb950] border-[#3fb950]' :
-                        policy.status === 'in_progress' ? 'bg-[#58a6ff]/10 text-[#58a6ff] border-[#58a6ff]' :
-                        'bg-[#21262d] text-[#6e7681] border-[#30363d]'
-                      }`}>
-                        {policy.progress}%
-                      </span>
+              <div className="grid md:grid-cols-2 gap-6 mb-16">
+                {deptPolicies.map((policy, index) => (
+                  <Reveal key={policy.id} delay={index * 50}>
+                    <div className="card p-6 cursor-pointer group"
+                      onClick={() => setActiveTab(
+                        policy.id === 'farmers-markets' ? 'farmers-markets' :
+                        policy.id === 'food-security-hub' ? 'food-security' :
+                        policy.id === 'plus-swipe-expansion' ? 'plus-swipe' :
+                        policy.id === 'grocery-shuttle' ? 'grocery-shuttle' :
+                        policy.id === 'offcampus-education' ? 'offcampus-living' : 'overview'
+                      )}>
+                      <div className="flex items-start justify-between mb-4">
+                        <h3 className="text-xl font-semibold text-white group-hover:text-gray-300 transition-colors pr-4">{policy.title}</h3>
+                        <span className="px-2 py-1 rounded text-xs font-mono text-gray-400 bg-white/5">
+                          {policy.progress}%
+                        </span>
+                      </div>
+                      <p className="text-gray-400 text-sm mb-6 line-clamp-2">{policy.description}</p>
+                      <div className="h-1 bg-gray-800 rounded overflow-hidden">
+                        <div className="h-full bg-white rounded transition-all" style={{ width: `${policy.progress}%` }} />
+                      </div>
                     </div>
-                    <p className="text-sm text-[#8b949e] mb-4 line-clamp-2">{policy.description}</p>
-                    <div className="h-1.5 bg-[#21262d] rounded overflow-hidden">
-                      <div className="h-full bg-[#d29922] rounded" style={{ width: `${policy.progress}%` }} />
-                    </div>
-                  </div>
+                  </Reveal>
                 ))}
               </div>
 
               {/* Quick Stats */}
-              <div className="grid md:grid-cols-4 gap-4">
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
-                  <p className="text-3xl font-mono font-bold" style={{ color: '#d29922' }}><Editable k="basicneeds.overview.stat1.value">847</Editable></p>
-                  <p className="text-xs text-[#6e7681] mt-1 uppercase tracking-widest"><Editable k="basicneeds.overview.stat1.label">Pantry Visits This Month</Editable></p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
-                  <p className="text-3xl font-mono font-bold" style={{ color: '#3fb950' }}><Editable k="basicneeds.overview.stat2.value">156</Editable></p>
-                  <p className="text-xs text-[#6e7681] mt-1 uppercase tracking-widest"><Editable k="basicneeds.overview.stat2.label">Shuttle Rides Given</Editable></p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
-                  <p className="text-3xl font-mono font-bold" style={{ color: '#58a6ff' }}><Editable k="basicneeds.overview.stat3.value">324</Editable></p>
-                  <p className="text-xs text-[#6e7681] mt-1 uppercase tracking-widest"><Editable k="basicneeds.overview.stat3.label">Swipes Shared</Editable></p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 text-center">
-                  <p className="text-3xl font-mono font-bold" style={{ color: '#a371f7' }}><Editable k="basicneeds.overview.stat4.value">89</Editable></p>
-                  <p className="text-xs text-[#6e7681] mt-1 uppercase tracking-widest"><Editable k="basicneeds.overview.stat4.label">Workshop Attendees</Editable></p>
-                </div>
+              <Reveal>
+                <span className="caption mb-6 block">Impact Metrics</span>
+              </Reveal>
+              <div className="grid md:grid-cols-4 gap-6">
+                <Reveal delay={50}>
+                  <div className="card p-6 text-center">
+                    <p className="text-3xl font-mono font-bold text-white"><Editable k="basicneeds.overview.stat1.value">847</Editable></p>
+                    <p className="text-xs text-gray-500 mt-2 uppercase tracking-widest"><Editable k="basicneeds.overview.stat1.label">Pantry Visits This Month</Editable></p>
+                  </div>
+                </Reveal>
+                <Reveal delay={100}>
+                  <div className="card p-6 text-center">
+                    <p className="text-3xl font-mono font-bold text-white"><Editable k="basicneeds.overview.stat2.value">156</Editable></p>
+                    <p className="text-xs text-gray-500 mt-2 uppercase tracking-widest"><Editable k="basicneeds.overview.stat2.label">Shuttle Rides Given</Editable></p>
+                  </div>
+                </Reveal>
+                <Reveal delay={150}>
+                  <div className="card p-6 text-center">
+                    <p className="text-3xl font-mono font-bold text-white"><Editable k="basicneeds.overview.stat3.value">324</Editable></p>
+                    <p className="text-xs text-gray-500 mt-2 uppercase tracking-widest"><Editable k="basicneeds.overview.stat3.label">Swipes Shared</Editable></p>
+                  </div>
+                </Reveal>
+                <Reveal delay={200}>
+                  <div className="card p-6 text-center">
+                    <p className="text-3xl font-mono font-bold text-white"><Editable k="basicneeds.overview.stat4.value">89</Editable></p>
+                    <p className="text-xs text-gray-500 mt-2 uppercase tracking-widest"><Editable k="basicneeds.overview.stat4.label">Workshop Attendees</Editable></p>
+                  </div>
+                </Reveal>
               </div>
             </div>
           )}
@@ -269,202 +325,179 @@ export default function BasicNeedsPage() {
           {/* Farmers Markets Tab - Policy 1 */}
           {activeTab === 'farmers-markets' && (
             <div>
-              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2"><Editable k="basicneeds.markets.title">On-Campus Farmers Markets</Editable></h2>
-              <p className="text-[#8b949e] mb-6"><Editable k="basicneeds.markets.subtitle">Fresh Local Produce and Chase Farm Stands</Editable></p>
+              <Reveal>
+                <h2 className="section-title mb-2"><Editable k="basicneeds.markets.title">On-Campus Farmers Markets</Editable></h2>
+                <p className="body-large text-gray-400 mb-8"><Editable k="basicneeds.markets.subtitle">Fresh Local Produce and Chase Farm Stands</Editable></p>
+              </Reveal>
 
               <PolicyProgress policy={getPolicy('farmers-markets')} />
 
               {/* Market Schedule */}
-              <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5"><Editable k="basicneeds.markets.scheduleheading">Market Schedule</Editable></h3>
-              <div className="grid md:grid-cols-2 gap-5 mb-10">
-                <div className="bg-[#161b22] border border-[#d29922] rounded-lg p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="text-2xl"></span>
-                    <div>
-                      <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.markets.pit.name">The Pit Market</Editable></h4>
-                      <p className="text-sm text-[#8b949e]"><Editable k="basicneeds.markets.pit.subtitle">Main campus location</Editable></p>
+              <Reveal>
+                <span className="caption mb-6 block"><Editable k="basicneeds.markets.scheduleheading">Market Schedule</Editable></span>
+              </Reveal>
+              <div className="grid md:grid-cols-2 gap-6 mb-16">
+                <Reveal delay={50}>
+                  <div className="card-highlight p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <span className="text-2xl"></span>
+                      <div>
+                        <h4 className="font-semibold text-white"><Editable k="basicneeds.markets.pit.name">The Pit Market</Editable></h4>
+                        <p className="text-sm text-gray-400"><Editable k="basicneeds.markets.pit.subtitle">Main campus location</Editable></p>
+                      </div>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <p className="text-white"><span className="text-gray-500"><Editable k="basicneeds.markets.label.when">When:</Editable></span> <Editable k="basicneeds.markets.pit.when">Wednesdays 11am-2pm</Editable></p>
+                      <p className="text-white"><span className="text-gray-500"><Editable k="basicneeds.markets.label.where">Where:</Editable></span> <Editable k="basicneeds.markets.pit.where">The Pit (Polk Place)</Editable></p>
+                      <p className="text-white"><span className="text-gray-500"><Editable k="basicneeds.markets.label.accepts">Accepts:</Editable></span> <Editable k="basicneeds.markets.pit.accepts">Cash, Card, Plus Swipe</Editable></p>
                     </div>
                   </div>
-                  <div className="space-y-2 text-sm">
-                    <p className="text-[#f0f6fc]"><span className="text-[#6e7681]"><Editable k="basicneeds.markets.label.when">When:</Editable></span> <Editable k="basicneeds.markets.pit.when">Wednesdays 11am-2pm</Editable></p>
-                    <p className="text-[#f0f6fc]"><span className="text-[#6e7681]"><Editable k="basicneeds.markets.label.where">Where:</Editable></span> <Editable k="basicneeds.markets.pit.where">The Pit (Polk Place)</Editable></p>
-                    <p className="text-[#f0f6fc]"><span className="text-[#6e7681]"><Editable k="basicneeds.markets.label.accepts">Accepts:</Editable></span> <Editable k="basicneeds.markets.pit.accepts">Cash, Card, Plus Swipe</Editable></p>
-                  </div>
-                </div>
+                </Reveal>
 
-                <div className="bg-[#161b22] border border-[#3fb950] rounded-lg p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="text-2xl"></span>
-                    <div>
-                      <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.markets.south.name">South Campus Stand</Editable></h4>
-                      <p className="text-sm text-[#8b949e]"><Editable k="basicneeds.markets.south.subtitle">Chase Farm partnership</Editable></p>
+                <Reveal delay={100}>
+                  <div className="card p-6">
+                    <div className="flex items-center gap-3 mb-4">
+                      <span className="text-2xl"></span>
+                      <div>
+                        <h4 className="font-semibold text-white"><Editable k="basicneeds.markets.south.name">South Campus Stand</Editable></h4>
+                        <p className="text-sm text-gray-400"><Editable k="basicneeds.markets.south.subtitle">Chase Farm partnership</Editable></p>
+                      </div>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <p className="text-white"><span className="text-gray-500"><Editable k="basicneeds.markets.label.when2">When:</Editable></span> <Editable k="basicneeds.markets.south.when">Fridays 3pm-6pm</Editable></p>
+                      <p className="text-white"><span className="text-gray-500"><Editable k="basicneeds.markets.label.where2">Where:</Editable></span> <Editable k="basicneeds.markets.south.where">Ram Village Community Center</Editable></p>
+                      <p className="text-white"><span className="text-gray-500"><Editable k="basicneeds.markets.label.accepts2">Accepts:</Editable></span> <Editable k="basicneeds.markets.south.accepts">Cash, Card, Plus Swipe</Editable></p>
                     </div>
                   </div>
-                  <div className="space-y-2 text-sm">
-                    <p className="text-[#f0f6fc]"><span className="text-[#6e7681]"><Editable k="basicneeds.markets.label.when2">When:</Editable></span> <Editable k="basicneeds.markets.south.when">Fridays 3pm-6pm</Editable></p>
-                    <p className="text-[#f0f6fc]"><span className="text-[#6e7681]"><Editable k="basicneeds.markets.label.where2">Where:</Editable></span> <Editable k="basicneeds.markets.south.where">Ram Village Community Center</Editable></p>
-                    <p className="text-[#f0f6fc]"><span className="text-[#6e7681]"><Editable k="basicneeds.markets.label.accepts2">Accepts:</Editable></span> <Editable k="basicneeds.markets.south.accepts">Cash, Card, Plus Swipe</Editable></p>
-                  </div>
-                </div>
+                </Reveal>
               </div>
 
               {/* What's Available */}
-              <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5"><Editable k="basicneeds.markets.findheading">What You'll Find</Editable></h3>
-              <div className="grid md:grid-cols-4 gap-4 mb-10">
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 text-center">
-                  <span className="text-2xl"></span>
-                  <p className="text-sm text-[#f0f6fc] mt-2"><Editable k="basicneeds.markets.product1">Fresh Vegetables</Editable></p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 text-center">
-                  <span className="text-2xl"></span>
-                  <p className="text-sm text-[#f0f6fc] mt-2"><Editable k="basicneeds.markets.product2">Seasonal Fruits</Editable></p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 text-center">
-                  <span className="text-2xl"></span>
-                  <p className="text-sm text-[#f0f6fc] mt-2"><Editable k="basicneeds.markets.product3">Farm Fresh Eggs</Editable></p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 text-center">
-                  <span className="text-2xl"></span>
-                  <p className="text-sm text-[#f0f6fc] mt-2"><Editable k="basicneeds.markets.product4">Local Honey</Editable></p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 text-center">
-                  <span className="text-2xl"></span>
-                  <p className="text-sm text-[#f0f6fc] mt-2"><Editable k="basicneeds.markets.product5">Artisan Breads</Editable></p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 text-center">
-                  <span className="text-2xl"></span>
-                  <p className="text-sm text-[#f0f6fc] mt-2"><Editable k="basicneeds.markets.product6">Local Cheeses</Editable></p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 text-center">
-                  <span className="text-2xl"></span>
-                  <p className="text-sm text-[#f0f6fc] mt-2"><Editable k="basicneeds.markets.product7">Fresh Herbs</Editable></p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 text-center">
-                  <span className="text-2xl"></span>
-                  <p className="text-sm text-[#f0f6fc] mt-2"><Editable k="basicneeds.markets.product8">Prepared Foods</Editable></p>
-                </div>
+              <Reveal>
+                <span className="caption mb-6 block"><Editable k="basicneeds.markets.findheading">What You'll Find</Editable></span>
+              </Reveal>
+              <div className="grid md:grid-cols-4 gap-4 mb-16">
+                {[
+                  { emoji: '', key: 'product1', label: 'Fresh Vegetables' },
+                  { emoji: '', key: 'product2', label: 'Seasonal Fruits' },
+                  { emoji: '', key: 'product3', label: 'Farm Fresh Eggs' },
+                  { emoji: '', key: 'product4', label: 'Local Honey' },
+                  { emoji: '', key: 'product5', label: 'Artisan Breads' },
+                  { emoji: '', key: 'product6', label: 'Local Cheeses' },
+                  { emoji: '', key: 'product7', label: 'Fresh Herbs' },
+                  { emoji: '', key: 'product8', label: 'Prepared Foods' },
+                ].map((item, i) => (
+                  <Reveal key={item.key} delay={i * 30}>
+                    <div className="card p-4 text-center">
+                      <span className="text-2xl">{item.emoji}</span>
+                      <p className="text-sm text-white mt-2"><Editable k={`basicneeds.markets.${item.key}`}>{item.label}</Editable></p>
+                    </div>
+                  </Reveal>
+                ))}
               </div>
 
               {/* Partner Farms */}
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                <h3 className="font-semibold text-[#f0f6fc] mb-4"><Editable k="basicneeds.markets.partnersheading">Partner Farms & Vendors</Editable></h3>
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div className="flex items-center gap-2 text-sm text-[#8b949e]">
-                    <span className="text-[#3fb950]">-</span> <Editable k="basicneeds.markets.farm1">Carrboro Farmers Market</Editable>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-[#8b949e]">
-                    <span className="text-[#3fb950]">-</span> <Editable k="basicneeds.markets.farm2">Chase Farm</Editable>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-[#8b949e]">
-                    <span className="text-[#3fb950]">-</span> <Editable k="basicneeds.markets.farm3">Maple View Farm</Editable>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-[#8b949e]">
-                    <span className="text-[#3fb950]">-</span> <Editable k="basicneeds.markets.farm4">Cates Farm</Editable>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-[#8b949e]">
-                    <span className="text-[#3fb950]">-</span> <Editable k="basicneeds.markets.farm5">Celebrity Dairy</Editable>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-[#8b949e]">
-                    <span className="text-[#3fb950]">-</span> <Editable k="basicneeds.markets.farm6">Sunrise Farm</Editable>
+              <Reveal>
+                <div className="card p-8">
+                  <h3 className="font-semibold text-white mb-6"><Editable k="basicneeds.markets.partnersheading">Partner Farms & Vendors</Editable></h3>
+                  <div className="grid md:grid-cols-3 gap-4">
+                    {['Carrboro Farmers Market', 'Chase Farm', 'Maple View Farm', 'Cates Farm', 'Celebrity Dairy', 'Sunrise Farm'].map((farm, i) => (
+                      <div key={i} className="flex items-center gap-3 text-sm text-gray-400">
+                        <span className="text-white">-</span> <Editable k={`basicneeds.markets.farm${i + 1}`}>{farm}</Editable>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
+              </Reveal>
             </div>
           )}
 
           {/* Food Security Hub Tab - Policy 2 */}
           {activeTab === 'food-security' && (
             <div>
-              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2"><Editable k="basicneeds.hub.title">Centralized Food Security Hub</Editable></h2>
-              <p className="text-[#8b949e] mb-6"><Editable k="basicneeds.hub.subtitle">Meal Swipe Sharing, Pantries, and Community Fridges</Editable></p>
+              <Reveal>
+                <h2 className="section-title mb-2"><Editable k="basicneeds.hub.title">Centralized Food Security Hub</Editable></h2>
+                <p className="body-large text-gray-400 mb-8"><Editable k="basicneeds.hub.subtitle">Meal Swipe Sharing, Pantries, and Community Fridges</Editable></p>
+              </Reveal>
 
               <PolicyProgress policy={getPolicy('food-security-hub')} />
 
-              <div className="grid lg:grid-cols-2 gap-8 mb-10">
+              <div className="grid lg:grid-cols-2 gap-12 mb-16">
                 {/* Meal Swipe Sharing */}
-                <div className="bg-[#161b22] border border-[#58a6ff] rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-[#f0f6fc] mb-4"><Editable k="basicneeds.hub.swipesharing.title">Meal Swipe Sharing</Editable></h3>
-                  <p className="text-sm text-[#8b949e] mb-6"><Editable k="basicneeds.hub.swipesharing.description" multiline>Share your extra meal swipes with students in need, or request swipes when you need them.</Editable></p>
+                <Reveal>
+                  <div className="card-highlight p-8">
+                    <h3 className="text-xl font-semibold text-white mb-4"><Editable k="basicneeds.hub.swipesharing.title">Meal Swipe Sharing</Editable></h3>
+                    <p className="text-sm text-gray-400 mb-8"><Editable k="basicneeds.hub.swipesharing.description" multiline>Share your extra meal swipes with students in need, or request swipes when you need them.</Editable></p>
 
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div className="text-center p-4 bg-[#21262d] rounded-lg">
-                      <p className="text-2xl font-mono font-bold text-[#58a6ff]"><Editable k="basicneeds.hub.swipesharing.sharedcount">324</Editable></p>
-                      <p className="text-xs text-[#6e7681] uppercase"><Editable k="basicneeds.hub.swipesharing.sharedlabel">Swipes Shared</Editable></p>
+                    <div className="grid grid-cols-2 gap-4 mb-8">
+                      <div className="text-center p-4 bg-white/5 rounded-lg">
+                        <p className="text-2xl font-mono font-bold text-white"><Editable k="basicneeds.hub.swipesharing.sharedcount">324</Editable></p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wider"><Editable k="basicneeds.hub.swipesharing.sharedlabel">Swipes Shared</Editable></p>
+                      </div>
+                      <div className="text-center p-4 bg-white/5 rounded-lg">
+                        <p className="text-2xl font-mono font-bold text-white"><Editable k="basicneeds.hub.swipesharing.helpedcount">156</Editable></p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wider"><Editable k="basicneeds.hub.swipesharing.helpedlabel">Students Helped</Editable></p>
+                      </div>
                     </div>
-                    <div className="text-center p-4 bg-[#21262d] rounded-lg">
-                      <p className="text-2xl font-mono font-bold text-[#3fb950]"><Editable k="basicneeds.hub.swipesharing.helpedcount">156</Editable></p>
-                      <p className="text-xs text-[#6e7681] uppercase"><Editable k="basicneeds.hub.swipesharing.helpedlabel">Students Helped</Editable></p>
-                    </div>
+
+                    <button onClick={() => setShowSwipeShare(true)} className="btn-primary w-full">
+                      <Editable k="basicneeds.hub.swipesharing.button">Share or Request Swipes</Editable>
+                    </button>
                   </div>
-
-                  <button onClick={() => setShowSwipeShare(true)}
-                    className="w-full bg-[#58a6ff] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#79b8ff] transition-colors">
-                    <Editable k="basicneeds.hub.swipesharing.button">Share or Request Swipes</Editable>
-                  </button>
-                </div>
+                </Reveal>
 
                 {/* Pantry Locations */}
                 <div>
-                  <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5"><Editable k="basicneeds.hub.pantries.heading">Food Pantries</Editable></h3>
-                  <div className="space-y-3">
-                    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                      <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.hub.pantry1.name">Carolina Cupboard - Union</Editable></h4>
-                      <p className="text-sm text-[#8b949e] mt-1"><Editable k="basicneeds.hub.pantry1.address">Student Union Lower Level</Editable></p>
-                      <p className="text-xs text-[#6e7681] font-mono mt-1"><Editable k="basicneeds.hub.pantry1.hours">M-F 10am-4pm</Editable></p>
-                    </div>
-                    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                      <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.hub.pantry2.name">Carolina Cupboard - South</Editable></h4>
-                      <p className="text-sm text-[#8b949e] mt-1"><Editable k="basicneeds.hub.pantry2.address">Ram Village Community Center</Editable></p>
-                      <p className="text-xs text-[#6e7681] font-mono mt-1"><Editable k="basicneeds.hub.pantry2.hours">T/Th 2pm-6pm</Editable></p>
-                    </div>
-                    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                      <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.hub.pantry3.name">Carolina Cupboard - North</Editable></h4>
-                      <p className="text-sm text-[#8b949e] mt-1"><Editable k="basicneeds.hub.pantry3.address">Hinton James Ground Floor</Editable></p>
-                      <p className="text-xs text-[#6e7681] font-mono mt-1"><Editable k="basicneeds.hub.pantry3.hours">M/W 3pm-7pm</Editable></p>
-                    </div>
+                  <Reveal>
+                    <span className="caption mb-6 block"><Editable k="basicneeds.hub.pantries.heading">Food Pantries</Editable></span>
+                  </Reveal>
+                  <div className="space-y-4">
+                    {[
+                      { name: 'Carolina Cupboard - Union', address: 'Student Union Lower Level', hours: 'M-F 10am-4pm' },
+                      { name: 'Carolina Cupboard - South', address: 'Ram Village Community Center', hours: 'T/Th 2pm-6pm' },
+                      { name: 'Carolina Cupboard - North', address: 'Hinton James Ground Floor', hours: 'M/W 3pm-7pm' },
+                    ].map((pantry, i) => (
+                      <Reveal key={i} delay={i * 50}>
+                        <div className="card p-5">
+                          <h4 className="font-semibold text-white"><Editable k={`basicneeds.hub.pantry${i + 1}.name`}>{pantry.name}</Editable></h4>
+                          <p className="text-sm text-gray-400 mt-1"><Editable k={`basicneeds.hub.pantry${i + 1}.address`}>{pantry.address}</Editable></p>
+                          <p className="text-xs text-gray-500 font-mono mt-1"><Editable k={`basicneeds.hub.pantry${i + 1}.hours`}>{pantry.hours}</Editable></p>
+                        </div>
+                      </Reveal>
+                    ))}
                   </div>
                 </div>
               </div>
 
               {/* Community Fridges */}
-              <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5"><Editable k="basicneeds.hub.fridges.heading">Community Fridges</Editable></h3>
+              <Reveal>
+                <span className="caption mb-6 block"><Editable k="basicneeds.hub.fridges.heading">Community Fridges</Editable></span>
+              </Reveal>
               <div className="grid md:grid-cols-4 gap-4">
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[#3fb950]"></span>
-                    <h4 className="font-semibold text-[#f0f6fc] text-sm"><Editable k="basicneeds.hub.fridge1.location">Student Union</Editable></h4>
-                  </div>
-                  <p className="text-xs text-[#8b949e]"><Editable k="basicneeds.hub.fridge1.building">Near Room 1301</Editable></p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[#3fb950]"></span>
-                    <h4 className="font-semibold text-[#f0f6fc] text-sm"><Editable k="basicneeds.hub.fridge2.location">Davis Library</Editable></h4>
-                  </div>
-                  <p className="text-xs text-[#8b949e]"><Editable k="basicneeds.hub.fridge2.building">Ground Floor</Editable></p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[#3fb950]"></span>
-                    <h4 className="font-semibold text-[#f0f6fc] text-sm"><Editable k="basicneeds.hub.fridge3.location">Sitterson Hall</Editable></h4>
-                  </div>
-                  <p className="text-xs text-[#8b949e]"><Editable k="basicneeds.hub.fridge3.building">Main Lobby</Editable></p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[#3fb950]"></span>
-                    <h4 className="font-semibold text-[#f0f6fc] text-sm"><Editable k="basicneeds.hub.fridge4.location">Kenan-Flagler</Editable></h4>
-                  </div>
-                  <p className="text-xs text-[#8b949e]"><Editable k="basicneeds.hub.fridge4.building">Student Lounge</Editable></p>
-                </div>
+                {[
+                  { location: 'Student Union', building: 'Near Room 1301' },
+                  { location: 'Davis Library', building: 'Ground Floor' },
+                  { location: 'Sitterson Hall', building: 'Main Lobby' },
+                  { location: 'Kenan-Flagler', building: 'Student Lounge' },
+                ].map((fridge, i) => (
+                  <Reveal key={i} delay={i * 50}>
+                    <div className="card p-5">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-white">-</span>
+                        <h4 className="font-semibold text-white text-sm"><Editable k={`basicneeds.hub.fridge${i + 1}.location`}>{fridge.location}</Editable></h4>
+                      </div>
+                      <p className="text-xs text-gray-500"><Editable k={`basicneeds.hub.fridge${i + 1}.building`}>{fridge.building}</Editable></p>
+                    </div>
+                  </Reveal>
+                ))}
               </div>
 
               {/* Swipe Share Modal */}
               {showSwipeShare && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg max-w-md w-full p-6">
-                    <h3 className="text-xl font-bold text-[#f0f6fc] mb-6"><Editable k="basicneeds.hub.modal.title">Meal Swipe Exchange</Editable></h3>
-                    <form onSubmit={handleFormSubmit('swipe', swipeFormData)} className="space-y-4">
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                  <div className="card max-w-md w-full p-8">
+                    <h3 className="text-2xl font-bold text-white mb-8"><Editable k="basicneeds.hub.modal.title">Meal Swipe Exchange</Editable></h3>
+                    <form onSubmit={handleFormSubmit('swipe', swipeFormData)} className="space-y-5">
                       <Select label="I want to..." required value={swipeFormData.action} onChange={e => setSwipeFormData({...swipeFormData, action: e.target.value})}
                         options={[
                           { value: 'share', label: 'Share my extra swipes' },
@@ -475,11 +508,11 @@ export default function BasicNeedsPage() {
                       <Input label="Email" type="email" required value={swipeFormData.email} onChange={e => setSwipeFormData({...swipeFormData, email: e.target.value})} />
                       <Input label="Number of Swipes" type="number" required value={swipeFormData.swipes} onChange={e => setSwipeFormData({...swipeFormData, swipes: e.target.value})} />
                       <Textarea label="Message (optional)" rows={2} value={swipeFormData.message} onChange={e => setSwipeFormData({...swipeFormData, message: e.target.value})} />
-                      <div className="flex gap-3 pt-2">
-                        <button type="submit" disabled={isSubmitting} className="flex-1 bg-[#58a6ff] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#79b8ff] disabled:opacity-50 disabled:cursor-not-allowed">
+                      <div className="flex gap-4 pt-4">
+                        <button type="submit" disabled={isSubmitting} className="btn-primary flex-1">
                           {isSubmitting ? 'Submitting...' : <Editable k="basicneeds.hub.modal.submit">Submit</Editable>}
                         </button>
-                        <button type="button" onClick={() => setShowSwipeShare(false)} className="px-6 py-3 rounded text-[#8b949e] border border-[#30363d] hover:bg-[#21262d]">
+                        <button type="button" onClick={() => setShowSwipeShare(false)} className="btn-secondary">
                           <Editable k="basicneeds.hub.modal.cancel">Cancel</Editable>
                         </button>
                       </div>
@@ -493,212 +526,168 @@ export default function BasicNeedsPage() {
           {/* Plus Swipe Tab - Policy 3 */}
           {activeTab === 'plus-swipe' && (
             <div>
-              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2"><Editable k="basicneeds.plusswipe.title">Expand Plus Swipe Options</Editable></h2>
-              <p className="text-[#8b949e] mb-6"><Editable k="basicneeds.plusswipe.subtitle">Healthier Off-Campus Dining Locations</Editable></p>
+              <Reveal>
+                <h2 className="section-title mb-2"><Editable k="basicneeds.plusswipe.title">Expand Plus Swipe Options</Editable></h2>
+                <p className="body-large text-gray-400 mb-8"><Editable k="basicneeds.plusswipe.subtitle">Healthier Off-Campus Dining Locations</Editable></p>
+              </Reveal>
 
               <PolicyProgress policy={getPolicy('plus-swipe-expansion')} />
 
               {/* Current Vendors */}
-              <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5"><Editable k="basicneeds.plusswipe.currentheading">Current Plus Swipe Vendors</Editable></h3>
-              <div className="grid md:grid-cols-3 gap-4 mb-10">
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                  <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.plusswipe.vendor1.name">Alpine Bagel</Editable></h4>
-                  <p className="text-sm text-[#8b949e] mt-1"><Editable k="basicneeds.plusswipe.vendor1.type">Breakfast/Lunch</Editable></p>
-                  <p className="text-xs text-[#6e7681] mt-1"><Editable k="basicneeds.plusswipe.vendor1.location">Student Union</Editable></p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                  <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.plusswipe.vendor2.name">Starbucks</Editable></h4>
-                  <p className="text-sm text-[#8b949e] mt-1"><Editable k="basicneeds.plusswipe.vendor2.type">Coffee/Snacks</Editable></p>
-                  <p className="text-xs text-[#6e7681] mt-1"><Editable k="basicneeds.plusswipe.vendor2.location">Multiple locations</Editable></p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                  <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.plusswipe.vendor3.name">Chick-fil-A</Editable></h4>
-                  <p className="text-sm text-[#8b949e] mt-1"><Editable k="basicneeds.plusswipe.vendor3.type">Fast Food</Editable></p>
-                  <p className="text-xs text-[#6e7681] mt-1"><Editable k="basicneeds.plusswipe.vendor3.location">Student Union</Editable></p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                  <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.plusswipe.vendor4.name">Panda Express</Editable></h4>
-                  <p className="text-sm text-[#8b949e] mt-1"><Editable k="basicneeds.plusswipe.vendor4.type">Fast Food</Editable></p>
-                  <p className="text-xs text-[#6e7681] mt-1"><Editable k="basicneeds.plusswipe.vendor4.location">Student Union</Editable></p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                  <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.plusswipe.vendor5.name">Wendy's</Editable></h4>
-                  <p className="text-sm text-[#8b949e] mt-1"><Editable k="basicneeds.plusswipe.vendor5.type">Fast Food</Editable></p>
-                  <p className="text-xs text-[#6e7681] mt-1"><Editable k="basicneeds.plusswipe.vendor5.location">Lenoir</Editable></p>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                  <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.plusswipe.vendor6.name">Subway</Editable></h4>
-                  <p className="text-sm text-[#8b949e] mt-1"><Editable k="basicneeds.plusswipe.vendor6.type">Sandwiches</Editable></p>
-                  <p className="text-xs text-[#6e7681] mt-1"><Editable k="basicneeds.plusswipe.vendor6.location">Student Union</Editable></p>
-                </div>
+              <Reveal>
+                <span className="caption mb-6 block"><Editable k="basicneeds.plusswipe.currentheading">Current Plus Swipe Vendors</Editable></span>
+              </Reveal>
+              <div className="grid md:grid-cols-3 gap-4 mb-16">
+                {[
+                  { name: 'Alpine Bagel', type: 'Breakfast/Lunch', location: 'Student Union' },
+                  { name: 'Starbucks', type: 'Coffee/Snacks', location: 'Multiple locations' },
+                  { name: 'Chick-fil-A', type: 'Fast Food', location: 'Student Union' },
+                  { name: 'Panda Express', type: 'Fast Food', location: 'Student Union' },
+                  { name: "Wendy's", type: 'Fast Food', location: 'Lenoir' },
+                  { name: 'Subway', type: 'Sandwiches', location: 'Student Union' },
+                ].map((vendor, i) => (
+                  <Reveal key={i} delay={i * 30}>
+                    <div className="card p-5">
+                      <h4 className="font-semibold text-white"><Editable k={`basicneeds.plusswipe.vendor${i + 1}.name`}>{vendor.name}</Editable></h4>
+                      <p className="text-sm text-gray-400 mt-1"><Editable k={`basicneeds.plusswipe.vendor${i + 1}.type`}>{vendor.type}</Editable></p>
+                      <p className="text-xs text-gray-500 mt-1"><Editable k={`basicneeds.plusswipe.vendor${i + 1}.location`}>{vendor.location}</Editable></p>
+                    </div>
+                  </Reveal>
+                ))}
               </div>
 
               {/* Proposed Additions */}
-              <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5"><Editable k="basicneeds.plusswipe.proposedheading">Proposed Healthier Options</Editable></h3>
-              <div className="bg-[#161b22] border border-[#d29922] rounded-lg p-6 mb-10">
-                <p className="text-sm text-[#8b949e] mb-6"><Editable k="basicneeds.plusswipe.proposeddesc" multiline>We're advocating to add these healthier off-campus options to Plus Swipe:</Editable></p>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="flex items-start gap-3">
-                    <span className="text-[#d29922]">&gt;</span>
-                    <div>
-                      <p className="font-medium text-[#f0f6fc]"><Editable k="basicneeds.plusswipe.proposed1.name">Vimala's Curryblossom</Editable></p>
-                      <p className="text-xs text-[#8b949e]"><Editable k="basicneeds.plusswipe.proposed1.reason">Local, healthy Indian cuisine</Editable></p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="text-[#d29922]">&gt;</span>
-                    <div>
-                      <p className="font-medium text-[#f0f6fc]"><Editable k="basicneeds.plusswipe.proposed2.name">Roots Natural Kitchen</Editable></p>
-                      <p className="text-xs text-[#8b949e]"><Editable k="basicneeds.plusswipe.proposed2.reason">Build-your-own grain bowls</Editable></p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="text-[#d29922]">&gt;</span>
-                    <div>
-                      <p className="font-medium text-[#f0f6fc]"><Editable k="basicneeds.plusswipe.proposed3.name">Med Deli</Editable></p>
-                      <p className="text-xs text-[#8b949e]"><Editable k="basicneeds.plusswipe.proposed3.reason">Mediterranean, vegetarian-friendly</Editable></p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="text-[#d29922]">&gt;</span>
-                    <div>
-                      <p className="font-medium text-[#f0f6fc]"><Editable k="basicneeds.plusswipe.proposed4.name">Cosmic Cantina</Editable></p>
-                      <p className="text-xs text-[#8b949e]"><Editable k="basicneeds.plusswipe.proposed4.reason">Late-night healthy options</Editable></p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="text-[#d29922]">&gt;</span>
-                    <div>
-                      <p className="font-medium text-[#f0f6fc]"><Editable k="basicneeds.plusswipe.proposed5.name">Guasaca</Editable></p>
-                      <p className="text-xs text-[#8b949e]"><Editable k="basicneeds.plusswipe.proposed5.reason">Fresh Venezuelan bowls</Editable></p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <span className="text-[#d29922]">&gt;</span>
-                    <div>
-                      <p className="font-medium text-[#f0f6fc]"><Editable k="basicneeds.plusswipe.proposed6.name">Harvest 18</Editable></p>
-                      <p className="text-xs text-[#8b949e]"><Editable k="basicneeds.plusswipe.proposed6.reason">Farm-to-table salads</Editable></p>
-                    </div>
+              <Reveal>
+                <span className="caption mb-6 block"><Editable k="basicneeds.plusswipe.proposedheading">Proposed Healthier Options</Editable></span>
+              </Reveal>
+              <Reveal delay={100}>
+                <div className="card-highlight p-8 mb-16">
+                  <p className="text-sm text-gray-400 mb-8"><Editable k="basicneeds.plusswipe.proposeddesc" multiline>We're advocating to add these healthier off-campus options to Plus Swipe:</Editable></p>
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {[
+                      { name: "Vimala's Curryblossom", reason: 'Local, healthy Indian cuisine' },
+                      { name: 'Roots Natural Kitchen', reason: 'Build-your-own grain bowls' },
+                      { name: 'Med Deli', reason: 'Mediterranean, vegetarian-friendly' },
+                      { name: 'Cosmic Cantina', reason: 'Late-night healthy options' },
+                      { name: 'Guasaca', reason: 'Fresh Venezuelan bowls' },
+                      { name: 'Harvest 18', reason: 'Farm-to-table salads' },
+                    ].map((item, i) => (
+                      <div key={i} className="flex items-start gap-3">
+                        <span className="text-white">-</span>
+                        <div>
+                          <p className="font-medium text-white"><Editable k={`basicneeds.plusswipe.proposed${i + 1}.name`}>{item.name}</Editable></p>
+                          <p className="text-xs text-gray-500"><Editable k={`basicneeds.plusswipe.proposed${i + 1}.reason`}>{item.reason}</Editable></p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              </div>
+              </Reveal>
 
               {/* Support the Initiative */}
-              <div className="bg-[#161b22] border border-[#3fb950] rounded-lg p-6">
-                <h3 className="font-semibold text-[#f0f6fc] mb-4"><Editable k="basicneeds.plusswipe.support.title">Support This Initiative</Editable></h3>
-                <p className="text-sm text-[#8b949e] mb-4"><Editable k="basicneeds.plusswipe.support.description" multiline>Help us expand Plus Swipe to healthier options by sharing your feedback with Carolina Dining.</Editable></p>
-                <button className="bg-[#3fb950] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#46c356] transition-colors">
-                  <Editable k="basicneeds.plusswipe.support.button">Submit Feedback to Dining</Editable>
-                </button>
-              </div>
+              <Reveal>
+                <div className="card p-8">
+                  <h3 className="font-semibold text-white mb-4"><Editable k="basicneeds.plusswipe.support.title">Support This Initiative</Editable></h3>
+                  <p className="text-sm text-gray-400 mb-6"><Editable k="basicneeds.plusswipe.support.description" multiline>Help us expand Plus Swipe to healthier options by sharing your feedback with Carolina Dining.</Editable></p>
+                  <button className="btn-primary">
+                    <Editable k="basicneeds.plusswipe.support.button">Submit Feedback to Dining</Editable>
+                  </button>
+                </div>
+              </Reveal>
             </div>
           )}
 
           {/* Grocery Shuttle Tab - Policy 4 */}
           {activeTab === 'grocery-shuttle' && (
             <div>
-              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2"><Editable k="basicneeds.shuttle.title">Student Grocery Shuttle</Editable></h2>
-              <p className="text-[#8b949e] mb-6"><Editable k="basicneeds.shuttle.subtitle">Free Transportation to Affordable Grocery Stores</Editable></p>
+              <Reveal>
+                <h2 className="section-title mb-2"><Editable k="basicneeds.shuttle.title">Student Grocery Shuttle</Editable></h2>
+                <p className="body-large text-gray-400 mb-8"><Editable k="basicneeds.shuttle.subtitle">Free Transportation to Affordable Grocery Stores</Editable></p>
+              </Reveal>
 
               <PolicyProgress policy={getPolicy('grocery-shuttle')} />
 
-              <div className="grid lg:grid-cols-2 gap-8 mb-10">
+              <div className="grid lg:grid-cols-2 gap-12 mb-16">
                 {/* Schedule */}
                 <div>
-                  <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5"><Editable k="basicneeds.shuttle.scheduleheading">Shuttle Schedule</Editable></h3>
+                  <Reveal>
+                    <span className="caption mb-6 block"><Editable k="basicneeds.shuttle.scheduleheading">Shuttle Schedule</Editable></span>
+                  </Reveal>
                   <div className="space-y-4">
-                    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.shuttle.schedule1.day">Saturday</Editable></h4>
-                          <p className="text-sm text-[#8b949e] mt-1"><Editable k="basicneeds.shuttle.schedule1.route">Trader Joe's & Harris Teeter</Editable></p>
-                          <p className="text-xs text-[#6e7681] font-mono mt-1"><Editable k="basicneeds.shuttle.schedule1.time">10am - 4pm</Editable></p>
+                    {[
+                      { day: 'Saturday', route: "Trader Joe's & Harris Teeter", time: '10am - 4pm', status: 'running' },
+                      { day: 'Sunday', route: 'Walmart & Aldi', time: '12pm - 5pm', status: 'running' },
+                      { day: 'Wednesday', route: 'Harris Teeter & Whole Foods', time: '4pm - 8pm', status: 'coming' },
+                    ].map((schedule, i) => (
+                      <Reveal key={i} delay={i * 50}>
+                        <div className="card p-5">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h4 className="font-semibold text-white"><Editable k={`basicneeds.shuttle.schedule${i + 1}.day`}>{schedule.day}</Editable></h4>
+                              <p className="text-sm text-gray-400 mt-1"><Editable k={`basicneeds.shuttle.schedule${i + 1}.route`}>{schedule.route}</Editable></p>
+                              <p className="text-xs text-gray-500 font-mono mt-1"><Editable k={`basicneeds.shuttle.schedule${i + 1}.time`}>{schedule.time}</Editable></p>
+                            </div>
+                            <span className={`px-2 py-1 rounded text-xs font-mono ${
+                              schedule.status === 'running' ? 'bg-white/10 text-white' : 'bg-yellow-500/20 text-yellow-400'
+                            }`}>
+                              {schedule.status === 'running' ? <Editable k="basicneeds.shuttle.status.running">RUNNING</Editable> : <Editable k="basicneeds.shuttle.status.coming">COMING SOON</Editable>}
+                            </span>
+                          </div>
                         </div>
-                        <span className="px-2 py-1 rounded text-xs font-mono bg-[#3fb950]/10 text-[#3fb950] border border-[#3fb950]">
-                          <Editable k="basicneeds.shuttle.status.running">RUNNING</Editable>
-                        </span>
-                      </div>
-                    </div>
-                    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.shuttle.schedule2.day">Sunday</Editable></h4>
-                          <p className="text-sm text-[#8b949e] mt-1"><Editable k="basicneeds.shuttle.schedule2.route">Walmart & Aldi</Editable></p>
-                          <p className="text-xs text-[#6e7681] font-mono mt-1"><Editable k="basicneeds.shuttle.schedule2.time">12pm - 5pm</Editable></p>
-                        </div>
-                        <span className="px-2 py-1 rounded text-xs font-mono bg-[#3fb950]/10 text-[#3fb950] border border-[#3fb950]">
-                          <Editable k="basicneeds.shuttle.status.running2">RUNNING</Editable>
-                        </span>
-                      </div>
-                    </div>
-                    <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.shuttle.schedule3.day">Wednesday</Editable></h4>
-                          <p className="text-sm text-[#8b949e] mt-1"><Editable k="basicneeds.shuttle.schedule3.route">Harris Teeter & Whole Foods</Editable></p>
-                          <p className="text-xs text-[#6e7681] font-mono mt-1"><Editable k="basicneeds.shuttle.schedule3.time">4pm - 8pm</Editable></p>
-                        </div>
-                        <span className="px-2 py-1 rounded text-xs font-mono bg-[#d29922]/10 text-[#d29922] border border-[#d29922]">
-                          <Editable k="basicneeds.shuttle.status.coming">COMING SOON</Editable>
-                        </span>
-                      </div>
-                    </div>
+                      </Reveal>
+                    ))}
                   </div>
                 </div>
 
                 {/* Reserve Spot */}
-                <div className="bg-[#161b22] border border-[#d29922] rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-[#f0f6fc] mb-4"><Editable k="basicneeds.shuttle.reserve.title">Reserve Your Spot</Editable></h3>
-                  <p className="text-sm text-[#8b949e] mb-6"><Editable k="basicneeds.shuttle.reserve.description" multiline>Reservations recommended but walk-ons welcome if space allows. Shuttle departs from the Student Union.</Editable></p>
+                <Reveal>
+                  <div className="card-highlight p-8">
+                    <h3 className="text-xl font-semibold text-white mb-4"><Editable k="basicneeds.shuttle.reserve.title">Reserve Your Spot</Editable></h3>
+                    <p className="text-sm text-gray-400 mb-8"><Editable k="basicneeds.shuttle.reserve.description" multiline>Reservations recommended but walk-ons welcome if space allows. Shuttle departs from the Student Union.</Editable></p>
 
-                  <div className="space-y-4 mb-6">
-                    <div className="flex items-center gap-2 text-sm text-[#8b949e]">
-                      <span className="text-[#3fb950]">-</span> <Editable k="basicneeds.shuttle.feature1">Free for all UNC students</Editable>
+                    <div className="space-y-3 mb-8">
+                      {['Free for all UNC students', 'Bring your One Card', '1-2 hours shopping time', 'Help with groceries available'].map((feature, i) => (
+                        <div key={i} className="flex items-center gap-3 text-sm text-gray-400">
+                          <span className="text-white">-</span> <Editable k={`basicneeds.shuttle.feature${i + 1}`}>{feature}</Editable>
+                        </div>
+                      ))}
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-[#8b949e]">
-                      <span className="text-[#3fb950]">-</span> <Editable k="basicneeds.shuttle.feature2">Bring your One Card</Editable>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-[#8b949e]">
-                      <span className="text-[#3fb950]">-</span> <Editable k="basicneeds.shuttle.feature3">1-2 hours shopping time</Editable>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-[#8b949e]">
-                      <span className="text-[#3fb950]">-</span> <Editable k="basicneeds.shuttle.feature4">Help with groceries available</Editable>
-                    </div>
+
+                    <button onClick={() => setShowShuttleReservation(true)} className="btn-primary w-full">
+                      <Editable k="basicneeds.shuttle.reserve.button">Reserve a Spot</Editable>
+                    </button>
                   </div>
-
-                  <button onClick={() => setShowShuttleReservation(true)}
-                    className="w-full bg-[#d29922] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#e5ac30] transition-colors">
-                    <Editable k="basicneeds.shuttle.reserve.button">Reserve a Spot</Editable>
-                  </button>
-                </div>
+                </Reveal>
               </div>
 
               {/* How-To Guide */}
               {shuttleGuide && (
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-[#f0f6fc] mb-5">{shuttleGuide.title}</h3>
-                  <div className="grid md:grid-cols-4 gap-4">
-                    {shuttleGuide.steps.map(step => (
-                      <div key={step.step} className="relative">
-                        <div className="absolute -top-2 left-3 bg-[#d29922] text-[#0d1117] text-xs font-bold px-2 py-0.5 rounded">
-                          Step {step.step}
+                <Reveal>
+                  <div className="card p-8">
+                    <h3 className="text-xl font-semibold text-white mb-8">{shuttleGuide.title}</h3>
+                    <div className="grid md:grid-cols-4 gap-6">
+                      {shuttleGuide.steps.map(step => (
+                        <div key={step.step} className="relative">
+                          <div className="absolute -top-3 left-4 bg-white text-black text-xs font-bold px-2 py-1 rounded">
+                            Step {step.step}
+                          </div>
+                          <div className="bg-white/5 rounded-lg p-5 pt-6">
+                            <h4 className="font-medium text-white text-sm mb-2">{step.title}</h4>
+                            <p className="text-xs text-gray-500">{step.description}</p>
+                          </div>
                         </div>
-                        <div className="bg-[#21262d] rounded-lg p-4 pt-5">
-                          <h4 className="font-medium text-[#f0f6fc] text-sm mb-1">{step.title}</h4>
-                          <p className="text-xs text-[#8b949e]">{step.description}</p>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                </Reveal>
               )}
 
               {/* Shuttle Reservation Modal */}
               {showShuttleReservation && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg max-w-md w-full p-6">
-                    <h3 className="text-xl font-bold text-[#f0f6fc] mb-6"><Editable k="basicneeds.shuttle.modal.title">Reserve Shuttle Spot</Editable></h3>
-                    <form onSubmit={handleFormSubmit('shuttle', shuttleFormData)} className="space-y-4">
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                  <div className="card max-w-md w-full p-8">
+                    <h3 className="text-2xl font-bold text-white mb-8"><Editable k="basicneeds.shuttle.modal.title">Reserve Shuttle Spot</Editable></h3>
+                    <form onSubmit={handleFormSubmit('shuttle', shuttleFormData)} className="space-y-5">
                       <Input label="Your Name" required value={shuttleFormData.name} onChange={e => setShuttleFormData({...shuttleFormData, name: e.target.value})} />
                       <Input label="Email" type="email" required value={shuttleFormData.email} onChange={e => setShuttleFormData({...shuttleFormData, email: e.target.value})} />
                       <Select label="Select Day" required value={shuttleFormData.day} onChange={e => setShuttleFormData({...shuttleFormData, day: e.target.value})}
@@ -714,11 +703,11 @@ export default function BasicNeedsPage() {
                           { value: '2pm', label: '2:00 PM' },
                         ]}
                       />
-                      <div className="flex gap-3 pt-2">
-                        <button type="submit" disabled={isSubmitting} className="flex-1 bg-[#d29922] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#e5ac30] disabled:opacity-50 disabled:cursor-not-allowed">
+                      <div className="flex gap-4 pt-4">
+                        <button type="submit" disabled={isSubmitting} className="btn-primary flex-1">
                           {isSubmitting ? 'Reserving...' : <Editable k="basicneeds.shuttle.modal.confirm">Confirm Reservation</Editable>}
                         </button>
-                        <button type="button" onClick={() => setShowShuttleReservation(false)} className="px-6 py-3 rounded text-[#8b949e] border border-[#30363d] hover:bg-[#21262d]">
+                        <button type="button" onClick={() => setShowShuttleReservation(false)} className="btn-secondary">
                           <Editable k="basicneeds.shuttle.modal.cancel">Cancel</Editable>
                         </button>
                       </div>
@@ -732,109 +721,96 @@ export default function BasicNeedsPage() {
           {/* Off-Campus Living Tab - Policy 5 */}
           {activeTab === 'offcampus-living' && (
             <div>
-              <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-2"><Editable k="basicneeds.offcampus.title">Off-Campus Living Education</Editable></h2>
-              <p className="text-[#8b949e] mb-6"><Editable k="basicneeds.offcampus.subtitle">Leases, Budgeting, and Housing Resources</Editable></p>
+              <Reveal>
+                <h2 className="section-title mb-2"><Editable k="basicneeds.offcampus.title">Off-Campus Living Education</Editable></h2>
+                <p className="body-large text-gray-400 mb-8"><Editable k="basicneeds.offcampus.subtitle">Leases, Budgeting, and Housing Resources</Editable></p>
+              </Reveal>
 
               <PolicyProgress policy={getPolicy('offcampus-education')} />
 
               {/* Upcoming Workshops */}
-              <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5"><Editable k="basicneeds.offcampus.workshopsheading">Upcoming Workshops</Editable></h3>
-              <div className="grid md:grid-cols-2 gap-4 mb-10">
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <div className="flex items-start justify-between mb-3">
-                    <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.offcampus.workshop1.title">Understanding Your Lease</Editable></h4>
-                    <span className="px-2 py-0.5 rounded text-xs bg-[#d29922]/10 text-[#d29922] border border-[#d29922]">
-                      <Editable k="basicneeds.offcampus.workshop1.spots">25 spots</Editable>
-                    </span>
-                  </div>
-                  <p className="text-sm text-[#8b949e]"><Editable k="basicneeds.offcampus.workshop1.datetime">Feb 15, 2026 at 5pm</Editable></p>
-                  <p className="text-xs text-[#6e7681] mt-1"><Editable k="basicneeds.offcampus.workshop1.location">Union 3201</Editable></p>
-                  <div className="flex items-center gap-4 mt-4">
-                    <a href={calendarEvents.leaseWorkshop} target="_blank" rel="noopener noreferrer" className="text-[#58a6ff] text-sm font-medium hover:underline">Add to Calendar</a>
-                  </div>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <div className="flex items-start justify-between mb-3">
-                    <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.offcampus.workshop2.title">Budgeting for Off-Campus Life</Editable></h4>
-                    <span className="px-2 py-0.5 rounded text-xs bg-[#d29922]/10 text-[#d29922] border border-[#d29922]">
-                      <Editable k="basicneeds.offcampus.workshop2.spots">30 spots</Editable>
-                    </span>
-                  </div>
-                  <p className="text-sm text-[#8b949e]"><Editable k="basicneeds.offcampus.workshop2.datetime">Feb 22, 2026 at 4pm</Editable></p>
-                  <p className="text-xs text-[#6e7681] mt-1"><Editable k="basicneeds.offcampus.workshop2.location">Union 3205</Editable></p>
-                  <div className="flex items-center gap-4 mt-4">
-                    <a href={calendarEvents.budgetingWorkshop} target="_blank" rel="noopener noreferrer" className="text-[#58a6ff] text-sm font-medium hover:underline">Add to Calendar</a>
-                  </div>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <div className="flex items-start justify-between mb-3">
-                    <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.offcampus.workshop3.title">Finding Roommates & Housing</Editable></h4>
-                    <span className="px-2 py-0.5 rounded text-xs bg-[#d29922]/10 text-[#d29922] border border-[#d29922]">
-                      <Editable k="basicneeds.offcampus.workshop3.spots">25 spots</Editable>
-                    </span>
-                  </div>
-                  <p className="text-sm text-[#8b949e]"><Editable k="basicneeds.offcampus.workshop3.datetime">Mar 1, 2026 at 5pm</Editable></p>
-                  <p className="text-xs text-[#6e7681] mt-1"><Editable k="basicneeds.offcampus.workshop3.location">Union 3201</Editable></p>
-                  <button className="mt-4 text-[#58a6ff] text-sm font-medium hover:underline"><Editable k="basicneeds.offcampus.registerlink3">Register</Editable></button>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-                  <div className="flex items-start justify-between mb-3">
-                    <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.offcampus.workshop4.title">Utilities & Bills 101</Editable></h4>
-                    <span className="px-2 py-0.5 rounded text-xs bg-[#d29922]/10 text-[#d29922] border border-[#d29922]">
-                      <Editable k="basicneeds.offcampus.workshop4.spots">30 spots</Editable>
-                    </span>
-                  </div>
-                  <p className="text-sm text-[#8b949e]"><Editable k="basicneeds.offcampus.workshop4.datetime">Mar 8, 2026 at 4pm</Editable></p>
-                  <p className="text-xs text-[#6e7681] mt-1"><Editable k="basicneeds.offcampus.workshop4.location">Union 3205</Editable></p>
-                  <button className="mt-4 text-[#58a6ff] text-sm font-medium hover:underline"><Editable k="basicneeds.offcampus.registerlink4">Register</Editable></button>
-                </div>
+              <Reveal>
+                <span className="caption mb-6 block"><Editable k="basicneeds.offcampus.workshopsheading">Upcoming Workshops</Editable></span>
+              </Reveal>
+              <div className="grid md:grid-cols-2 gap-4 mb-16">
+                {[
+                  { title: 'Understanding Your Lease', datetime: 'Feb 15, 2026 at 5pm', location: 'Union 3201', spots: '25 spots', calendar: calendarEvents.leaseWorkshop },
+                  { title: 'Budgeting for Off-Campus Life', datetime: 'Feb 22, 2026 at 4pm', location: 'Union 3205', spots: '30 spots', calendar: calendarEvents.budgetingWorkshop },
+                  { title: 'Finding Roommates & Housing', datetime: 'Mar 1, 2026 at 5pm', location: 'Union 3201', spots: '25 spots' },
+                  { title: 'Utilities & Bills 101', datetime: 'Mar 8, 2026 at 4pm', location: 'Union 3205', spots: '30 spots' },
+                ].map((workshop, i) => (
+                  <Reveal key={i} delay={i * 50}>
+                    <div className="card p-5">
+                      <div className="flex items-start justify-between mb-3">
+                        <h4 className="font-semibold text-white"><Editable k={`basicneeds.offcampus.workshop${i + 1}.title`}>{workshop.title}</Editable></h4>
+                        <span className="px-2 py-1 rounded text-xs bg-white/10 text-white">
+                          <Editable k={`basicneeds.offcampus.workshop${i + 1}.spots`}>{workshop.spots}</Editable>
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-400"><Editable k={`basicneeds.offcampus.workshop${i + 1}.datetime`}>{workshop.datetime}</Editable></p>
+                      <p className="text-xs text-gray-500 mt-1"><Editable k={`basicneeds.offcampus.workshop${i + 1}.location`}>{workshop.location}</Editable></p>
+                      <div className="flex items-center gap-4 mt-4">
+                        {workshop.calendar ? (
+                          <a href={workshop.calendar} target="_blank" rel="noopener noreferrer" className="text-white text-sm font-medium hover:text-gray-300 transition-colors">Add to Calendar</a>
+                        ) : (
+                          <button className="text-white text-sm font-medium hover:text-gray-300 transition-colors"><Editable k={`basicneeds.offcampus.registerlink${i + 1}`}>Register</Editable></button>
+                        )}
+                      </div>
+                    </div>
+                  </Reveal>
+                ))}
               </div>
 
               {/* Resources */}
-              <div className="grid lg:grid-cols-2 gap-8">
+              <div className="grid lg:grid-cols-2 gap-12">
                 {/* Peer Financial Coaches */}
-                <div className="bg-[#161b22] border border-[#58a6ff] rounded-lg p-6">
-                  <h3 className="text-lg font-semibold text-[#f0f6fc] mb-4"><Editable k="basicneeds.offcampus.coach.title">Meet with a Peer Financial Coach</Editable></h3>
-                  <p className="text-sm text-[#8b949e] mb-4"><Editable k="basicneeds.offcampus.coach.description" multiline>Our coaches are now trained in housing-related budgeting and can help you plan for off-campus expenses.</Editable></p>
-                  <ul className="space-y-2 mb-6">
-                    <li className="flex items-center gap-2 text-sm text-[#8b949e]">
-                      <span className="text-[#58a6ff]">-</span> <Editable k="basicneeds.offcampus.coach.feature1">One-on-one appointments</Editable>
-                    </li>
-                    <li className="flex items-center gap-2 text-sm text-[#8b949e]">
-                      <span className="text-[#58a6ff]">-</span> <Editable k="basicneeds.offcampus.coach.feature2">Help with lease review</Editable>
-                    </li>
-                    <li className="flex items-center gap-2 text-sm text-[#8b949e]">
-                      <span className="text-[#58a6ff]">-</span> <Editable k="basicneeds.offcampus.coach.feature3">Budget planning</Editable>
-                    </li>
-                    <li className="flex items-center gap-2 text-sm text-[#8b949e]">
-                      <span className="text-[#58a6ff]">-</span> <Editable k="basicneeds.offcampus.coach.feature4">Financial aid questions</Editable>
-                    </li>
-                  </ul>
-                  <button className="bg-[#58a6ff] text-[#0d1117] px-6 py-3 rounded font-semibold hover:bg-[#79b8ff] transition-colors">
-                    <Editable k="basicneeds.offcampus.coach.button">Schedule Appointment</Editable>
-                  </button>
-                </div>
+                <Reveal>
+                  <div className="card-highlight p-8">
+                    <h3 className="text-xl font-semibold text-white mb-4"><Editable k="basicneeds.offcampus.coach.title">Meet with a Peer Financial Coach</Editable></h3>
+                    <p className="text-sm text-gray-400 mb-6"><Editable k="basicneeds.offcampus.coach.description" multiline>Our coaches are now trained in housing-related budgeting and can help you plan for off-campus expenses.</Editable></p>
+                    <ul className="space-y-3 mb-8">
+                      {['One-on-one appointments', 'Help with lease review', 'Budget planning', 'Financial aid questions'].map((feature, i) => (
+                        <li key={i} className="flex items-center gap-3 text-sm text-gray-400">
+                          <span className="text-white">-</span> <Editable k={`basicneeds.offcampus.coach.feature${i + 1}`}>{feature}</Editable>
+                        </li>
+                      ))}
+                    </ul>
+                    <button className="btn-primary">
+                      <Editable k="basicneeds.offcampus.coach.button">Schedule Appointment</Editable>
+                    </button>
+                  </div>
+                </Reveal>
 
                 {/* Quick Resources */}
                 <div>
-                  <h3 className="text-sm font-semibold text-[#f0f6fc] tracking-widest uppercase mb-5"><Editable k="basicneeds.offcampus.resources.heading">Quick Resources</Editable></h3>
-                  <div className="space-y-3">
-                    <a href={externalLinks.offCampusHousing} target="_blank" rel="noopener noreferrer" className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 hover:border-[#d29922] transition-colors cursor-pointer block">
-                      <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.offcampus.resource1.title">Lease Checklist</Editable></h4>
-                      <p className="text-sm text-[#8b949e] mt-1"><Editable k="basicneeds.offcampus.resource1.desc">What to look for before signing</Editable></p>
-                    </a>
-                    <button onClick={downloadBudgetTemplate} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 hover:border-[#d29922] transition-colors cursor-pointer text-left w-full">
-                      <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.offcampus.resource2.title">Budget Template</Editable></h4>
-                      <p className="text-sm text-[#8b949e] mt-1"><Editable k="basicneeds.offcampus.resource2.desc">Download budget planning template</Editable></p>
-                    </button>
-                    <a href={externalLinks.offCampusHousing} target="_blank" rel="noopener noreferrer" className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 hover:border-[#d29922] transition-colors cursor-pointer block">
-                      <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.offcampus.resource3.title">Housing Search Guide</Editable></h4>
-                      <p className="text-sm text-[#8b949e] mt-1"><Editable k="basicneeds.offcampus.resource3.desc">Tips for finding apartments</Editable></p>
-                    </a>
-                    <button onClick={downloadRoommateAgreement} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 hover:border-[#d29922] transition-colors cursor-pointer text-left w-full">
-                      <h4 className="font-semibold text-[#f0f6fc]"><Editable k="basicneeds.offcampus.resource4.title">Roommate Agreement</Editable></h4>
-                      <p className="text-sm text-[#8b949e] mt-1"><Editable k="basicneeds.offcampus.resource4.desc">Download roommate agreement template</Editable></p>
-                    </button>
+                  <Reveal>
+                    <span className="caption mb-6 block"><Editable k="basicneeds.offcampus.resources.heading">Quick Resources</Editable></span>
+                  </Reveal>
+                  <div className="space-y-4">
+                    <Reveal delay={50}>
+                      <a href={externalLinks.offCampusHousing} target="_blank" rel="noopener noreferrer" className="card p-5 block group">
+                        <h4 className="font-semibold text-white group-hover:text-gray-300 transition-colors"><Editable k="basicneeds.offcampus.resource1.title">Lease Checklist</Editable></h4>
+                        <p className="text-sm text-gray-500 mt-1"><Editable k="basicneeds.offcampus.resource1.desc">What to look for before signing</Editable></p>
+                      </a>
+                    </Reveal>
+                    <Reveal delay={100}>
+                      <button onClick={downloadBudgetTemplate} className="card p-5 text-left w-full group">
+                        <h4 className="font-semibold text-white group-hover:text-gray-300 transition-colors"><Editable k="basicneeds.offcampus.resource2.title">Budget Template</Editable></h4>
+                        <p className="text-sm text-gray-500 mt-1"><Editable k="basicneeds.offcampus.resource2.desc">Download budget planning template</Editable></p>
+                      </button>
+                    </Reveal>
+                    <Reveal delay={150}>
+                      <a href={externalLinks.offCampusHousing} target="_blank" rel="noopener noreferrer" className="card p-5 block group">
+                        <h4 className="font-semibold text-white group-hover:text-gray-300 transition-colors"><Editable k="basicneeds.offcampus.resource3.title">Housing Search Guide</Editable></h4>
+                        <p className="text-sm text-gray-500 mt-1"><Editable k="basicneeds.offcampus.resource3.desc">Tips for finding apartments</Editable></p>
+                      </a>
+                    </Reveal>
+                    <Reveal delay={200}>
+                      <button onClick={downloadRoommateAgreement} className="card p-5 text-left w-full group">
+                        <h4 className="font-semibold text-white group-hover:text-gray-300 transition-colors"><Editable k="basicneeds.offcampus.resource4.title">Roommate Agreement</Editable></h4>
+                        <p className="text-sm text-gray-500 mt-1"><Editable k="basicneeds.offcampus.resource4.desc">Download roommate agreement template</Editable></p>
+                      </button>
+                    </Reveal>
                   </div>
                 </div>
               </div>
@@ -844,118 +820,132 @@ export default function BasicNeedsPage() {
           {/* FAQ & Contact Tab */}
           {activeTab === 'faq' && (
             <div>
-              <div className="grid lg:grid-cols-2 gap-8 mb-12">
+              <div className="grid lg:grid-cols-2 gap-12 mb-16">
                 {/* Contact Info */}
                 <div>
-                  <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-6"><Editable k="basicneeds.faq.contacttitle">Contact Us</Editable></h2>
-                  <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                    <div className="flex items-center gap-4 mb-4">
-                      <div className="w-12 h-12 bg-[#d29922]/10 border border-[#d29922]/30 rounded-full flex items-center justify-center">
-                        <span className="text-xl"></span>
+                  <Reveal>
+                    <h2 className="section-title mb-8"><Editable k="basicneeds.faq.contacttitle">Contact Us</Editable></h2>
+                  </Reveal>
+                  <Reveal delay={100}>
+                    <div className="card p-8">
+                      <div className="flex items-center gap-4 mb-6">
+                        <div className="w-14 h-14 bg-white/10 rounded-full flex items-center justify-center">
+                          <span className="text-2xl font-bold text-white">
+                            {contact.lead.name.charAt(0)}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-semibold text-white text-lg">{contact.lead.name}</p>
+                          <p className="text-gray-500">{contact.lead.title}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-semibold text-[#f0f6fc]">{contact.lead.name}</p>
-                        <p className="text-sm text-[#8b949e]">{contact.lead.title}</p>
+                      <div className="space-y-4 text-sm">
+                        <div className="flex items-center gap-3">
+                          <span className="text-gray-600 w-4">@</span>
+                          <span className="text-white">{contact.office}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-gray-600 w-4">T</span>
+                          <span className="text-white">{contact.hours}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-gray-600 w-4">E</span>
+                          <a href={`mailto:${contact.lead.email}`} className="text-white hover:text-gray-300 transition-colors">{contact.lead.email}</a>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-gray-600 w-4">S</span>
+                          <span className="text-white">{contact.socialMedia}</span>
+                        </div>
                       </div>
                     </div>
-                    <div className="space-y-3 text-sm">
-                      <div className="flex items-center gap-3">
-                        <span className="text-[#8b949e]"></span>
-                        <span className="text-[#f0f6fc]">{contact.office}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-[#8b949e]"></span>
-                        <span className="text-[#f0f6fc]">{contact.hours}</span>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-[#8b949e]"></span>
-                        <a href={`mailto:${contact.lead.email}`} className="text-[#58a6ff] hover:underline">{contact.lead.email}</a>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-[#8b949e]"></span>
-                        <span className="text-[#f0f6fc]">{contact.socialMedia}</span>
-                      </div>
-                    </div>
-                  </div>
+                  </Reveal>
 
                   {/* Quick Feedback Form */}
-                  <div className="mt-6 bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                    <h3 className="font-semibold text-[#f0f6fc] mb-4"><Editable k="basicneeds.faq.feedbacktitle">Send Feedback</Editable></h3>
-                    {feedbackSubmitted ? (
-                      <div className="text-center py-4">
-                        <div className="w-12 h-12 bg-[#d29922]/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                          <span className="text-2xl"></span>
+                  <Reveal delay={200}>
+                    <div className="card p-8 mt-6">
+                      <h3 className="font-semibold text-white text-lg mb-6"><Editable k="basicneeds.faq.feedbacktitle">Send Feedback</Editable></h3>
+                      {feedbackSubmitted ? (
+                        <div className="text-center py-6">
+                          <div className="w-14 h-14 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <span className="text-3xl text-white">✓</span>
+                          </div>
+                          <p className="text-white font-medium"><Editable k="basicneeds.faq.feedbackthanks">Thanks for your feedback!</Editable></p>
+                          <button onClick={() => setFeedbackSubmitted(false)} className="text-gray-400 text-sm mt-3 hover:text-white transition-colors"><Editable k="basicneeds.faq.sendanother">Send another</Editable></button>
                         </div>
-                        <p className="text-[#d29922] font-medium"><Editable k="basicneeds.faq.feedbackthanks">Thanks for your feedback!</Editable></p>
-                        <button onClick={() => setFeedbackSubmitted(false)} className="text-[#58a6ff] text-sm mt-2 hover:underline"><Editable k="basicneeds.faq.sendanother">Send another</Editable></button>
-                      </div>
-                    ) : (
-                      <form onSubmit={handleFeedbackSubmit} className="space-y-4">
-                        <Select label="Topic" value={feedbackForm.topic} onChange={e => setFeedbackForm({...feedbackForm, topic: e.target.value})} required
-                          options={[
-                            { value: 'suggestion', label: 'Suggestion' },
-                            { value: 'question', label: 'Question' },
-                            { value: 'concern', label: 'Concern' },
-                            { value: 'compliment', label: 'Compliment' },
-                          ]}
-                        />
-                        <Textarea label="Message" value={feedbackForm.message} onChange={e => setFeedbackForm({...feedbackForm, message: e.target.value})} required rows={3} />
-                        <Input label="Email (optional)" type="email" value={feedbackForm.email} onChange={e => setFeedbackForm({...feedbackForm, email: e.target.value})} />
-                        <button type="submit" disabled={isSubmitting} className="w-full bg-[#d29922] text-[#0d1117] px-4 py-2.5 rounded font-semibold hover:bg-[#e5ac30] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                          {isSubmitting ? 'Submitting...' : <Editable k="basicneeds.faq.submitfeedback">Submit Feedback</Editable>}
-                        </button>
-                      </form>
-                    )}
-                  </div>
+                      ) : (
+                        <form onSubmit={handleFeedbackSubmit} className="space-y-5">
+                          <Select label="Topic" value={feedbackForm.topic} onChange={e => setFeedbackForm({...feedbackForm, topic: e.target.value})} required
+                            options={[
+                              { value: 'suggestion', label: 'Suggestion' },
+                              { value: 'question', label: 'Question' },
+                              { value: 'concern', label: 'Concern' },
+                              { value: 'compliment', label: 'Compliment' },
+                            ]}
+                          />
+                          <Textarea label="Message" value={feedbackForm.message} onChange={e => setFeedbackForm({...feedbackForm, message: e.target.value})} required rows={3} />
+                          <Input label="Email (optional)" type="email" value={feedbackForm.email} onChange={e => setFeedbackForm({...feedbackForm, email: e.target.value})} />
+                          <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
+                            {isSubmitting ? 'Submitting...' : <Editable k="basicneeds.faq.submitfeedback">Submit Feedback</Editable>}
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  </Reveal>
                 </div>
 
                 {/* FAQ Section */}
                 <div>
-                  <h2 className="text-2xl font-bold text-[#f0f6fc] tracking-tight mb-6"><Editable k="basicneeds.faq.faqtitle">Frequently Asked Questions</Editable></h2>
+                  <Reveal>
+                    <h2 className="section-title mb-8"><Editable k="basicneeds.faq.faqtitle">Frequently Asked Questions</Editable></h2>
+                  </Reveal>
                   <div className="space-y-3">
                     {faqs.map((faq, i) => (
-                      <div key={i} className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
-                        <button
-                          onClick={() => setExpandedFaq(expandedFaq === i ? null : i)}
-                          className="w-full text-left p-4 flex items-center justify-between hover:bg-[#21262d] transition-colors"
-                        >
-                          <span className="font-medium text-[#f0f6fc] pr-4">{faq.q}</span>
-                          <span className="text-[#8b949e] flex-shrink-0">{expandedFaq === i ? '−' : '+'}</span>
-                        </button>
-                        {expandedFaq === i && (
-                          <div className="px-4 pb-4 text-[#8b949e] text-sm border-t border-[#30363d] pt-3">
-                            {faq.a}
-                          </div>
-                        )}
-                      </div>
+                      <Reveal key={i} delay={i * 50}>
+                        <div className="card overflow-hidden">
+                          <button
+                            onClick={() => setExpandedFaq(expandedFaq === i ? null : i)}
+                            className="w-full text-left p-5 flex items-center justify-between hover:bg-white/[0.02] transition-colors"
+                          >
+                            <span className="font-medium text-white pr-4">{faq.q}</span>
+                            <span className="text-gray-500 flex-shrink-0 text-xl">{expandedFaq === i ? '−' : '+'}</span>
+                          </button>
+                          {expandedFaq === i && (
+                            <div className="px-5 pb-5 text-gray-400 text-sm border-t border-gray-800 pt-4">
+                              {faq.a}
+                            </div>
+                          )}
+                        </div>
+                      </Reveal>
                     ))}
                   </div>
                 </div>
               </div>
 
               {/* Announcements */}
-              <div>
-                <h3 className="text-lg font-semibold text-[#f0f6fc] tracking-tight mb-5"><Editable k="basicneeds.faq.updatestitle">Recent Updates</Editable></h3>
-                <div className="space-y-3">
-                  {announcements.map(ann => (
-                    <div key={ann.id} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 flex items-start gap-4">
-                      <div className={`px-2 py-1 rounded text-xs font-mono ${
-                        ann.type === 'event' ? 'bg-[#58a6ff]/10 text-[#58a6ff] border border-[#58a6ff]' :
-                        ann.type === 'deadline' ? 'bg-[#d29922]/10 text-[#d29922] border border-[#d29922]' :
-                        'bg-[#3fb950]/10 text-[#3fb950] border border-[#3fb950]'
+              <Reveal>
+                <h3 className="text-xl font-semibold text-white mb-6"><Editable k="basicneeds.faq.updatestitle">Recent Updates</Editable></h3>
+              </Reveal>
+              <div className="space-y-3">
+                {announcements.map((ann, i) => (
+                  <Reveal key={ann.id} delay={i * 50}>
+                    <div className="card p-5 flex items-start gap-4">
+                      <span className={`px-2 py-1 rounded text-xs font-mono ${
+                        ann.type === 'event' ? 'bg-white/10 text-white' :
+                        ann.type === 'deadline' ? 'bg-yellow-500/20 text-yellow-400' :
+                        'bg-green-500/20 text-green-400'
                       }`}>
                         {ann.type.toUpperCase()}
-                      </div>
+                      </span>
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-1">
-                          <h4 className="font-semibold text-[#f0f6fc]">{ann.title}</h4>
-                          <span className="text-xs text-[#6e7681] font-mono">{ann.date}</span>
+                          <h4 className="font-semibold text-white">{ann.title}</h4>
+                          <span className="text-xs text-gray-600 font-mono">{ann.date}</span>
                         </div>
-                        <p className="text-sm text-[#8b949e]">{ann.content}</p>
+                        <p className="text-sm text-gray-400">{ann.content}</p>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </Reveal>
+                ))}
               </div>
             </div>
           )}
