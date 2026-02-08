@@ -38,6 +38,7 @@ const nextConfig = {
               "img-src 'self' data: https: blob:",
               "font-src 'self' data:",
               "connect-src 'self' https://api.web3forms.com https://*.supabase.co wss://*.supabase.co https://api.groq.com https://api.x.ai",
+              "frame-src 'self' https://policies.unc.edu https://studentgovernment.unc.edu https://dos.unc.edu https://eoc.unc.edu",
               "frame-ancestors 'none'",
               "form-action 'self'",
               "base-uri 'self'",
