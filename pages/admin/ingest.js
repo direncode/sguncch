@@ -28,7 +28,7 @@ async function extractPdfWithGrok(file, apiKey) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'grok-3',
+      model: 'grok-4',
       messages: [{
         role: 'user',
         content: [
