@@ -327,6 +327,9 @@ export default function AdminConsole() {
               <span className="px-3 py-1 bg-white/10 rounded text-xs font-mono uppercase tracking-wider">
                 Admin
               </span>
+              <Link href="/admin/codex" className="px-3 py-1.5 bg-white/10 border border-gray-700 rounded text-xs text-white hover:bg-white/20 transition-all">
+                Gov Codex
+              </Link>
             </div>
             <div className="flex items-center gap-6">
               <LiveClock />
@@ -505,6 +508,13 @@ export default function AdminConsole() {
                         <p className="text-sm font-medium text-white">Funding Requests</p>
                         <p className="text-xs text-gray-500 mt-1">{pendingRequests.length} pending</p>
                       </button>
+                      <Link
+                        href="/admin/codex"
+                        className="p-4 bg-white/5 border border-gray-700 rounded-lg hover:bg-white/10 transition-all text-left block col-span-2"
+                      >
+                        <p className="text-sm font-medium text-white">Gov Codex</p>
+                        <p className="text-xs text-gray-500 mt-1">Upload &amp; manage governance documents for AI chat</p>
+                      </Link>
                     </div>
                   </div>
                 </Reveal>
@@ -1172,6 +1182,13 @@ export default function AdminConsole() {
                         className="flex items-center justify-between p-3 bg-black/30 rounded-lg hover:bg-black/50 transition-all"
                       >
                         <span className="text-white">Budget Page</span>
+                        <span className="text-gray-500">→</span>
+                      </Link>
+                      <Link
+                        href="/admin/codex"
+                        className="flex items-center justify-between p-3 bg-black/30 rounded-lg hover:bg-black/50 transition-all"
+                      >
+                        <span className="text-white">Gov Codex Admin</span>
                         <span className="text-gray-500">→</span>
                       </Link>
                       <Link
