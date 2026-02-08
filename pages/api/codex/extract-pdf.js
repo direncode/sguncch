@@ -1,16 +1,103 @@
 import { withAdminAuth } from '../../../lib/auth'
 
-function handler(req, res) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' })
+async function handler(req, res) {
+  const apiKey = process.env.XAI_API_KEY
+  const isConfigured = apiKey && apiKey !== 'your-xai-api-key-here' && apiKey !== 'xai-placeholder-set-in-vercel'
+
+  // GET: check if xAI is configured
+  if (req.method === 'GET') {
+    return res.status(200).json({ available: isConfigured })
   }
 
-  const key = process.env.XAI_API_KEY
-  if (!key || key === 'your-xai-api-key-here' || key === 'xai-placeholder-set-in-vercel') {
-    return res.status(500).json({ error: 'XAI_API_KEY not configured on server' })
+  // POST: extract PDF content via Grok
+  if (req.method === 'POST') {
+    if (!isConfigured) {
+      return res.status(500).json({ error: 'XAI_API_KEY not configured on server' })
+    }
+
+    const { url, query } = req.body
+    if (!url) {
+      return res.status(400).json({ error: 'Missing document URL' })
+    }
+
+    try {
+      // 1. Fetch the PDF
+      const pdfRes = await fetch(url)
+      if (!pdfRes.ok) {
+        return res.status(502).json({ error: `Failed to fetch PDF: ${pdfRes.status}` })
+      }
+      const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer())
+      const filename = url.split('/').pop() || 'document.pdf'
+
+      // 2. Upload to xAI Files API
+      const formData = new FormData()
+      formData.append('file', new Blob([pdfBuffer], { type: 'application/pdf' }), filename)
+      formData.append('purpose', 'assistants')
+
+      const uploadRes = await fetch('https://api.x.ai/v1/files', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${apiKey}` },
+        body: formData,
+      })
+
+      if (!uploadRes.ok) {
+        const errText = await uploadRes.text().catch(() => '')
+        return res.status(502).json({ error: `File upload failed (${uploadRes.status}): ${errText.slice(0, 300)}` })
+      }
+
+      const { id: fileId } = await uploadRes.json()
+
+      // 3. Chat with the uploaded file
+      const prompt = query
+        ? `Read this PDF document and answer the following question based on its contents:\n\n"${query}"\n\nProvide a clear, accurate answer citing specific sections when possible.`
+        : 'Extract ALL text content from this PDF document. Return ONLY the raw text — no commentary, no formatting instructions, no summaries. Just the verbatim document text.'
+
+      const chatRes = await fetch('https://api.x.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'grok-4',
+          messages: [{
+            role: 'user',
+            content: [
+              { type: 'file', file: { file_id: fileId } },
+              { type: 'text', text: prompt },
+            ],
+          }],
+          temperature: 0,
+          max_tokens: 16000,
+        }),
+      })
+
+      // 4. Clean up uploaded file (fire and forget)
+      fetch(`https://api.x.ai/v1/files/${fileId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${apiKey}` },
+      }).catch(() => {})
+
+      if (!chatRes.ok) {
+        const errText = await chatRes.text().catch(() => '')
+        return res.status(502).json({ error: `Grok API error (${chatRes.status}): ${errText.slice(0, 300)}` })
+      }
+
+      const data = await chatRes.json()
+      const content = data.choices?.[0]?.message?.content?.trim()
+
+      if (!content) {
+        return res.status(502).json({ error: 'Grok returned no text content' })
+      }
+
+      return res.status(200).json({ content })
+    } catch (err) {
+      console.error('PDF extraction error:', err)
+      return res.status(500).json({ error: err.message })
+    }
   }
 
-  return res.status(200).json({ key })
+  return res.status(405).json({ error: 'Method not allowed' })
 }
 
 export default withAdminAuth(handler)

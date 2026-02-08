@@ -3,68 +3,6 @@ import Head from 'next/head'
 import Layout from '../../components/Layout'
 import { ADMIN_KEY } from '../../lib/data'
 
-// Convert ArrayBuffer to base64 in chunks (handles large files)
-function arrayBufferToBase64(buffer) {
-  const bytes = new Uint8Array(buffer)
-  const chunkSize = 0x8000
-  let binary = ''
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize))
-  }
-  return btoa(binary)
-}
-
-// Extract PDF text using Grok API (direct connection from browser)
-async function extractPdfWithGrok(pdfUrl, apiKey, query) {
-  // Fetch the PDF as binary
-  const pdfResponse = await fetch(pdfUrl)
-  if (!pdfResponse.ok) throw new Error(`Failed to fetch PDF: ${pdfResponse.status}`)
-  const buffer = await pdfResponse.arrayBuffer()
-  const base64 = arrayBufferToBase64(buffer)
-
-  const prompt = query
-    ? `Read this PDF document and answer the following question based on its contents:\n\n"${query}"\n\nProvide a clear, accurate answer citing specific sections when possible.`
-    : 'Extract ALL text content from this PDF document. Return ONLY the raw text — no commentary, no formatting instructions, no summaries. Just the verbatim document text.'
-
-  const response = await fetch('https://api.x.ai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'grok-4',
-      messages: [{
-        role: 'user',
-        content: [
-          {
-            type: 'file',
-            file: {
-              file_data: `data:application/pdf;base64,${base64}`,
-            },
-          },
-          {
-            type: 'text',
-            text: prompt,
-          },
-        ],
-      }],
-      temperature: 0,
-      max_tokens: 16000,
-    }),
-  })
-
-  if (!response.ok) {
-    const errText = await response.text().catch(() => '')
-    throw new Error(`Grok API error (${response.status}): ${errText.slice(0, 200)}`)
-  }
-
-  const data = await response.json()
-  const text = data.choices?.[0]?.message?.content?.trim()
-  if (!text) throw new Error('Grok returned no text content')
-  return text
-}
-
 const documents = [
   {
     id: 'ferpa',
@@ -175,22 +113,31 @@ const documents = [
 
 const categories = ['All', ...new Set(documents.map(d => d.category))]
 
-function AiPanel({ doc, xaiKey, onClose }) {
+function AiPanel({ doc, grokAvailable, onClose }) {
   const [content, setContent] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [query, setQuery] = useState('')
 
   const extractContent = async (userQuery) => {
-    if (!xaiKey) {
+    if (!grokAvailable) {
       setError('XAI_API_KEY not configured on server. Add it to .env.local.')
       return
     }
     setLoading(true)
     setError(null)
     try {
-      const text = await extractPdfWithGrok(doc.url, xaiKey, userQuery)
-      setContent(text)
+      const res = await fetch('/api/codex/extract-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${ADMIN_KEY}`,
+        },
+        body: JSON.stringify({ url: doc.url, query: userQuery || undefined }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setContent(data.content)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -213,13 +160,13 @@ function AiPanel({ doc, xaiKey, onClose }) {
         <button onClick={onClose} className="text-[10px] text-[#6e7681] hover:text-[#f0f6fc] transition">Close</button>
       </div>
 
-      {!xaiKey && (
+      {!grokAvailable && (
         <div className="bg-[#d29922]/10 border border-[#d29922]/30 rounded-lg p-3 mb-3">
           <p className="text-xs text-[#d29922]">XAI_API_KEY not configured. Add your xAI API key to .env.local to enable AI document reading.</p>
         </div>
       )}
 
-      {xaiKey && (
+      {grokAvailable && (
         <>
           {/* Action buttons */}
           <div className="flex gap-2 mb-3">
@@ -293,15 +240,15 @@ export default function Documents() {
   const [previewDoc, setPreviewDoc] = useState(null)
   const [aiDoc, setAiDoc] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [xaiKey, setXaiKey] = useState(null)
+  const [grokAvailable, setGrokAvailable] = useState(false)
 
-  // Fetch xAI API key for direct Grok PDF extraction
+  // Check if Grok PDF extraction is available
   useEffect(() => {
     fetch('/api/codex/extract-pdf', {
       headers: { 'Authorization': `Bearer ${ADMIN_KEY}` },
     })
       .then(r => r.ok ? r.json() : null)
-      .then(d => d?.key && setXaiKey(d.key))
+      .then(d => d?.available && setGrokAvailable(true))
       .catch(() => {})
   }, [])
 
@@ -331,7 +278,7 @@ export default function Documents() {
             <div className="inline-flex items-center gap-2 px-2 py-1 bg-[#388bfd]/10 border border-[#388bfd] rounded text-[10px] font-semibold text-[#388bfd] uppercase tracking-wider">
               {documents.length} Documents
             </div>
-            {xaiKey && (
+            {grokAvailable && (
               <div className="inline-flex items-center gap-2 px-2 py-1 bg-[#a371f7]/10 border border-[#a371f7] rounded text-[10px] font-semibold text-[#a371f7] uppercase tracking-wider">
                 Grok Connected
               </div>
@@ -340,7 +287,7 @@ export default function Documents() {
           <h1 className="text-3xl font-bold text-[#f0f6fc] tracking-tight mb-2">Document Catalogue</h1>
           <p className="text-[#8b949e] max-w-2xl">
             Official UNC governance documents, university policies, student government codes, and conduct procedures.
-            {xaiKey ? ' Use AI Read to extract content and ask Grok questions about any document.' : ''}
+            {grokAvailable ? ' Use AI Read to extract content and ask Grok questions about any document.' : ''}
           </p>
         </div>
       </div>
@@ -437,7 +384,7 @@ export default function Documents() {
 
                 {/* AI Reader Panel */}
                 {aiDoc?.id === doc.id && (
-                  <AiPanel doc={doc} xaiKey={xaiKey} onClose={() => setAiDoc(null)} />
+                  <AiPanel doc={doc} grokAvailable={grokAvailable} onClose={() => setAiDoc(null)} />
                 )}
 
                 {/* Inline PDF Preview (native browser rendering) */}
