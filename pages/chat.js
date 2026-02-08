@@ -3,12 +3,16 @@ import { useRouter } from 'next/router'
 import Link from 'next/link'
 import Head from 'next/head'
 import Layout from '../components/Layout'
+import { useApp } from '../lib/store'
 
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
 
 export default function Chat() {
   const router = useRouter()
   const { doc: docId, title: docTitle } = router.query
+
+  // Pull ALL platform data so Grok has full context every time
+  const { policies, operationalData, budgetData, quickStats, announcements, feedback } = useApp()
 
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
@@ -37,10 +41,21 @@ export default function Chat() {
     setMessages(prev => [...prev, { role: 'user', content: question }])
     setIsLoading(true)
     try {
+      // Send platform data with every query so Grok sees the full picture
       const res = await fetch('/api/codex/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({
+          question,
+          platformData: {
+            policies,
+            operationalData,
+            budgetData,
+            quickStats,
+            announcements,
+            feedback,
+          },
+        }),
       })
       const data = await res.json()
       if (res.status === 429) { setError('Too many requests. Please wait a moment.'); setIsLoading(false); return }
@@ -88,13 +103,13 @@ export default function Chat() {
               </div>
               <div className="card max-w-[80%]">
                 <p className="body-text text-sm">
-                  Welcome to UNC Gov Codex. I can answer questions about approved governance documents, policies, and procedures.
+                  Welcome to UNC Gov Codex. I have access to all approved governance documents AND live platform data &mdash; policies, budget, operations, and feedback.
                 </p>
                 <p className="body-text text-sm mt-2">
-                  All responses are grounded in officially approved documents, with citations for verification.
+                  Ask me anything about governance or the current state of Student Government initiatives.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  {['What governance documents are available?', 'What is the student code of conduct?', 'How does the budget process work?'].map((q) => (
+                  {['What governance documents are available?', 'How are our policy initiatives progressing?', 'What is the current budget status?', 'Summarize recent student feedback'].map((q) => (
                     <button key={q} onClick={() => sendMessage(q)}
                       className="px-3 py-1.5 text-xs bg-white/5 border border-gray-800 rounded text-gray-400 hover:text-white hover:border-gray-600 transition">
                       {q}
@@ -190,7 +205,7 @@ export default function Chat() {
             </button>
           </div>
           <p className="caption text-center mt-3">
-            Powered by Grok | Responses based on approved documents only | No chat data stored
+            Powered by Grok | Documents + Live Platform Metrics | No chat data stored
           </p>
         </div>
       </div>

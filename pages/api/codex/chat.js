@@ -1,5 +1,6 @@
 import { searchRelevantChunks, callGrok, isEmbeddingAvailable } from '../../../lib/embeddings'
 import { getDocumentById } from '../../../lib/codex'
+import { buildPlatformContext, buildEnhancedSystemPrompt } from '../../../lib/platformContext'
 
 // In-memory rate limiting
 const rateLimitMap = new Map()
@@ -34,7 +35,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { question } = req.body
+    const { question, platformData } = req.body
 
     if (!question || !question.trim()) {
       return res.status(400).json({ error: 'Question is required' })
@@ -44,56 +45,50 @@ export default async function handler(req, res) {
       return res.status(503).json({ error: 'AI service is not configured. Please contact an administrator.' })
     }
 
-    // Search for relevant chunks
+    // === 1. Search for relevant document chunks ===
     const chunks = await searchRelevantChunks(question, 5)
 
-    if (!chunks || chunks.length === 0) {
-      return res.status(200).json({
-        answer: 'I could not find any relevant information in the approved governance documents to answer your question. Please try rephrasing or ask about a different topic.',
-        sources: [],
-        model: 'grok-4',
-      })
-    }
-
-    // Fetch parent document metadata for each chunk
-    const docCache = {}
+    let documentContext = ''
     const sourcesWithMeta = []
 
-    for (const chunk of chunks) {
-      if (!docCache[chunk.document_id]) {
-        const { data: doc } = await getDocumentById(chunk.document_id)
-        docCache[chunk.document_id] = doc
+    if (chunks && chunks.length > 0) {
+      // Fetch parent document metadata for each chunk
+      const docCache = {}
+
+      for (const chunk of chunks) {
+        if (!docCache[chunk.document_id]) {
+          const { data: doc } = await getDocumentById(chunk.document_id)
+          docCache[chunk.document_id] = doc
+        }
+        const doc = docCache[chunk.document_id]
+        if (doc) {
+          sourcesWithMeta.push({
+            document_id: chunk.document_id,
+            title: doc.title,
+            version: doc.version,
+            section: chunk.section_hint || 'General',
+            approved_at: doc.approved_at,
+            chunk_text: chunk.chunk_text,
+          })
+        }
       }
-      const doc = docCache[chunk.document_id]
-      if (doc) {
-        sourcesWithMeta.push({
-          document_id: chunk.document_id,
-          title: doc.title,
-          version: doc.version,
-          section: chunk.section_hint || 'General',
-          approved_at: doc.approved_at,
-          chunk_text: chunk.chunk_text,
-        })
-      }
+
+      // Build document context blocks
+      documentContext = sourcesWithMeta.map((s, i) =>
+        `[Source ${i + 1}: "${s.title}" v${s.version}, Section: ${s.section}, Approved: ${new Date(s.approved_at).toLocaleDateString()}]\n${s.chunk_text}`
+      ).join('\n\n---\n\n')
     }
 
-    // Build context for Grok
-    const contextBlocks = sourcesWithMeta.map((s, i) =>
-      `[Source ${i + 1}: "${s.title}" v${s.version}, Section: ${s.section}, Approved: ${new Date(s.approved_at).toLocaleDateString()}]\n${s.chunk_text}`
-    ).join('\n\n---\n\n')
+    // === 2. Build platform context from client-provided data ===
+    let platformContextStr = ''
+    if (platformData && typeof platformData === 'object') {
+      platformContextStr = buildPlatformContext(platformData)
+    }
 
-    const systemPrompt = `You are the UNC Gov Codex Assistant, an AI that answers questions about UNC Student Government governance documents.
+    // === 3. Build the enhanced system prompt ===
+    const systemPrompt = buildEnhancedSystemPrompt(documentContext, platformContextStr)
 
-RULES:
-- Answer using ONLY the provided approved document context below
-- Always cite your sources using the document title, section, and version
-- If the context does not contain enough information to answer, say so clearly
-- Be concise, accurate, and helpful
-- Format citations as: (Source: "Document Title" v1.0, Section Name)
-
-APPROVED DOCUMENT CONTEXT:
-${contextBlocks}`
-
+    // === 4. Call Grok ===
     const messages = [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: question },
@@ -111,6 +106,7 @@ ${contextBlocks}`
         approved_at: s.approved_at,
       })),
       model: 'grok-4',
+      platformContextIncluded: Boolean(platformContextStr),
     })
   } catch (err) {
     console.error('Chat error:', err)
