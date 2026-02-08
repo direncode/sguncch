@@ -1,6 +1,67 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Head from 'next/head'
 import Layout from '../../components/Layout'
+import { ADMIN_KEY } from '../../lib/data'
+
+// Convert ArrayBuffer to base64 in chunks (handles large files)
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer)
+  const chunkSize = 0x8000
+  let binary = ''
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize))
+  }
+  return btoa(binary)
+}
+
+// Extract PDF text using Grok API (direct connection from browser)
+async function extractPdfWithGrok(pdfUrl, apiKey, query) {
+  // Fetch the PDF as binary
+  const pdfResponse = await fetch(pdfUrl)
+  if (!pdfResponse.ok) throw new Error(`Failed to fetch PDF: ${pdfResponse.status}`)
+  const buffer = await pdfResponse.arrayBuffer()
+  const base64 = arrayBufferToBase64(buffer)
+
+  const prompt = query
+    ? `Read this PDF document and answer the following question based on its contents:\n\n"${query}"\n\nProvide a clear, accurate answer citing specific sections when possible.`
+    : 'Extract ALL text content from this PDF document. Return ONLY the raw text — no commentary, no formatting instructions, no summaries. Just the verbatim document text.'
+
+  const response = await fetch('https://api.x.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'grok-3',
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'file',
+            file_data: `data:application/pdf;base64,${base64}`,
+          },
+          {
+            type: 'text',
+            text: prompt,
+          },
+        ],
+      }],
+      temperature: 0,
+      max_tokens: 16000,
+    }),
+  })
+
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '')
+    throw new Error(`Grok API error (${response.status}): ${errText.slice(0, 200)}`)
+  }
+
+  const data = await response.json()
+  const text = data.choices?.[0]?.message?.content?.trim()
+  if (!text) throw new Error('Grok returned no text content')
+  return text
+}
 
 const documents = [
   {
@@ -9,7 +70,6 @@ const documents = [
     category: 'University Policy',
     size: '3.6 MB',
     url: 'https://policies.unc.edu/files/2024/10/Policies-and-Procedures-Under-the-Family-Educational-Rights-and-Privacy-Act-of-1974-FERPA.pdf',
-    localPath: '/documents/Policies-and-Procedures-Under-the-Family-Educational-Rights-and-Privacy-Act-of-1974-FERPA.pdf',
   },
   {
     id: 'appeals-bot',
@@ -17,7 +77,6 @@ const documents = [
     category: 'University Policy',
     size: '1.1 MB',
     url: 'https://policies.unc.edu/files/2024/10/Procedure-for-Appeals-to-the-Board-of-Trustees.pdf',
-    localPath: '/documents/Procedure-for-Appeals-to-the-Board-of-Trustees.pdf',
   },
   {
     id: 'gpsg-code',
@@ -25,7 +84,6 @@ const documents = [
     category: 'Student Government',
     size: '1.3 MB',
     url: 'https://studentgovernment.unc.edu/wp-content/uploads/sites/136/2025/09/GPSG_Code_08_25_25.pdf',
-    localPath: '/documents/GPSG_Code_08_25_25.pdf',
   },
   {
     id: 'undergrad-statutes',
@@ -33,7 +91,6 @@ const documents = [
     category: 'Student Government',
     size: '1.8 MB',
     url: 'https://studentgovernment.unc.edu/wp-content/uploads/sites/136/2025/09/Undergraduate_General_Statutes_09_03_2025.pdf',
-    localPath: '/documents/Undergraduate_General_Statutes_09_03_2025.pdf',
   },
   {
     id: 'joint-code',
@@ -41,7 +98,6 @@ const documents = [
     category: 'Student Government',
     size: '1017 KB',
     url: 'https://studentgovernment.unc.edu/wp-content/uploads/sites/136/2023/02/Joint_Code_of_the_Student_Government_01_12_23.pdf',
-    localPath: '/documents/Joint_Code_of_the_Student_Government_01_12_23.pdf',
   },
   {
     id: 'constitution',
@@ -49,7 +105,6 @@ const documents = [
     category: 'Student Government',
     size: '361 KB',
     url: 'https://studentgovernment.unc.edu/wp-content/uploads/sites/136/2025/09/Constitution_of_the_Student_Body_8_20_25.pdf',
-    localPath: '/documents/Constitution_of_the_Student_Body_8_20_25.pdf',
   },
   {
     id: 'workplace-violence',
@@ -57,7 +112,6 @@ const documents = [
     category: 'University Policy',
     size: '1.6 MB',
     url: 'https://policies.unc.edu/files/2024/10/Workplace-Violence-Policy.pdf',
-    localPath: '/documents/Workplace-Violence-Policy.pdf',
   },
   {
     id: 'whistleblower',
@@ -65,7 +119,6 @@ const documents = [
     category: 'University Policy',
     size: '1.2 MB',
     url: 'https://policies.unc.edu/files/2024/10/Whistleblower-Policy.pdf',
-    localPath: '/documents/Whistleblower-Policy.pdf',
   },
   {
     id: 'threat-assessment',
@@ -73,7 +126,6 @@ const documents = [
     category: 'University Policy',
     size: '1.2 MB',
     url: 'https://policies.unc.edu/files/2024/10/Behavioral-Threat-Assessment-Policy.pdf',
-    localPath: '/documents/Behavioral-Threat-Assessment-Policy.pdf',
   },
   {
     id: 'discrimination',
@@ -81,7 +133,6 @@ const documents = [
     category: 'University Policy',
     size: '7.2 MB',
     url: 'https://policies.unc.edu/files/2024/10/Policy-on-Prohibited-Discrimination-Harassment-and-Related-Misconduct.pdf',
-    localPath: '/documents/Policy-on-Prohibited-Discrimination-Harassment-and-Related-Misconduct.pdf',
   },
   {
     id: 'eoc-guide',
@@ -89,7 +140,6 @@ const documents = [
     category: 'University Policy',
     size: '826 KB',
     url: 'https://eoc.unc.edu/files/2024/08/eoc-comprehensive-resource-guide.pdf',
-    localPath: '/documents/eoc-comprehensive-resource-guide.pdf',
   },
   {
     id: 'drugs',
@@ -97,7 +147,6 @@ const documents = [
     category: 'University Policy',
     size: '947 KB',
     url: 'https://policies.unc.edu/files/2024/10/Illegal-Drugs-Policy.pdf',
-    localPath: '/documents/Illegal-Drugs-Policy.pdf',
   },
   {
     id: 'alcohol',
@@ -105,7 +154,6 @@ const documents = [
     category: 'University Policy',
     size: '4.6 MB',
     url: 'https://policies.unc.edu/files/2024/10/Alcohol-Policy.pdf',
-    localPath: '/documents/Alcohol-Policy.pdf',
   },
   {
     id: 'conduct-procedures',
@@ -113,7 +161,6 @@ const documents = [
     category: 'Student Conduct',
     size: '6.7 MB',
     url: 'https://dos.unc.edu/files/2024/08/Student-Conduct-Procedures.pdf',
-    localPath: '/documents/Student-Conduct-Procedures.pdf',
   },
   {
     id: 'code-of-conduct',
@@ -121,30 +168,27 @@ const documents = [
     category: 'Student Conduct',
     size: '3.4 MB',
     url: 'https://dos.unc.edu/files/2024/08/The-Student-Code-of-Conduct.pdf',
-    localPath: '/documents/The-Student-Code-of-Conduct.pdf',
   },
 ]
 
 const categories = ['All', ...new Set(documents.map(d => d.category))]
 
-function AiPanel({ doc, onClose }) {
+function AiPanel({ doc, xaiKey, onClose }) {
   const [content, setContent] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [query, setQuery] = useState('')
 
   const extractContent = async (userQuery) => {
+    if (!xaiKey) {
+      setError('XAI_API_KEY not configured on server. Add it to .env.local.')
+      return
+    }
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/extract-pdf', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: doc.url, query: userQuery || undefined }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      setContent(data.content)
+      const text = await extractPdfWithGrok(doc.url, xaiKey, userQuery)
+      setContent(text)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -167,44 +211,49 @@ function AiPanel({ doc, onClose }) {
         <button onClick={onClose} className="text-[10px] text-[#6e7681] hover:text-[#f0f6fc] transition">Close</button>
       </div>
 
-      {/* Action buttons */}
-      <div className="flex gap-2 mb-3">
-        <button
-          onClick={() => extractContent(null)}
-          disabled={loading}
-          className="px-3 py-1.5 text-xs font-medium bg-[#a371f7]/10 text-[#a371f7] border border-[#a371f7]/30 rounded hover:border-[#a371f7] transition disabled:opacity-50"
-        >
-          {loading && !query ? 'Reading...' : 'Summarize Document'}
-        </button>
-      </div>
+      {!xaiKey && (
+        <div className="bg-[#d29922]/10 border border-[#d29922]/30 rounded-lg p-3 mb-3">
+          <p className="text-xs text-[#d29922]">XAI_API_KEY not configured. Add your xAI API key to .env.local to enable AI document reading.</p>
+        </div>
+      )}
 
-      {/* Ask a question */}
-      <form onSubmit={handleAsk} className="flex gap-2 mb-3">
-        <input
-          type="text"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          placeholder="Ask a question about this document..."
-          className="flex-1 bg-[#0d1117] border border-[#30363d] rounded px-3 py-1.5 text-sm text-[#f0f6fc] placeholder-[#6e7681] focus:outline-none focus:border-[#a371f7] transition"
-        />
-        <button
-          type="submit"
-          disabled={loading || !query.trim()}
-          className="px-3 py-1.5 text-xs font-medium bg-[#a371f7] text-white rounded hover:bg-[#a371f7]/80 transition disabled:opacity-50"
-        >
-          {loading && query ? 'Asking...' : 'Ask'}
-        </button>
-      </form>
+      {xaiKey && (
+        <>
+          {/* Action buttons */}
+          <div className="flex gap-2 mb-3">
+            <button
+              onClick={() => extractContent(null)}
+              disabled={loading}
+              className="px-3 py-1.5 text-xs font-medium bg-[#a371f7]/10 text-[#a371f7] border border-[#a371f7]/30 rounded hover:border-[#a371f7] transition disabled:opacity-50"
+            >
+              {loading && !query ? 'Reading...' : 'Extract Full Text'}
+            </button>
+          </div>
+
+          {/* Ask a question */}
+          <form onSubmit={handleAsk} className="flex gap-2 mb-3">
+            <input
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              placeholder="Ask a question about this document..."
+              className="flex-1 bg-[#0d1117] border border-[#30363d] rounded px-3 py-1.5 text-sm text-[#f0f6fc] placeholder-[#6e7681] focus:outline-none focus:border-[#a371f7] transition"
+            />
+            <button
+              type="submit"
+              disabled={loading || !query.trim()}
+              className="px-3 py-1.5 text-xs font-medium bg-[#a371f7] text-white rounded hover:bg-[#a371f7]/80 transition disabled:opacity-50"
+            >
+              {loading && query ? 'Asking...' : 'Ask Grok'}
+            </button>
+          </form>
+        </>
+      )}
 
       {/* Error */}
       {error && (
         <div className="bg-[#f85149]/10 border border-[#f85149]/30 rounded-lg p-3 mb-3">
           <p className="text-xs text-[#f85149]">{error}</p>
-          {error.includes('GROK_API_KEY') && (
-            <p className="text-[10px] text-[#6e7681] mt-1">
-              Add your xAI API key as GROK_API_KEY in .env.local to enable AI document reading.
-            </p>
-          )}
         </div>
       )}
 
@@ -242,6 +291,17 @@ export default function Documents() {
   const [previewDoc, setPreviewDoc] = useState(null)
   const [aiDoc, setAiDoc] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [xaiKey, setXaiKey] = useState(null)
+
+  // Fetch xAI API key for direct Grok PDF extraction
+  useEffect(() => {
+    fetch('/api/codex/extract-pdf', {
+      headers: { 'Authorization': `Bearer ${ADMIN_KEY}` },
+    })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => d?.key && setXaiKey(d.key))
+      .catch(() => {})
+  }, [])
 
   const filtered = documents.filter(doc => {
     const matchesCategory = selectedCategory === 'All' || doc.category === selectedCategory
@@ -269,14 +329,16 @@ export default function Documents() {
             <div className="inline-flex items-center gap-2 px-2 py-1 bg-[#388bfd]/10 border border-[#388bfd] rounded text-[10px] font-semibold text-[#388bfd] uppercase tracking-wider">
               {documents.length} Documents
             </div>
-            <div className="inline-flex items-center gap-2 px-2 py-1 bg-[#a371f7]/10 border border-[#a371f7] rounded text-[10px] font-semibold text-[#a371f7] uppercase tracking-wider">
-              AI-Powered Reading
-            </div>
+            {xaiKey && (
+              <div className="inline-flex items-center gap-2 px-2 py-1 bg-[#a371f7]/10 border border-[#a371f7] rounded text-[10px] font-semibold text-[#a371f7] uppercase tracking-wider">
+                Grok Connected
+              </div>
+            )}
           </div>
           <h1 className="text-3xl font-bold text-[#f0f6fc] tracking-tight mb-2">Document Catalogue</h1>
           <p className="text-[#8b949e] max-w-2xl">
             Official UNC governance documents, university policies, student government codes, and conduct procedures.
-            Use AI Read to extract content and ask questions about any document.
+            {xaiKey ? ' Use AI Read to extract content and ask Grok questions about any document.' : ''}
           </p>
         </div>
       </div>
@@ -349,7 +411,7 @@ export default function Documents() {
                           : 'text-[#a371f7] border border-[#a371f7]/30 hover:border-[#a371f7]'
                       }`}
                     >
-                      {aiDoc?.id === doc.id ? 'Close AI' : 'AI Read'}
+                      {aiDoc?.id === doc.id ? 'Close AI' : 'Ask Grok'}
                     </button>
                     <button
                       onClick={() => {
@@ -373,7 +435,7 @@ export default function Documents() {
 
                 {/* AI Reader Panel */}
                 {aiDoc?.id === doc.id && (
-                  <AiPanel doc={doc} onClose={() => setAiDoc(null)} />
+                  <AiPanel doc={doc} xaiKey={xaiKey} onClose={() => setAiDoc(null)} />
                 )}
 
                 {/* Inline PDF Preview (native browser rendering) */}
@@ -385,7 +447,7 @@ export default function Documents() {
                       title={doc.name}
                     />
                     <p className="text-[10px] text-[#6e7681] mt-2">
-                      If the preview doesn't load, try "AI Read" or click "Open" to view in a new tab.
+                      If the preview doesn't load, try "Ask Grok" or click "Open" to view in a new tab.
                     </p>
                   </div>
                 )}
@@ -399,6 +461,25 @@ export default function Documents() {
             <p className="text-[#6e7681] text-sm">No documents match your search.</p>
           </div>
         )}
+
+        {/* How it works */}
+        <div className="mt-16 border-t border-[#21262d] pt-12">
+          <h3 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-6">How it works</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {[
+              { step: '01', title: 'Browse', desc: 'Find the governance document you need from the catalogue above.' },
+              { step: '02', title: 'Preview', desc: 'Use your browser\'s native PDF viewer to read the document inline.' },
+              { step: '03', title: 'Ask Grok', desc: 'Click "Ask Grok" to have xAI read the full PDF and extract text or answer questions.' },
+              { step: '04', title: 'Get Answers', desc: 'Ask specific questions about any policy — Grok reads the full document and responds.' },
+            ].map(item => (
+              <div key={item.step} className="space-y-2">
+                <span className="text-[10px] font-mono text-[#6e7681]">{item.step}</span>
+                <h4 className="text-sm font-medium text-[#f0f6fc]">{item.title}</h4>
+                <p className="text-xs text-[#8b949e] leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </main>
     </Layout>
   )
