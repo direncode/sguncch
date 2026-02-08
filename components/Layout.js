@@ -9,6 +9,8 @@ const navigation = [
   { name: 'Community', href: '/basic-needs' },
   { name: 'Academic', href: '/academic' },
   { name: 'Impact', href: '/communications' },
+  { name: 'Knowledge', href: '/knowledge-base' },
+  { name: 'Ask AI', href: '/chat' },
 ]
 
 export default function Layout({ children }) {

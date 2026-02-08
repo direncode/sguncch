@@ -364,3 +364,163 @@ SELECT
 FROM activity_log
 ORDER BY timestamp DESC
 LIMIT 50;
+
+-- ============================================
+-- UNC GOV CODEX - GOVERNANCE DOCUMENT RAG SYSTEM
+-- ============================================
+
+-- Enable pgvector extension (optional - falls back to FTS if unavailable)
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- ============================================
+-- GOVERNANCE DOCUMENTS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS governance_documents (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  title TEXT NOT NULL,
+  version TEXT DEFAULT '1.0',
+  source_url TEXT,
+  text_full TEXT NOT NULL,
+  file_name TEXT,
+  file_size INTEGER,
+  hash TEXT NOT NULL,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  approved_by TEXT,
+  approved_at TIMESTAMPTZ,
+  rejected_reason TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE governance_documents ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can read approved governance docs" ON governance_documents
+  FOR SELECT USING (true);
+
+CREATE POLICY "Admins can manage governance docs" ON governance_documents
+  FOR ALL USING (true);
+
+-- ============================================
+-- DOCUMENT CHUNKS TABLE (for RAG retrieval)
+-- ============================================
+CREATE TABLE IF NOT EXISTS document_chunks (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  document_id UUID NOT NULL REFERENCES governance_documents(id) ON DELETE CASCADE,
+  chunk_text TEXT NOT NULL,
+  chunk_index INTEGER NOT NULL,
+  section_hint TEXT,
+  embedding vector(1536),
+  search_vector tsvector,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE document_chunks ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can read chunks" ON document_chunks
+  FOR SELECT USING (true);
+
+CREATE POLICY "Admins can manage chunks" ON document_chunks
+  FOR ALL USING (true);
+
+-- ============================================
+-- APPROVAL LOG TABLE (audit trail)
+-- ============================================
+CREATE TABLE IF NOT EXISTS approval_log (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  document_id UUID NOT NULL REFERENCES governance_documents(id) ON DELETE CASCADE,
+  action TEXT NOT NULL CHECK (action IN ('uploaded', 'approved', 'rejected')),
+  performed_by TEXT DEFAULT 'admin',
+  reason TEXT,
+  performed_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE approval_log ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can read approval log" ON approval_log
+  FOR SELECT USING (true);
+
+CREATE POLICY "System can insert approval log" ON approval_log
+  FOR INSERT WITH CHECK (true);
+
+-- ============================================
+-- INDEXES
+-- ============================================
+CREATE INDEX IF NOT EXISTS idx_gov_docs_status ON governance_documents(status);
+CREATE INDEX IF NOT EXISTS idx_gov_docs_hash ON governance_documents(hash);
+CREATE INDEX IF NOT EXISTS idx_doc_chunks_document ON document_chunks(document_id);
+CREATE INDEX IF NOT EXISTS idx_doc_chunks_search ON document_chunks USING GIN(search_vector);
+CREATE INDEX IF NOT EXISTS idx_approval_log_doc ON approval_log(document_id);
+CREATE INDEX IF NOT EXISTS idx_approval_log_time ON approval_log(performed_at DESC);
+
+-- ============================================
+-- AUTO-POPULATE SEARCH VECTOR TRIGGER
+-- ============================================
+CREATE OR REPLACE FUNCTION update_chunk_search_vector()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.search_vector := to_tsvector('english', COALESCE(NEW.section_hint, '') || ' ' || NEW.chunk_text);
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_chunk_search_vector
+  BEFORE INSERT OR UPDATE ON document_chunks
+  FOR EACH ROW EXECUTE FUNCTION update_chunk_search_vector();
+
+-- ============================================
+-- VECTOR SIMILARITY SEARCH FUNCTION (pgvector)
+-- ============================================
+CREATE OR REPLACE FUNCTION match_document_chunks(
+  query_embedding vector(1536),
+  match_threshold float DEFAULT 0.3,
+  match_count int DEFAULT 5
+)
+RETURNS TABLE (
+  id UUID,
+  document_id UUID,
+  chunk_text TEXT,
+  chunk_index INTEGER,
+  section_hint TEXT,
+  similarity float
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    dc.id, dc.document_id, dc.chunk_text, dc.chunk_index, dc.section_hint,
+    1 - (dc.embedding <=> query_embedding) AS similarity
+  FROM document_chunks dc
+  JOIN governance_documents gd ON gd.id = dc.document_id
+  WHERE gd.status = 'approved'
+    AND 1 - (dc.embedding <=> query_embedding) > match_threshold
+  ORDER BY dc.embedding <=> query_embedding
+  LIMIT match_count;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================
+-- FULL-TEXT SEARCH FUNCTION (fallback)
+-- ============================================
+CREATE OR REPLACE FUNCTION search_document_chunks_fts(
+  query_text TEXT,
+  match_count int DEFAULT 5
+)
+RETURNS TABLE (
+  id UUID,
+  document_id UUID,
+  chunk_text TEXT,
+  chunk_index INTEGER,
+  section_hint TEXT,
+  rank float
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    dc.id, dc.document_id, dc.chunk_text, dc.chunk_index, dc.section_hint,
+    ts_rank(dc.search_vector, plainto_tsquery('english', query_text))::float AS rank
+  FROM document_chunks dc
+  JOIN governance_documents gd ON gd.id = dc.document_id
+  WHERE gd.status = 'approved'
+    AND dc.search_vector @@ plainto_tsquery('english', query_text)
+  ORDER BY rank DESC
+  LIMIT match_count;
+END;
+$$ LANGUAGE plpgsql;
