@@ -127,9 +127,120 @@ const documents = [
 
 const categories = ['All', ...new Set(documents.map(d => d.category))]
 
+function AiPanel({ doc, onClose }) {
+  const [content, setContent] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [query, setQuery] = useState('')
+
+  const extractContent = async (userQuery) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/extract-pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: doc.url, query: userQuery || undefined }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setContent(data.content)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleAsk = (e) => {
+    e.preventDefault()
+    if (query.trim()) extractContent(query.trim())
+  }
+
+  return (
+    <div className="mt-4 border-t border-[#30363d] pt-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold text-[#a371f7] uppercase tracking-wider">AI Document Reader</span>
+          <span className="text-[10px] text-[#6e7681]">Powered by Grok</span>
+        </div>
+        <button onClick={onClose} className="text-[10px] text-[#6e7681] hover:text-[#f0f6fc] transition">Close</button>
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex gap-2 mb-3">
+        <button
+          onClick={() => extractContent(null)}
+          disabled={loading}
+          className="px-3 py-1.5 text-xs font-medium bg-[#a371f7]/10 text-[#a371f7] border border-[#a371f7]/30 rounded hover:border-[#a371f7] transition disabled:opacity-50"
+        >
+          {loading && !query ? 'Reading...' : 'Summarize Document'}
+        </button>
+      </div>
+
+      {/* Ask a question */}
+      <form onSubmit={handleAsk} className="flex gap-2 mb-3">
+        <input
+          type="text"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Ask a question about this document..."
+          className="flex-1 bg-[#0d1117] border border-[#30363d] rounded px-3 py-1.5 text-sm text-[#f0f6fc] placeholder-[#6e7681] focus:outline-none focus:border-[#a371f7] transition"
+        />
+        <button
+          type="submit"
+          disabled={loading || !query.trim()}
+          className="px-3 py-1.5 text-xs font-medium bg-[#a371f7] text-white rounded hover:bg-[#a371f7]/80 transition disabled:opacity-50"
+        >
+          {loading && query ? 'Asking...' : 'Ask'}
+        </button>
+      </form>
+
+      {/* Error */}
+      {error && (
+        <div className="bg-[#f85149]/10 border border-[#f85149]/30 rounded-lg p-3 mb-3">
+          <p className="text-xs text-[#f85149]">{error}</p>
+          {error.includes('GROK_API_KEY') && (
+            <p className="text-[10px] text-[#6e7681] mt-1">
+              Add your xAI API key as GROK_API_KEY in .env.local to enable AI document reading.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Loading */}
+      {loading && (
+        <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6 text-center">
+          <div className="inline-block w-5 h-5 border-2 border-[#a371f7] border-t-transparent rounded-full animate-spin mb-2" />
+          <p className="text-xs text-[#8b949e]">Grok is reading the PDF...</p>
+          <p className="text-[10px] text-[#6e7681] mt-1">This may take a moment for large documents</p>
+        </div>
+      )}
+
+      {/* Content */}
+      {content && !loading && (
+        <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4 max-h-[500px] overflow-y-auto">
+          <div className="prose prose-invert prose-sm max-w-none">
+            {content.split('\n').map((line, i) => {
+              if (line.startsWith('# ')) return <h2 key={i} className="text-[#f0f6fc] text-base font-bold mt-4 mb-2">{line.slice(2)}</h2>
+              if (line.startsWith('## ')) return <h3 key={i} className="text-[#f0f6fc] text-sm font-semibold mt-3 mb-1">{line.slice(3)}</h3>
+              if (line.startsWith('### ')) return <h4 key={i} className="text-[#8b949e] text-sm font-semibold mt-2 mb-1">{line.slice(4)}</h4>
+              if (line.startsWith('- ') || line.startsWith('* ')) return <li key={i} className="text-sm text-[#8b949e] ml-4 mb-0.5">{line.slice(2)}</li>
+              if (line.startsWith('**') && line.endsWith('**')) return <p key={i} className="text-sm text-[#f0f6fc] font-semibold mt-2">{line.slice(2, -2)}</p>
+              if (line.trim() === '') return <br key={i} />
+              return <p key={i} className="text-sm text-[#8b949e] mb-1">{line}</p>
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Documents() {
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [previewDoc, setPreviewDoc] = useState(null)
+  const [aiDoc, setAiDoc] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
 
   const filtered = documents.filter(doc => {
@@ -158,10 +269,14 @@ export default function Documents() {
             <div className="inline-flex items-center gap-2 px-2 py-1 bg-[#388bfd]/10 border border-[#388bfd] rounded text-[10px] font-semibold text-[#388bfd] uppercase tracking-wider">
               {documents.length} Documents
             </div>
+            <div className="inline-flex items-center gap-2 px-2 py-1 bg-[#a371f7]/10 border border-[#a371f7] rounded text-[10px] font-semibold text-[#a371f7] uppercase tracking-wider">
+              AI-Powered Reading
+            </div>
           </div>
           <h1 className="text-3xl font-bold text-[#f0f6fc] tracking-tight mb-2">Document Catalogue</h1>
           <p className="text-[#8b949e] max-w-2xl">
             Official UNC governance documents, university policies, student government codes, and conduct procedures.
+            Use AI Read to extract content and ask questions about any document.
           </p>
         </div>
       </div>
@@ -224,7 +339,23 @@ export default function Documents() {
                   {/* Actions */}
                   <div className="flex items-center gap-2 shrink-0">
                     <button
-                      onClick={() => setPreviewDoc(previewDoc?.id === doc.id ? null : doc)}
+                      onClick={() => {
+                        setAiDoc(aiDoc?.id === doc.id ? null : doc)
+                        if (previewDoc?.id === doc.id) setPreviewDoc(null)
+                      }}
+                      className={`px-3 py-1.5 text-xs font-medium rounded transition ${
+                        aiDoc?.id === doc.id
+                          ? 'bg-[#a371f7] text-white'
+                          : 'text-[#a371f7] border border-[#a371f7]/30 hover:border-[#a371f7]'
+                      }`}
+                    >
+                      {aiDoc?.id === doc.id ? 'Close AI' : 'AI Read'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setPreviewDoc(previewDoc?.id === doc.id ? null : doc)
+                        if (aiDoc?.id === doc.id) setAiDoc(null)
+                      }}
                       className="px-3 py-1.5 text-xs font-medium text-[#8b949e] border border-[#30363d] rounded hover:text-[#00d4ff] hover:border-[#00d4ff] transition"
                     >
                       {previewDoc?.id === doc.id ? 'Close' : 'Preview'}
@@ -240,7 +371,12 @@ export default function Documents() {
                   </div>
                 </div>
 
-                {/* Inline Preview */}
+                {/* AI Reader Panel */}
+                {aiDoc?.id === doc.id && (
+                  <AiPanel doc={doc} onClose={() => setAiDoc(null)} />
+                )}
+
+                {/* Inline PDF Preview (native browser rendering) */}
                 {previewDoc?.id === doc.id && (
                   <div className="mt-4 border-t border-[#30363d] pt-4">
                     <iframe
@@ -249,7 +385,7 @@ export default function Documents() {
                       title={doc.name}
                     />
                     <p className="text-[10px] text-[#6e7681] mt-2">
-                      If the preview doesn't load, click "Open" to view in a new tab.
+                      If the preview doesn't load, try "AI Read" or click "Open" to view in a new tab.
                     </p>
                   </div>
                 )}
