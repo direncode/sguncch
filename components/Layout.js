@@ -10,7 +10,7 @@ const navigation = [
   { name: 'Academic', href: '/academic' },
   { name: 'Impact', href: '/communications' },
   { name: 'Documents', href: '/documents' },
-  { name: 'Knowledge', href: '/knowledge-base' },
+  { name: 'The Scroll', href: '/scroll' },
   { name: 'Ask AI', href: '/chat' },
 ]
 
