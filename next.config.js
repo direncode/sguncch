@@ -65,16 +65,9 @@ const nextConfig = {
   // Powered by header removal
   poweredByHeader: false,
 
-  webpack: (config, { isServer }) => {
+  webpack: (config) => {
     // pdf-parse compatibility: disable canvas module
     config.resolve.alias.canvas = false
-
-    // pdfjs-dist: exclude worker from server bundle, handle on client
-    if (!isServer) {
-      config.resolve.alias['pdfjs-dist/build/pdf.worker.mjs'] = false
-      config.resolve.alias['pdfjs-dist/build/pdf.worker.min.mjs'] = false
-    }
-
     return config
   },
 }

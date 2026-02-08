@@ -5,23 +5,57 @@ import Link from 'next/link'
 import { useApp } from '../../lib/store'
 import { ADMIN_KEY } from '../../lib/data'
 
-// Client-side PDF text extraction using pdfjs-dist
-async function extractPdfText(file) {
-  const pdfjsLib = await import('pdfjs-dist/build/pdf.mjs')
-  pdfjsLib.GlobalWorkerOptions.workerSrc = ''
+// Convert ArrayBuffer to base64 in chunks (handles large files)
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer)
+  const chunkSize = 0x8000
+  let binary = ''
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize))
+  }
+  return btoa(binary)
+}
 
-  const arrayBuffer = await file.arrayBuffer()
-  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise
+// Extract PDF text using Grok API (direct connection from browser)
+async function extractPdfWithGrok(file, apiKey) {
+  const buffer = await file.arrayBuffer()
+  const base64 = arrayBufferToBase64(buffer)
 
-  const pages = []
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i)
-    const content = await page.getTextContent()
-    const text = content.items.map(item => item.str).join(' ')
-    if (text.trim()) pages.push(text)
+  const response = await fetch('https://api.x.ai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'grok-3',
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'file',
+            file_data: `data:application/pdf;base64,${base64}`,
+          },
+          {
+            type: 'text',
+            text: 'Extract ALL text content from this PDF document. Return ONLY the raw text — no commentary, no formatting instructions, no summaries. Just the verbatim document text.',
+          },
+        ],
+      }],
+      temperature: 0,
+      max_tokens: 16000,
+    }),
+  })
+
+  if (!response.ok) {
+    const errText = await response.text().catch(() => '')
+    throw new Error(`Grok API error (${response.status}): ${errText.slice(0, 200)}`)
   }
 
-  return pages.join('\n\n').trim()
+  const data = await response.json()
+  const text = data.choices?.[0]?.message?.content?.trim()
+  if (!text) throw new Error('Grok returned no text content')
+  return text
 }
 
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''
@@ -63,6 +97,7 @@ export default function IngestPage() {
   // Upload queue: { id, file, title, status: 'queued'|'uploading'|'processing'|'done'|'error', chunks, error }
   const [uploadQueue, setUploadQueue] = useState([])
   const [isProcessing, setIsProcessing] = useState(false)
+  const [xaiKey, setXaiKey] = useState(null)
   const fileInputRef = useRef(null)
   const dropRef = useRef(null)
 
@@ -81,7 +116,16 @@ export default function IngestPage() {
   }, [isLoaded, isAdmin, router])
 
   useEffect(() => {
-    if (isAdmin) loadDocuments()
+    if (isAdmin) {
+      loadDocuments()
+      // Fetch xAI API key for direct Grok PDF extraction
+      fetch('/api/codex/extract-pdf', {
+        headers: { 'Authorization': `Bearer ${ADMIN_KEY}` },
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => d?.key && setXaiKey(d.key))
+        .catch(() => {})
+    }
   }, [isAdmin])
 
   const notify = (msg) => {
@@ -190,14 +234,13 @@ export default function IngestPage() {
 
         const ext = item.file.name.toLowerCase()
         if (ext.endsWith('.pdf')) {
-          // Extract text client-side to avoid sending large base64 payloads
-          updateQueueItem(item.id, { status: 'processing' })
-          const pdfText = await extractPdfText(item.file)
-          if (!pdfText) {
-            updateQueueItem(item.id, { status: 'error', error: 'No text extracted — PDF may be image-based or scanned' })
+          if (!xaiKey) {
+            updateQueueItem(item.id, { status: 'error', error: 'xAI API key not available — configure XAI_API_KEY on server' })
             continue
           }
-          body.text_content = pdfText
+          // Extract text via Grok API (direct connection from browser)
+          updateQueueItem(item.id, { status: 'processing' })
+          body.text_content = await extractPdfWithGrok(item.file, xaiKey)
         } else {
           body.text_content = await item.file.text()
         }
