@@ -1,5 +1,10 @@
 import { withAdminAuth } from '../../../lib/auth'
 
+// Increase body size limit for base64 PDF uploads
+export const config = {
+  api: { bodyParser: { sizeLimit: '50mb' } },
+}
+
 async function handler(req, res) {
   const apiKey = process.env.XAI_API_KEY
   const isConfigured = apiKey && apiKey !== 'your-xai-api-key-here' && apiKey !== 'xai-placeholder-set-in-vercel'
@@ -15,19 +20,27 @@ async function handler(req, res) {
       return res.status(500).json({ error: 'XAI_API_KEY not configured on server' })
     }
 
-    const { url, query } = req.body
-    if (!url) {
-      return res.status(400).json({ error: 'Missing document URL' })
+    const { url, fileData, fileName, query } = req.body
+    if (!url && !fileData) {
+      return res.status(400).json({ error: 'Missing document URL or fileData' })
     }
 
     try {
-      // 1. Fetch the PDF
-      const pdfRes = await fetch(url)
-      if (!pdfRes.ok) {
-        return res.status(502).json({ error: `Failed to fetch PDF: ${pdfRes.status}` })
+      // 1. Get the PDF buffer
+      let pdfBuffer, filename
+      if (fileData) {
+        // Base64-encoded file from client upload
+        pdfBuffer = Buffer.from(fileData, 'base64')
+        filename = fileName || 'document.pdf'
+      } else {
+        // Fetch from URL
+        const pdfRes = await fetch(url)
+        if (!pdfRes.ok) {
+          return res.status(502).json({ error: `Failed to fetch PDF: ${pdfRes.status}` })
+        }
+        pdfBuffer = Buffer.from(await pdfRes.arrayBuffer())
+        filename = url.split('/').pop() || 'document.pdf'
       }
-      const pdfBuffer = Buffer.from(await pdfRes.arrayBuffer())
-      const filename = url.split('/').pop() || 'document.pdf'
 
       // 2. Upload to xAI Files API
       const formData = new FormData()
