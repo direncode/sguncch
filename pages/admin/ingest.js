@@ -5,30 +5,16 @@ import Link from 'next/link'
 import { useApp } from '../../lib/store'
 import { ADMIN_KEY } from '../../lib/data'
 
-// Convert ArrayBuffer to base64 in chunks (handles large files)
-function arrayBufferToBase64(buffer) {
-  const bytes = new Uint8Array(buffer)
-  const chunkSize = 0x8000
-  let binary = ''
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize))
-  }
-  return btoa(binary)
-}
-
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''
 const formatSize = (bytes) => bytes > 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`
 
 const ACCEPTED_TYPES = {
-  'application/pdf': 'PDF',
   'text/plain': 'TXT',
   'text/markdown': 'MD',
-  'application/msword': 'DOC',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'DOCX',
   'text/csv': 'CSV',
 }
 
-const ACCEPTED_EXTENSIONS = ['.pdf', '.txt', '.md', '.doc', '.docx', '.csv']
+const ACCEPTED_EXTENSIONS = ['.txt', '.md', '.csv']
 
 function getFileTypeLabel(file) {
   if (ACCEPTED_TYPES[file.type]) return ACCEPTED_TYPES[file.type]
@@ -179,16 +165,7 @@ export default function IngestPage() {
           version: '1.0',
           file_name: item.file.name,
           file_size: item.file.size,
-        }
-
-        const ext = item.file.name.toLowerCase()
-        if (ext.endsWith('.pdf')) {
-          // Send base64 to server — pdf-parse extracts text server-side (instant, no API calls)
-          updateQueueItem(item.id, { status: 'processing' })
-          const buffer = await item.file.arrayBuffer()
-          body.file_base64 = arrayBufferToBase64(buffer)
-        } else {
-          body.text_content = await item.file.text()
+          text_content: await item.file.text(),
         }
 
         updateQueueItem(item.id, { status: 'uploading' })
@@ -396,7 +373,7 @@ export default function IngestPage() {
           <div className="flex items-end justify-between mb-6">
             <div>
               <h1 className="text-3xl font-bold tracking-tight mb-2">Upload Documents</h1>
-              <p className="text-gray-500 text-sm">Drop files to instantly ingest into the AI knowledge base. Auto-approved and indexed.</p>
+              <p className="text-gray-500 text-sm">Drop plain text files or paste content to add to the AI knowledge base. Auto-indexed.</p>
             </div>
             <button
               onClick={() => setShowPaste(!showPaste)}
@@ -467,10 +444,10 @@ export default function IngestPage() {
                   Drop files here or click to browse
                 </p>
                 <p className="text-gray-600 text-xs mt-2 font-mono">
-                  PDF &middot; TXT &middot; MD &middot; DOC &middot; DOCX &middot; CSV &mdash; drop as many as you want
+                  TXT &middot; MD &middot; CSV &mdash; plain text files only
                 </p>
                 <p className="text-gray-700 text-xs mt-3">
-                  Files are automatically approved, chunked, embedded, and indexed for Grok
+                  Files are automatically chunked, embedded, and indexed into the knowledge base
                 </p>
               </div>
             )}
