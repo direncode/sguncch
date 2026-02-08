@@ -51,7 +51,7 @@ export default async function handler(req, res) {
       return res.status(200).json({
         answer: 'I could not find any relevant information in the approved governance documents to answer your question. Please try rephrasing or ask about a different topic.',
         sources: [],
-        model: 'grok-3',
+        model: 'grok-4',
       })
     }
 
@@ -110,7 +110,7 @@ ${contextBlocks}`
         section: s.section,
         approved_at: s.approved_at,
       })),
-      model: 'grok-3',
+      model: 'grok-4',
     })
   } catch (err) {
     console.error('Chat error:', err)
