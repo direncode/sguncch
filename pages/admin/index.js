@@ -293,6 +293,7 @@ export default function AdminConsole() {
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'platform', label: 'Platform Builder' },
     { id: 'budget', label: 'Budget & Funding' },
+    { id: 'codex', label: 'AI Knowledge Base', href: '/admin/codex' },
     { id: 'content', label: 'Content' },
     { id: 'feedback', label: 'Feedback', badge: newFeedback.length },
     { id: 'settings', label: 'Settings' },
@@ -327,9 +328,6 @@ export default function AdminConsole() {
               <span className="px-3 py-1 bg-white/10 rounded text-xs font-mono uppercase tracking-wider">
                 Admin
               </span>
-              <Link href="/admin/codex" className="px-3 py-1.5 bg-white/10 border border-gray-700 rounded text-xs text-white hover:bg-white/20 transition-all">
-                Gov Codex
-              </Link>
             </div>
             <div className="flex items-center gap-6">
               <LiveClock />
@@ -346,7 +344,15 @@ export default function AdminConsole() {
       <nav className="sticky top-16 z-40 bg-black/80 backdrop-blur-xl border-b border-gray-900">
         <div className="max-w-[1800px] mx-auto px-6 lg:px-12">
           <div className="flex gap-0 overflow-x-auto">
-            {tabs.map(tab => (
+            {tabs.map(tab => tab.href ? (
+              <Link
+                key={tab.id}
+                href={tab.href}
+                className="px-5 py-4 text-xs font-medium tracking-widest uppercase whitespace-nowrap transition-all border-b-2 border-transparent text-gray-500 hover:text-white hover:border-gray-700 flex items-center gap-2"
+              >
+                {tab.label}
+              </Link>
+            ) : (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
