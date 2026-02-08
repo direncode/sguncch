@@ -34,7 +34,9 @@ async function extractPdfWithGrok(file, apiKey) {
         content: [
           {
             type: 'file',
-            file_data: `data:application/pdf;base64,${base64}`,
+            file: {
+              file_data: `data:application/pdf;base64,${base64}`,
+            },
           },
           {
             type: 'text',
