@@ -197,11 +197,10 @@ export default function IngestPage() {
     if (queued.length === 0) return
     setIsProcessing(true)
 
-    for (const item of queued) {
+    const processItem = async (item) => {
       updateQueueItem(item.id, { status: 'uploading' })
 
       try {
-        // Read file
         let body = {
           title: item.title,
           version: '1.0',
@@ -213,9 +212,8 @@ export default function IngestPage() {
         if (ext.endsWith('.pdf')) {
           if (!grokAvailable) {
             updateQueueItem(item.id, { status: 'error', error: 'xAI API key not available — configure XAI_API_KEY on server' })
-            continue
+            return
           }
-          // Extract text via server-side Grok API
           updateQueueItem(item.id, { status: 'processing' })
           body.text_content = await extractPdfWithGrok(item.file)
         } else {
@@ -224,14 +222,12 @@ export default function IngestPage() {
 
         updateQueueItem(item.id, { status: 'uploading' })
 
-        // Use batch-upload for auto-approve
         const res = await fetch('/api/codex/batch-upload', {
           method: 'POST',
           headers: authHeaders,
           body: JSON.stringify({ files: [body] }),
         })
 
-        // Parse response safely — server may return non-JSON on error
         const responseText = await res.text()
         let data
         try {
@@ -257,6 +253,9 @@ export default function IngestPage() {
         updateQueueItem(item.id, { status: 'error', error: err.message || 'Upload failed' })
       }
     }
+
+    // Process all files in parallel
+    await Promise.all(queued.map(processItem))
 
     setIsProcessing(false)
     loadDocuments()
