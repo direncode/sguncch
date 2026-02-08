@@ -16,25 +16,6 @@ function arrayBufferToBase64(buffer) {
   return btoa(binary)
 }
 
-// Extract PDF text via server-side Grok API (Files API upload)
-async function extractPdfWithGrok(file) {
-  const buffer = await file.arrayBuffer()
-  const base64 = arrayBufferToBase64(buffer)
-
-  const res = await fetch('/api/codex/extract-pdf', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${ADMIN_KEY}`,
-    },
-    body: JSON.stringify({ fileData: base64, fileName: file.name }),
-  })
-
-  const data = await res.json()
-  if (!res.ok) throw new Error(data.error)
-  return data.content
-}
-
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''
 const formatSize = (bytes) => bytes > 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`
 
@@ -74,7 +55,6 @@ export default function IngestPage() {
   // Upload queue: { id, file, title, status: 'queued'|'uploading'|'processing'|'done'|'error', chunks, error }
   const [uploadQueue, setUploadQueue] = useState([])
   const [isProcessing, setIsProcessing] = useState(false)
-  const [grokAvailable, setGrokAvailable] = useState(false)
   const fileInputRef = useRef(null)
   const dropRef = useRef(null)
 
@@ -95,13 +75,6 @@ export default function IngestPage() {
   useEffect(() => {
     if (isAdmin) {
       loadDocuments()
-      // Check if Grok PDF extraction is available
-      fetch('/api/codex/extract-pdf', {
-        headers: { 'Authorization': `Bearer ${ADMIN_KEY}` },
-      })
-        .then(r => r.ok ? r.json() : null)
-        .then(d => d?.available && setGrokAvailable(true))
-        .catch(() => {})
     }
   }, [isAdmin])
 
@@ -210,12 +183,10 @@ export default function IngestPage() {
 
         const ext = item.file.name.toLowerCase()
         if (ext.endsWith('.pdf')) {
-          if (!grokAvailable) {
-            updateQueueItem(item.id, { status: 'error', error: 'xAI API key not available — configure XAI_API_KEY on server' })
-            return
-          }
+          // Send base64 to server — pdf-parse extracts text server-side (instant, no API calls)
           updateQueueItem(item.id, { status: 'processing' })
-          body.text_content = await extractPdfWithGrok(item.file)
+          const buffer = await item.file.arrayBuffer()
+          body.file_base64 = arrayBufferToBase64(buffer)
         } else {
           body.text_content = await item.file.text()
         }
