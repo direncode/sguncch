@@ -10,6 +10,7 @@ const navigation = [
   { name: 'Academic', href: '/academic', icon: '◎' },
   { name: 'Comms', href: '/communications', icon: '◇' },
   { name: 'Environment', href: '/environmental', icon: '◆' },
+  { name: 'Documents', href: '/documents', icon: '◫' },
 ]
 
 export default function Layout({ children }) {
