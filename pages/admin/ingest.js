@@ -172,8 +172,13 @@ export default function IngestPage() {
         const ext = item.file.name.toLowerCase()
         if (ext.endsWith('.pdf')) {
           const buffer = await item.file.arrayBuffer()
-          const base64 = btoa(new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), ''))
-          body.file_base64 = base64
+          const bytes = new Uint8Array(buffer)
+          const chunkSize = 8192
+          let binary = ''
+          for (let i = 0; i < bytes.length; i += chunkSize) {
+            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize))
+          }
+          body.file_base64 = btoa(binary)
         } else {
           body.text_content = await item.file.text()
         }
@@ -186,7 +191,19 @@ export default function IngestPage() {
           headers: authHeaders,
           body: JSON.stringify({ files: [body] }),
         })
-        const data = await res.json()
+
+        // Parse response safely — server may return non-JSON on error
+        const responseText = await res.text()
+        let data
+        try {
+          data = JSON.parse(responseText)
+        } catch {
+          throw new Error(
+            res.status === 413
+              ? `File too large for server (${formatSize(item.file.size)})`
+              : `Server error (${res.status}): ${responseText.slice(0, 120)}`
+          )
+        }
 
         if (res.ok && data.results?.[0]?.status === 'approved') {
           updateQueueItem(item.id, {

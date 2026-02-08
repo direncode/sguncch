@@ -2,13 +2,39 @@ import { withAdminAuth } from '../../../lib/auth'
 import { createDocument, updateDocumentStatus, insertChunks, logApprovalAction } from '../../../lib/codex'
 import { chunkText, generateEmbedding, isEmbeddingAvailable } from '../../../lib/embeddings'
 
+function getRawBody(req, limit = 50 * 1024 * 1024) {
+  return new Promise((resolve, reject) => {
+    const chunks = []
+    let size = 0
+    req.on('data', (chunk) => {
+      size += chunk.length
+      if (size > limit) {
+        reject(new Error(`Request body too large (max ${Math.round(limit / 1024 / 1024)}MB)`))
+        req.destroy()
+        return
+      }
+      chunks.push(chunk)
+    })
+    req.on('end', () => resolve(Buffer.concat(chunks)))
+    req.on('error', reject)
+  })
+}
+
 async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
   }
 
   try {
-    const { files } = req.body
+    let body
+    try {
+      const rawBody = await getRawBody(req)
+      body = JSON.parse(rawBody.toString('utf8'))
+    } catch (parseErr) {
+      return res.status(400).json({ error: `Invalid request: ${parseErr.message}` })
+    }
+
+    const { files } = body
 
     if (!files || !Array.isArray(files) || files.length === 0) {
       return res.status(400).json({ error: 'files array is required' })
@@ -35,13 +61,17 @@ async function handler(req, res) {
           const pdfData = await pdfParse(buffer)
           textContent = pdfData.text
         } catch (err) {
-          results.push({ file_name, status: 'error', error: 'Failed to parse PDF' })
+          results.push({ file_name, status: 'error', error: `Failed to parse PDF: ${err.message || 'Unknown error'}` })
           continue
         }
       }
 
       if (!textContent || !textContent.trim()) {
-        results.push({ file_name: file_name || title, status: 'error', error: 'No text content extracted' })
+        results.push({
+          file_name: file_name || title,
+          status: 'error',
+          error: 'No text content extracted — this PDF may be image-based or scanned. Try a text-based PDF.',
+        })
         continue
       }
 
@@ -104,7 +134,7 @@ async function handler(req, res) {
     })
   } catch (err) {
     console.error('Batch upload error:', err)
-    return res.status(500).json({ error: 'Batch upload failed' })
+    return res.status(500).json({ error: `Batch upload failed: ${err.message || 'Unknown error'}` })
   }
 }
 
@@ -112,8 +142,6 @@ export default withAdminAuth(handler)
 
 export const config = {
   api: {
-    bodyParser: {
-      sizeLimit: '25mb',
-    },
+    bodyParser: false,
   },
 }
