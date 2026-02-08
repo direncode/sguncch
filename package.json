@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "ingest": "node scripts/bulk-ingest.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.93.1",
