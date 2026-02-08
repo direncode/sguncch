@@ -5,6 +5,25 @@ import Link from 'next/link'
 import { useApp } from '../../lib/store'
 import { ADMIN_KEY } from '../../lib/data'
 
+// Client-side PDF text extraction using pdfjs-dist
+async function extractPdfText(file) {
+  const pdfjsLib = await import('pdfjs-dist/build/pdf.mjs')
+  pdfjsLib.GlobalWorkerOptions.workerSrc = ''
+
+  const arrayBuffer = await file.arrayBuffer()
+  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise
+
+  const pages = []
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i)
+    const content = await page.getTextContent()
+    const text = content.items.map(item => item.str).join(' ')
+    if (text.trim()) pages.push(text)
+  }
+
+  return pages.join('\n\n').trim()
+}
+
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''
 const formatSize = (bytes) => bytes > 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`
 
@@ -171,19 +190,19 @@ export default function IngestPage() {
 
         const ext = item.file.name.toLowerCase()
         if (ext.endsWith('.pdf')) {
-          const buffer = await item.file.arrayBuffer()
-          const bytes = new Uint8Array(buffer)
-          const chunkSize = 8192
-          let binary = ''
-          for (let i = 0; i < bytes.length; i += chunkSize) {
-            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize))
+          // Extract text client-side to avoid sending large base64 payloads
+          updateQueueItem(item.id, { status: 'processing' })
+          const pdfText = await extractPdfText(item.file)
+          if (!pdfText) {
+            updateQueueItem(item.id, { status: 'error', error: 'No text extracted — PDF may be image-based or scanned' })
+            continue
           }
-          body.file_base64 = btoa(binary)
+          body.text_content = pdfText
         } else {
           body.text_content = await item.file.text()
         }
 
-        updateQueueItem(item.id, { status: 'processing' })
+        updateQueueItem(item.id, { status: 'uploading' })
 
         // Use batch-upload for auto-approve
         const res = await fetch('/api/codex/batch-upload', {
