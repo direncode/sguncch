@@ -6,7 +6,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { status, search } = req.query
+    const { status, search, include_text } = req.query
 
     if (search) {
       const { data, error } = await searchDocuments(search)
@@ -14,7 +14,8 @@ export default async function handler(req, res) {
       return res.status(200).json({ documents: data })
     }
 
-    const { data, error } = await getDocuments(status || 'approved')
+    const includeText = include_text === 'true' || include_text === '1'
+    const { data, error } = await getDocuments(status || 'approved', { includeText })
     if (error) return res.status(500).json({ error })
     return res.status(200).json({ documents: data })
   } catch (err) {

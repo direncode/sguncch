@@ -99,8 +99,8 @@ export default function ScrollAdmin() {
     setLoadingDocs(true)
     try {
       const [pending, approved, rejected] = await Promise.all([
-        fetch('/api/codex/documents?status=pending').then(r => r.json()),
-        fetch('/api/codex/documents?status=approved').then(r => r.json()),
+        fetch('/api/codex/documents?status=pending&include_text=true').then(r => r.json()),
+        fetch('/api/codex/documents?status=approved&include_text=true').then(r => r.json()),
         fetch('/api/codex/documents?status=rejected').then(r => r.json()),
       ])
       const all = [
