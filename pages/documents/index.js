@@ -120,127 +120,9 @@ function findScrollMatch(doc, scrollDocs) {
   return scrollDocs.find(sd => {
     const title = sd.title.toLowerCase()
     return name.includes(title) || title.includes(name) ||
-      // Match on key terms
       name.split(/\s+/).filter(w => w.length > 3).some(word => title.includes(word)) &&
       title.split(/\s+/).filter(w => w.length > 3).some(word => name.includes(word))
   })
-}
-
-function AiPanel({ doc, grokAvailable, onClose }) {
-  const [content, setContent] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [query, setQuery] = useState('')
-
-  const extractContent = async (userQuery) => {
-    if (!grokAvailable) {
-      setError('XAI_API_KEY not configured on server. Add it to .env.local.')
-      return
-    }
-    setLoading(true)
-    setError(null)
-    try {
-      const res = await fetch('/api/codex/extract-pdf', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${ADMIN_KEY}`,
-        },
-        body: JSON.stringify({ url: doc.url, query: userQuery || undefined }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error)
-      setContent(data.content)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleAsk = (e) => {
-    e.preventDefault()
-    if (query.trim()) extractContent(query.trim())
-  }
-
-  return (
-    <div className="mt-4 border-t border-[#30363d] pt-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-semibold text-[#a371f7] uppercase tracking-wider">AI Document Reader</span>
-          <span className="text-[10px] text-[#6e7681]">Powered by Grok</span>
-        </div>
-        <button onClick={onClose} className="text-[10px] text-[#6e7681] hover:text-[#f0f6fc] transition">Close</button>
-      </div>
-
-      {!grokAvailable && (
-        <div className="bg-[#d29922]/10 border border-[#d29922]/30 rounded-lg p-3 mb-3">
-          <p className="text-xs text-[#d29922]">XAI_API_KEY not configured. Add your xAI API key to .env.local to enable AI document reading.</p>
-        </div>
-      )}
-
-      {grokAvailable && (
-        <>
-          <div className="flex gap-2 mb-3">
-            <button
-              onClick={() => extractContent(null)}
-              disabled={loading}
-              className="px-3 py-1.5 text-xs font-medium bg-[#a371f7]/10 text-[#a371f7] border border-[#a371f7]/30 rounded hover:border-[#a371f7] transition disabled:opacity-50"
-            >
-              {loading && !query ? 'Reading...' : 'Extract Full Text'}
-            </button>
-          </div>
-
-          <form onSubmit={handleAsk} className="flex gap-2 mb-3">
-            <input
-              type="text"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder="Ask a question about this document..."
-              className="flex-1 bg-[#0d1117] border border-[#30363d] rounded px-3 py-1.5 text-sm text-[#f0f6fc] placeholder-[#6e7681] focus:outline-none focus:border-[#a371f7] transition"
-            />
-            <button
-              type="submit"
-              disabled={loading || !query.trim()}
-              className="px-3 py-1.5 text-xs font-medium bg-[#a371f7] text-white rounded hover:bg-[#a371f7]/80 transition disabled:opacity-50"
-            >
-              {loading && query ? 'Asking...' : 'Ask Grok'}
-            </button>
-          </form>
-        </>
-      )}
-
-      {error && (
-        <div className="bg-[#f85149]/10 border border-[#f85149]/30 rounded-lg p-3 mb-3">
-          <p className="text-xs text-[#f85149]">{error}</p>
-        </div>
-      )}
-
-      {loading && (
-        <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6 text-center">
-          <div className="inline-block w-5 h-5 border-2 border-[#a371f7] border-t-transparent rounded-full animate-spin mb-2" />
-          <p className="text-xs text-[#8b949e]">Grok is reading the PDF...</p>
-          <p className="text-[10px] text-[#6e7681] mt-1">This may take a moment for large documents</p>
-        </div>
-      )}
-
-      {content && !loading && (
-        <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4 max-h-[500px] overflow-y-auto">
-          <div className="prose prose-invert prose-sm max-w-none">
-            {content.split('\n').map((line, i) => {
-              if (line.startsWith('# ')) return <h2 key={i} className="text-[#f0f6fc] text-base font-bold mt-4 mb-2">{line.slice(2)}</h2>
-              if (line.startsWith('## ')) return <h3 key={i} className="text-[#f0f6fc] text-sm font-semibold mt-3 mb-1">{line.slice(3)}</h3>
-              if (line.startsWith('### ')) return <h4 key={i} className="text-[#8b949e] text-sm font-semibold mt-2 mb-1">{line.slice(4)}</h4>
-              if (line.startsWith('- ') || line.startsWith('* ')) return <li key={i} className="text-sm text-[#8b949e] ml-4 mb-0.5">{line.slice(2)}</li>
-              if (line.startsWith('**') && line.endsWith('**')) return <p key={i} className="text-sm text-[#f0f6fc] font-semibold mt-2">{line.slice(2, -2)}</p>
-              if (line.trim() === '') return <br key={i} />
-              return <p key={i} className="text-sm text-[#8b949e] mb-1">{line}</p>
-            })}
-          </div>
-        </div>
-      )}
-    </div>
-  )
 }
 
 // .txt upload panel for a specific PDF document
@@ -356,22 +238,9 @@ function TxtUploadPanel({ doc, onUploaded, onClose }) {
 export default function Documents() {
   const { isAdmin } = useApp()
   const [selectedCategory, setSelectedCategory] = useState('All')
-  const [previewDoc, setPreviewDoc] = useState(null)
-  const [aiDoc, setAiDoc] = useState(null)
   const [txtUploadDoc, setTxtUploadDoc] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
-  const [grokAvailable, setGrokAvailable] = useState(false)
   const [scrollDocs, setScrollDocs] = useState([])
-
-  // Check if Grok PDF extraction is available
-  useEffect(() => {
-    fetch('/api/codex/extract-pdf', {
-      headers: { 'Authorization': `Bearer ${ADMIN_KEY}` },
-    })
-      .then(r => r.ok ? r.json() : null)
-      .then(d => d?.available && setGrokAvailable(true))
-      .catch(() => {})
-  }, [])
 
   // Load Scroll documents to track which PDFs have .txt uploaded
   const loadScrollDocs = () => {
@@ -411,11 +280,6 @@ export default function Documents() {
             <div className="inline-flex items-center gap-2 px-2 py-1 bg-[#388bfd]/10 border border-[#388bfd] rounded text-[10px] font-semibold text-[#388bfd] uppercase tracking-wider">
               {documents.length} Documents
             </div>
-            {grokAvailable && (
-              <div className="inline-flex items-center gap-2 px-2 py-1 bg-[#a371f7]/10 border border-[#a371f7] rounded text-[10px] font-semibold text-[#a371f7] uppercase tracking-wider">
-                Grok Connected
-              </div>
-            )}
             {scrollCount > 0 && (
               <div className="inline-flex items-center gap-2 px-2 py-1 bg-[#3fb950]/10 border border-[#3fb950] rounded text-[10px] font-semibold text-[#3fb950] uppercase tracking-wider">
                 {scrollCount} in The Scroll
@@ -426,7 +290,6 @@ export default function Documents() {
           <p className="text-[#8b949e] max-w-2xl">
             Official UNC governance documents, university policies, student government codes, and conduct procedures.
             {isAdmin ? ' Upload .txt versions under each PDF to add them to The Scroll for Grok RAG.' : ''}
-            {grokAvailable ? ' Use AI Read to extract content and ask Grok questions about any document.' : ''}
           </p>
         </div>
       </div>
@@ -475,7 +338,7 @@ export default function Documents() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-4 min-w-0 flex-1">
-                    {/* PDF Icon */}
+                    {/* Icon */}
                     <div className={`w-10 h-12 rounded flex items-center justify-center shrink-0 ${
                       inScroll
                         ? 'bg-[#3fb950]/10 border border-[#3fb950]/30'
@@ -502,15 +365,11 @@ export default function Documents() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                  <div className="flex items-center gap-2 shrink-0">
                     {/* Add .txt button — shown for admin when not yet in Scroll */}
                     {isAdmin && !inScroll && (
                       <button
-                        onClick={() => {
-                          setTxtUploadDoc(txtUploadDoc?.id === doc.id ? null : doc)
-                          if (aiDoc?.id === doc.id) setAiDoc(null)
-                          if (previewDoc?.id === doc.id) setPreviewDoc(null)
-                        }}
+                        onClick={() => setTxtUploadDoc(txtUploadDoc?.id === doc.id ? null : doc)}
                         className={`px-3 py-1.5 text-xs font-medium rounded transition ${
                           txtUploadDoc?.id === doc.id
                             ? 'bg-[#3fb950] text-black'
@@ -520,30 +379,6 @@ export default function Documents() {
                         {txtUploadDoc?.id === doc.id ? 'Close' : 'Add .txt'}
                       </button>
                     )}
-                    <button
-                      onClick={() => {
-                        setAiDoc(aiDoc?.id === doc.id ? null : doc)
-                        if (previewDoc?.id === doc.id) setPreviewDoc(null)
-                        if (txtUploadDoc?.id === doc.id) setTxtUploadDoc(null)
-                      }}
-                      className={`px-3 py-1.5 text-xs font-medium rounded transition ${
-                        aiDoc?.id === doc.id
-                          ? 'bg-[#a371f7] text-white'
-                          : 'text-[#a371f7] border border-[#a371f7]/30 hover:border-[#a371f7]'
-                      }`}
-                    >
-                      {aiDoc?.id === doc.id ? 'Close AI' : 'Ask Grok'}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setPreviewDoc(previewDoc?.id === doc.id ? null : doc)
-                        if (aiDoc?.id === doc.id) setAiDoc(null)
-                        if (txtUploadDoc?.id === doc.id) setTxtUploadDoc(null)
-                      }}
-                      className="px-3 py-1.5 text-xs font-medium text-[#8b949e] border border-[#30363d] rounded hover:text-[#00d4ff] hover:border-[#00d4ff] transition"
-                    >
-                      {previewDoc?.id === doc.id ? 'Close' : 'Preview'}
-                    </button>
                     <a
                       href={doc.url}
                       target="_blank"
@@ -563,25 +398,6 @@ export default function Documents() {
                     onClose={() => setTxtUploadDoc(null)}
                   />
                 )}
-
-                {/* AI Reader Panel */}
-                {aiDoc?.id === doc.id && (
-                  <AiPanel doc={doc} grokAvailable={grokAvailable} onClose={() => setAiDoc(null)} />
-                )}
-
-                {/* Inline PDF Preview (native browser rendering) */}
-                {previewDoc?.id === doc.id && (
-                  <div className="mt-4 border-t border-[#30363d] pt-4">
-                    <iframe
-                      src={doc.url}
-                      className="w-full h-[600px] rounded-lg border border-[#30363d] bg-white"
-                      title={doc.name}
-                    />
-                    <p className="text-[10px] text-[#6e7681] mt-2">
-                      If the preview doesn't load, try "Ask Grok" or click "Open" to view in a new tab.
-                    </p>
-                  </div>
-                )}
               </div>
             )
           })}
@@ -600,8 +416,8 @@ export default function Documents() {
             {[
               { step: '01', title: 'Browse', desc: 'Find the governance document you need from the catalogue above.' },
               { step: '02', title: 'Add .txt', desc: 'Admin uploads the .txt version of each PDF to add it to The Scroll knowledge base.' },
-              { step: '03', title: 'Ask Grok', desc: 'Once in The Scroll, Grok can search, reference, and answer questions about the document.' },
-              { step: '04', title: 'Get Answers', desc: 'Ask specific questions about any policy — Grok uses The Scroll and web search to respond.' },
+              { step: '03', title: 'Grok Indexes', desc: 'The document is chunked, embedded, and instantly available in The Scroll for Grok.' },
+              { step: '04', title: 'Ask Questions', desc: 'Go to Grok chat to ask questions — it sources from The Scroll and UNC news.' },
             ].map(item => (
               <div key={item.step} className="space-y-2">
                 <span className="text-[10px] font-mono text-[#6e7681]">{item.step}</span>
