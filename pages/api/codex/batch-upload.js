@@ -44,7 +44,7 @@ async function handler(req, res) {
     const useEmbeddings = isEmbeddingAvailable()
 
     for (const file of files) {
-      const { title, text_content, version, file_name, file_size, file_base64 } = file
+      const { title, text_content, version, file_name, file_size, file_base64, source_url } = file
 
       if (!title) {
         results.push({ file_name: file_name || 'unknown', status: 'error', error: 'Title is required' })
@@ -79,7 +79,7 @@ async function handler(req, res) {
       const { data: doc, error: createError } = await createDocument({
         title,
         version: version || '1.0',
-        source_url: null,
+        source_url: source_url || null,
         text_full: textContent,
         file_name,
         file_size,

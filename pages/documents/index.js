@@ -6,13 +6,15 @@ import { useApp } from '../../lib/store'
 import { SEED_DOCUMENTS } from '../../lib/scrollRegistry'
 
 // Build documents list from the scroll registry (single source of truth)
+// Note: pdfUrl from registry is only used as a default suggestion for admin — user side
+// only shows a working link if admin has set source_url on the Scroll entry
 const documents = SEED_DOCUMENTS.map(seed => ({
   id: seed.key,
   name: seed.title,
   category: seed.category,
-  url: seed.pdfUrl,
   version: seed.version,
   description: seed.description,
+  defaultPdfUrl: seed.pdfUrl, // admin-only default suggestion
 }))
 
 const categories = ['All', ...new Set(documents.map(d => d.category))]
@@ -28,9 +30,10 @@ function findScrollMatch(doc, scrollDocs) {
   })
 }
 
-// .txt upload panel for a specific PDF document
+// .txt upload panel for a specific PDF document (admin only)
 function TxtUploadPanel({ doc, onUploaded, onClose }) {
   const [file, setFile] = useState(null)
+  const [pdfUrl, setPdfUrl] = useState(doc.defaultPdfUrl || '')
   const [uploading, setUploading] = useState(false)
   const [result, setResult] = useState(null)
   const fileRef = useRef(null)
@@ -48,6 +51,10 @@ function TxtUploadPanel({ doc, onUploaded, onClose }) {
 
   const handleUpload = async () => {
     if (!file) return
+    if (!pdfUrl.trim()) {
+      setResult({ ok: false, message: 'PDF link is required. Paste the direct URL to the PDF.' })
+      return
+    }
     setUploading(true)
     setResult(null)
     try {
@@ -70,12 +77,13 @@ function TxtUploadPanel({ doc, onUploaded, onClose }) {
             version: doc.version || '1.0',
             file_name: file.name,
             file_size: file.size,
+            source_url: pdfUrl.trim(),
           }],
         }),
       })
       const data = await res.json()
       if (res.ok && data.succeeded > 0) {
-        setResult({ ok: true, message: `Added to The Scroll — ${data.results[0]?.chunk_count || 0} chunks indexed. Grok can now use this document.` })
+        setResult({ ok: true, message: `Added to The Scroll — ${data.results[0]?.chunk_count || 0} chunks indexed. PDF link saved.` })
         setFile(null)
         onUploaded()
       } else {
@@ -98,10 +106,23 @@ function TxtUploadPanel({ doc, onUploaded, onClose }) {
       </div>
 
       <p className="text-xs text-[#8b949e] mb-3">
-        Upload the .txt version of this PDF. Open the PDF, select all text (Ctrl+A), copy, and paste into a .txt file.
-        Once uploaded, Grok can search and reference this document instantly.
+        Upload the .txt version of this PDF and set the direct PDF link for users.
       </p>
 
+      {/* PDF URL input */}
+      <div className="mb-3">
+        <label className="text-[10px] text-[#6e7681] uppercase tracking-wider block mb-1.5">PDF Link (required)</label>
+        <input
+          type="url"
+          value={pdfUrl}
+          onChange={(e) => setPdfUrl(e.target.value)}
+          placeholder="https://policies.unc.edu/files/..."
+          className="w-full px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded text-xs text-[#f0f6fc] placeholder-[#484f58] focus:border-[#388bfd] focus:outline-none"
+        />
+        <p className="text-[10px] text-[#484f58] mt-1">This URL becomes the "Open PDF" link users see.</p>
+      </div>
+
+      {/* File picker */}
       <div className="flex items-center gap-3">
         <button
           onClick={() => fileRef.current?.click()}
@@ -116,7 +137,7 @@ function TxtUploadPanel({ doc, onUploaded, onClose }) {
             <span className="text-[10px] text-[#6e7681] font-mono">{(file.size / 1024).toFixed(1)} KB</span>
             <button
               onClick={handleUpload}
-              disabled={uploading}
+              disabled={uploading || !pdfUrl.trim()}
               className="px-4 py-2 text-xs font-medium bg-[#3fb950] text-black rounded hover:bg-[#3fb950]/80 transition disabled:opacity-50"
             >
               {uploading ? 'Uploading...' : 'Add to Scroll'}
@@ -145,7 +166,7 @@ export default function Documents() {
   const [searchQuery, setSearchQuery] = useState('')
   const [scrollDocs, setScrollDocs] = useState([])
 
-  // Load Scroll documents to track which PDFs have .txt uploaded
+  // Load Scroll documents to track which PDFs have .txt uploaded and their source_url
   const loadScrollDocs = () => {
     fetch('/api/codex/documents?status=approved')
       .then(r => r.json())
@@ -192,7 +213,7 @@ export default function Documents() {
           <h1 className="text-3xl font-bold text-[#f0f6fc] tracking-tight mb-2">Document Catalogue</h1>
           <p className="text-[#8b949e] max-w-2xl">
             Official UNC governance documents, university policies, student government codes, and conduct procedures.
-            {isAdmin ? ' Upload .txt versions under each PDF to add them to The Scroll for Grok RAG.' : ''}
+            {isAdmin ? ' Upload .txt versions and set PDF links to add them to The Scroll for Grok RAG.' : ''}
           </p>
         </div>
       </div>
@@ -232,6 +253,7 @@ export default function Documents() {
             const colors = categoryColors[doc.category] || categoryColors['University Policy']
             const scrollMatch = findScrollMatch(doc, scrollDocs)
             const inScroll = !!scrollMatch
+            const pdfLink = scrollMatch?.source_url || null
             return (
               <div
                 key={doc.id}
@@ -282,14 +304,21 @@ export default function Documents() {
                         {txtUploadDoc?.id === doc.id ? 'Close' : 'Add .txt'}
                       </button>
                     )}
-                    <a
-                      href={doc.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-1.5 text-xs font-medium text-[#f0f6fc] bg-[#388bfd] rounded hover:bg-[#58a6ff] transition"
-                    >
-                      Open PDF
-                    </a>
+                    {/* Open PDF — only works when admin has set a source_url via the Scroll */}
+                    {pdfLink ? (
+                      <a
+                        href={pdfLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 text-xs font-medium text-[#f0f6fc] bg-[#388bfd] rounded hover:bg-[#58a6ff] transition"
+                      >
+                        Open PDF
+                      </a>
+                    ) : (
+                      <span className="px-3 py-1.5 text-xs font-medium text-[#484f58] bg-[#21262d] border border-[#30363d] rounded cursor-not-allowed" title="PDF link not yet set by admin">
+                        Open PDF
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -318,7 +347,7 @@ export default function Documents() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
               { step: '01', title: 'Browse', desc: 'Find the governance document you need from the catalogue above.' },
-              { step: '02', title: 'Add .txt', desc: 'Admin uploads the .txt version of each PDF to add it to The Scroll knowledge base.' },
+              { step: '02', title: 'Admin Adds', desc: 'Admin uploads the .txt version and sets the PDF link for each document.' },
               { step: '03', title: 'Grok Indexes', desc: 'The document is chunked, embedded, and instantly available in The Scroll for Grok.' },
               { step: '04', title: 'Ask Questions', desc: 'Go to Grok chat to ask questions — it sources from The Scroll and UNC news.' },
             ].map(item => (

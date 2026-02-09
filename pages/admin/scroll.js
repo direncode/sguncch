@@ -48,9 +48,10 @@ function isAcceptedFile(file) {
   return ACCEPTED_EXTENSIONS.includes(ext)
 }
 
-// Inline .txt uploader for the Documents tab — uploads a .txt for a specific seed document
+// Inline .txt uploader for the Documents tab — uploads a .txt + PDF link for a specific seed document
 function DocTxtUploader({ seed, authHeaders, onUploaded, notify }) {
   const [file, setFile] = useState(null)
+  const [pdfUrl, setPdfUrl] = useState(seed.pdfUrl || '')
   const [uploading, setUploading] = useState(false)
   const [result, setResult] = useState(null)
   const fileRef = useRef(null)
@@ -68,6 +69,10 @@ function DocTxtUploader({ seed, authHeaders, onUploaded, notify }) {
 
   const handleUpload = async () => {
     if (!file) return
+    if (!pdfUrl.trim()) {
+      setResult({ ok: false, message: 'PDF link is required. Paste the direct URL to the PDF.' })
+      return
+    }
     setUploading(true)
     setResult(null)
     try {
@@ -87,12 +92,13 @@ function DocTxtUploader({ seed, authHeaders, onUploaded, notify }) {
             version: seed.version || '1.0',
             file_name: file.name,
             file_size: file.size,
+            source_url: pdfUrl.trim(),
           }],
         }),
       })
       const data = await res.json()
       if (res.ok && data.succeeded > 0) {
-        setResult({ ok: true, message: `Added to The Scroll — ${data.results[0]?.chunk_count || 0} chunks indexed.` })
+        setResult({ ok: true, message: `Added to The Scroll — ${data.results[0]?.chunk_count || 0} chunks indexed. PDF link saved.` })
         setFile(null)
         notify(`${seed.title} added to The Scroll`)
         setTimeout(() => onUploaded(), 1000)
@@ -108,8 +114,23 @@ function DocTxtUploader({ seed, authHeaders, onUploaded, notify }) {
   return (
     <div className="mt-4 pt-4 border-t border-gray-800">
       <p className="text-xs text-gray-500 mb-3">
-        Upload the .txt version of <strong className="text-gray-400">{seed.title}</strong>. Copy all text from the PDF and paste into a .txt file.
+        Upload the .txt version of <strong className="text-gray-400">{seed.title}</strong> and set the direct PDF link for users.
       </p>
+
+      {/* PDF URL input */}
+      <div className="mb-3">
+        <label className="text-[10px] text-gray-500 uppercase tracking-wider block mb-1.5">PDF Link (required)</label>
+        <input
+          type="url"
+          value={pdfUrl}
+          onChange={(e) => setPdfUrl(e.target.value)}
+          placeholder="https://policies.unc.edu/files/..."
+          className="w-full px-3 py-2 bg-black border border-gray-800 rounded text-xs text-white placeholder-gray-600 focus:border-blue-500/50 focus:outline-none"
+        />
+        <p className="text-[10px] text-gray-600 mt-1">This URL will be the "Open PDF" link users see on the Documents page.</p>
+      </div>
+
+      {/* File picker */}
       <div className="flex items-center gap-3">
         <button
           onClick={() => fileRef.current?.click()}
@@ -123,7 +144,7 @@ function DocTxtUploader({ seed, authHeaders, onUploaded, notify }) {
             <span className="text-[10px] text-gray-600 font-mono">{(file.size / 1024).toFixed(1)} KB</span>
             <button
               onClick={handleUpload}
-              disabled={uploading}
+              disabled={uploading || !pdfUrl.trim()}
               className="px-4 py-2 text-xs font-medium bg-green-500 text-black rounded hover:bg-green-400 transition disabled:opacity-50"
             >
               {uploading ? 'Uploading...' : 'Add to Scroll'}
