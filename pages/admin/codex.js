@@ -3,7 +3,7 @@ import { useRouter } from 'next/router'
 import Head from 'next/head'
 import Link from 'next/link'
 import { useApp } from '../../lib/store'
-import { ADMIN_KEY } from '../../lib/data'
+import { getAdminToken, getAuthHeaders } from '../../lib/adminSession'
 
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
 const formatTime = (d) => d ? new Date(d).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''
@@ -56,10 +56,7 @@ export default function CodexAdmin() {
     setTimeout(() => setToast(null), 3000)
   }
 
-  const authHeaders = {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${ADMIN_KEY}`,
-  }
+  const authHeaders = getAuthHeaders()
 
   const loadData = async () => {
     try {

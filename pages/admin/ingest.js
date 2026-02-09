@@ -3,7 +3,7 @@ import { useRouter } from 'next/router'
 import Head from 'next/head'
 import Link from 'next/link'
 import { useApp } from '../../lib/store'
-import { ADMIN_KEY } from '../../lib/data'
+import { getAdminToken, getAuthHeaders } from '../../lib/adminSession'
 
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''
 const formatSize = (bytes) => bytes > 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`
@@ -69,10 +69,7 @@ export default function IngestPage() {
     setTimeout(() => setToast(null), 4000)
   }
 
-  const authHeaders = {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${ADMIN_KEY}`,
-  }
+  const authHeaders = getAuthHeaders()
 
   const loadDocuments = async () => {
     setLoadingDocs(true)

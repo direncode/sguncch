@@ -17,9 +17,10 @@ export default function AdminLogin() {
     return null
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    const result = loginAdmin(key)
+    setError('')
+    const result = await loginAdmin(key)
     if (result.success) {
       router.push('/admin')
     } else {

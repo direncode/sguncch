@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Head from 'next/head'
 import Layout from '../../components/Layout'
-import { ADMIN_KEY } from '../../lib/data'
+import { getAdminToken } from '../../lib/adminSession'
 import { useApp } from '../../lib/store'
 import { SEED_DOCUMENTS } from '../../lib/scrollRegistry'
 
@@ -68,7 +68,7 @@ function TxtUploadPanel({ doc, onUploaded, onClose }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${ADMIN_KEY}`,
+          'Authorization': `Bearer ${getAdminToken()}`,
         },
         body: JSON.stringify({
           files: [{
