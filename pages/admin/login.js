@@ -13,7 +13,7 @@ export default function AdminLogin() {
   const [showTempInput, setShowTempInput] = useState(false)
   const [tempCode, setTempCode] = useState('')
   const router = useRouter()
-  const { loginAdmin, isAdmin } = useApp()
+  const { loginAdmin, tempLoginAdmin, isAdmin } = useApp()
 
   // Redirect if already logged in
   if (isAdmin) {
@@ -32,7 +32,7 @@ export default function AdminLogin() {
     }
   }
 
-  const handleTempAccess = async () => {
+  const handleTempAccess = () => {
     if (!showTempInput) {
       setShowTempInput(true)
       setError('')
@@ -40,12 +40,8 @@ export default function AdminLogin() {
     }
     setError('')
     if (tempCode === TEMP_ACCESS_CODE) {
-      const result = await loginAdmin(TEMP_ACCESS_CODE)
-      if (result.success) {
-        router.push('/admin')
-      } else {
-        setError(result.error || 'Temp access failed')
-      }
+      tempLoginAdmin()
+      router.push('/admin')
     } else {
       setError('Invalid temp access code')
     }
