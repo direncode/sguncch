@@ -4,6 +4,7 @@ import Head from 'next/head'
 import Link from 'next/link'
 import { useApp } from '../../lib/store'
 import { ADMIN_KEY } from '../../lib/data'
+import { SEED_DOCUMENTS } from '../../lib/scrollRegistry'
 
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
 const formatSize = (bytes) => bytes > 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`
@@ -393,6 +394,94 @@ export default function ScrollAdmin() {
                 <p className="text-3xl font-mono font-bold text-gray-400">{rejected.length}</p>
               </div>
             </div>
+
+            {/* Seed checklist — show when not all foundation documents are uploaded */}
+            {(() => {
+              const seedStatus = SEED_DOCUMENTS.map(seed => {
+                const match = approved.find(d =>
+                  d.title.toLowerCase().includes(seed.title.toLowerCase()) ||
+                  seed.title.toLowerCase().includes(d.title.toLowerCase().replace(/\s*\(.*\)/, ''))
+                )
+                return { ...seed, uploaded: !!match, docId: match?.id }
+              })
+              const uploadedCount = seedStatus.filter(s => s.uploaded).length
+              const allSeeded = uploadedCount === SEED_DOCUMENTS.length
+
+              return (
+                <div className={`mb-12 rounded-xl border p-6 ${allSeeded ? 'bg-green-500/5 border-green-500/20' : 'bg-yellow-500/5 border-yellow-500/20'}`}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h2 className="text-lg font-semibold flex items-center gap-2">
+                        {allSeeded ? 'Foundation Documents Seeded' : 'Seed The Scroll'}
+                        {!allSeeded && <span className="w-2 h-2 bg-yellow-400 rounded-full animate-pulse" />}
+                      </h2>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {allSeeded
+                          ? 'All governing documents are uploaded. Grok is fully operational.'
+                          : 'Upload .txt versions of these official governing documents. Grok chat is blocked until at least one is uploaded.'
+                        }
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-2xl font-mono font-bold ${allSeeded ? 'text-green-400' : 'text-yellow-400'}`}>
+                        {uploadedCount}/{SEED_DOCUMENTS.length}
+                      </span>
+                      <p className="text-[10px] text-gray-600 uppercase tracking-wider">seeded</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    {seedStatus.map(seed => (
+                      <div key={seed.key} className={`flex items-center gap-4 rounded-lg border p-4 ${
+                        seed.uploaded ? 'bg-green-500/5 border-green-500/20' : 'bg-black/40 border-gray-800'
+                      }`}>
+                        <span className={`text-lg font-mono ${seed.uploaded ? 'text-green-400' : 'text-gray-700'}`}>
+                          {seed.uploaded ? '\u2713' : '\u2022'}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className={`font-medium text-sm ${seed.uploaded ? 'text-green-300' : 'text-white'}`}>
+                              {seed.title}
+                            </span>
+                            <span className="text-[10px] text-gray-600 font-mono">v{seed.version}</span>
+                            {seed.required && !seed.uploaded && (
+                              <span className="px-1.5 py-0.5 rounded bg-yellow-500/10 border border-yellow-500/30 text-[10px] text-yellow-400 font-mono">REQUIRED</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500">{seed.description}</p>
+                        </div>
+                        <div className="shrink-0 flex items-center gap-2">
+                          {seed.uploaded ? (
+                            <span className="text-xs text-green-400 font-mono">Uploaded</span>
+                          ) : (
+                            <>
+                              <a href={seed.pdfUrl} target="_blank" rel="noopener noreferrer"
+                                className="px-3 py-1.5 text-xs bg-white/5 border border-gray-800 rounded hover:text-white hover:border-gray-600 transition text-gray-400">
+                                Download PDF
+                              </a>
+                              <button onClick={() => { setActiveTab('upload') }}
+                                className="px-3 py-1.5 text-xs bg-white/10 border border-gray-700 rounded hover:bg-white/20 transition text-white font-medium">
+                                Upload .txt
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {!allSeeded && (
+                    <div className="mt-4 bg-black/30 border border-gray-900 rounded-lg p-4">
+                      <p className="text-xs text-gray-500 leading-relaxed">
+                        <strong className="text-gray-400">How to seed:</strong> Download each PDF above, open it, select all text (Ctrl+A / Cmd+A),
+                        copy and paste into a .txt file, then upload that .txt file using the Upload tab. This ensures The Scroll has clean,
+                        searchable text that Grok can use for accurate RAG responses.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
 
             {/* Category breakdown */}
             {approved.length > 0 && (

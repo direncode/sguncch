@@ -113,6 +113,7 @@ export default function Chat() {
       const data = await res.json()
       if (res.status === 429) { setError('Too many requests. Please wait a moment.'); setIsLoading(false); return }
       if (res.status === 503) { setError('AI service not configured. Contact an administrator.'); setIsLoading(false); return }
+      if (res.status === 422 && data.error === 'scroll_empty') { setError('scroll_empty'); setIsLoading(false); return }
       if (!res.ok) { setError(data.error || 'Something went wrong.'); setIsLoading(false); return }
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -198,8 +199,41 @@ export default function Chat() {
         <div className="flex-1 overflow-y-auto min-h-0">
           <div className="max-w-[720px] mx-auto px-4 sm:px-6 py-6">
 
-            {/* Welcome screen */}
-            {messages.length === 0 && !isLoading && (
+            {/* Scroll empty — seed required */}
+            {messages.length === 0 && !isLoading && scrollStats && scrollStats.count === 0 && (
+              <div className="flex flex-col items-center justify-center pt-[12vh]">
+                <div className="mb-6 opacity-10">
+                  <GrokIcon size={48} />
+                </div>
+                <h1 className="text-2xl font-semibold tracking-tight text-white mb-2">
+                  The Scroll Is Empty
+                </h1>
+                <p className="text-gray-500 text-sm text-center max-w-md mb-6">
+                  Grok needs governing documents uploaded as .txt before it can answer questions.
+                  An admin must seed The Scroll with the official UNC governing documents first.
+                </p>
+                <div className="bg-white/[0.03] border border-gray-800 rounded-xl p-6 max-w-md w-full mb-6">
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-3 font-mono">Required Documents</p>
+                  <ul className="space-y-2 text-sm text-gray-400">
+                    <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-gray-700" /> UNC Student Constitution</li>
+                    <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-gray-700" /> USG Student Code</li>
+                    <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-gray-700" /> Joint Code</li>
+                    <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-gray-700" /> GPSG Code</li>
+                  </ul>
+                </div>
+                {isAdmin ? (
+                  <Link href="/admin/scroll"
+                    className="px-6 py-3 bg-white text-black font-medium rounded-lg text-sm hover:bg-gray-200 transition">
+                    Go to Admin Scroll to Upload
+                  </Link>
+                ) : (
+                  <p className="text-xs text-gray-600">Contact an administrator to seed The Scroll.</p>
+                )}
+              </div>
+            )}
+
+            {/* Welcome screen (only when Scroll has documents) */}
+            {messages.length === 0 && !isLoading && (!scrollStats || scrollStats.count > 0) && (
               <div className="flex flex-col items-center justify-center pt-[12vh]">
                 <div className="mb-6 opacity-20">
                   <GrokIcon size={48} />
@@ -305,7 +339,18 @@ export default function Chat() {
                 <div className="shrink-0 mt-1 opacity-40">
                   <GrokIcon size={20} />
                 </div>
-                <p className="text-sm text-red-400">{error}</p>
+                {error === 'scroll_empty' ? (
+                  <div>
+                    <p className="text-sm text-yellow-400 mb-2">The Scroll is empty. Governing documents must be uploaded as .txt before Grok can respond.</p>
+                    {isAdmin && (
+                      <Link href="/admin/scroll" className="text-xs text-gray-400 hover:text-white underline transition">
+                        Go to Admin Scroll to upload documents
+                      </Link>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-red-400">{error}</p>
+                )}
               </div>
             )}
 
@@ -324,13 +369,13 @@ export default function Chat() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder={isAdminMode ? 'Ask Grok (admin context)...' : 'Ask anything...'}
-                disabled={isLoading}
+                disabled={isLoading || (scrollStats && scrollStats.count === 0)}
                 className="w-full bg-white/[0.04] border border-gray-800 rounded-full pl-5 pr-12 py-3.5 text-[15px] text-white placeholder-gray-600 focus:border-gray-600 focus:outline-none focus:bg-white/[0.06] transition-all disabled:opacity-50"
                 style={{ background: 'rgba(255,255,255,0.04)' }}
               />
               <button
                 onClick={() => sendMessage()}
-                disabled={isLoading || !input.trim()}
+                disabled={isLoading || !input.trim() || (scrollStats && scrollStats.count === 0)}
                 className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center rounded-full text-gray-500 hover:text-white hover:bg-white/10 transition-all disabled:opacity-20 disabled:hover:bg-transparent disabled:hover:text-gray-500"
               >
                 <SendIcon />
