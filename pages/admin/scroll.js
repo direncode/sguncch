@@ -48,6 +48,102 @@ function isAcceptedFile(file) {
   return ACCEPTED_EXTENSIONS.includes(ext)
 }
 
+// Inline .txt uploader for the Documents tab — uploads a .txt for a specific seed document
+function DocTxtUploader({ seed, authHeaders, onUploaded, notify }) {
+  const [file, setFile] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const [result, setResult] = useState(null)
+  const fileRef = useRef(null)
+
+  const handleFile = (e) => {
+    const f = e.target.files?.[0]
+    if (f && f.name.endsWith('.txt')) {
+      setFile(f)
+      setResult(null)
+    } else if (f) {
+      setResult({ ok: false, message: 'Only .txt files are accepted.' })
+    }
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  const handleUpload = async () => {
+    if (!file) return
+    setUploading(true)
+    setResult(null)
+    try {
+      const textContent = await file.text()
+      if (!textContent.trim()) {
+        setResult({ ok: false, message: 'File is empty.' })
+        setUploading(false)
+        return
+      }
+      const res = await fetch('/api/codex/batch-upload', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          files: [{
+            title: seed.title,
+            text_content: textContent,
+            version: seed.version || '1.0',
+            file_name: file.name,
+            file_size: file.size,
+          }],
+        }),
+      })
+      const data = await res.json()
+      if (res.ok && data.succeeded > 0) {
+        setResult({ ok: true, message: `Added to The Scroll — ${data.results[0]?.chunk_count || 0} chunks indexed.` })
+        setFile(null)
+        notify(`${seed.title} added to The Scroll`)
+        setTimeout(() => onUploaded(), 1000)
+      } else {
+        setResult({ ok: false, message: data.results?.[0]?.error || data.error || 'Upload failed' })
+      }
+    } catch {
+      setResult({ ok: false, message: 'Upload failed. Check your connection.' })
+    }
+    setUploading(false)
+  }
+
+  return (
+    <div className="mt-4 pt-4 border-t border-gray-800">
+      <p className="text-xs text-gray-500 mb-3">
+        Upload the .txt version of <strong className="text-gray-400">{seed.title}</strong>. Copy all text from the PDF and paste into a .txt file.
+      </p>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => fileRef.current?.click()}
+          className="px-4 py-2 text-xs font-medium bg-black border border-gray-800 rounded hover:border-green-500/50 hover:text-green-400 transition text-gray-400"
+        >
+          {file ? file.name : 'Choose .txt file'}
+        </button>
+        <input ref={fileRef} type="file" accept=".txt" onChange={handleFile} className="hidden" />
+        {file && (
+          <>
+            <span className="text-[10px] text-gray-600 font-mono">{(file.size / 1024).toFixed(1)} KB</span>
+            <button
+              onClick={handleUpload}
+              disabled={uploading}
+              className="px-4 py-2 text-xs font-medium bg-green-500 text-black rounded hover:bg-green-400 transition disabled:opacity-50"
+            >
+              {uploading ? 'Uploading...' : 'Add to Scroll'}
+            </button>
+          </>
+        )}
+      </div>
+      {result && (
+        <div className={`mt-3 p-3 rounded border text-xs ${
+          result.ok
+            ? 'bg-green-500/10 border-green-500/30 text-green-400'
+            : 'bg-red-500/10 border-red-500/30 text-red-400'
+        }`}>
+          {result.message}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ScrollAdmin() {
   const router = useRouter()
   const { isAdmin, isLoaded } = useApp()
@@ -285,8 +381,19 @@ export default function ScrollAdmin() {
   const approved = documents.filter(d => d.status === 'approved')
   const rejected = documents.filter(d => d.status === 'rejected')
 
+  // Track which seed documents are in the Scroll
+  const seedStatus = SEED_DOCUMENTS.map(seed => {
+    const match = approved.find(d =>
+      d.title.toLowerCase().includes(seed.title.toLowerCase()) ||
+      seed.title.toLowerCase().includes(d.title.toLowerCase().replace(/\s*\(.*\)/, ''))
+    )
+    return { ...seed, uploaded: !!match, docId: match?.id }
+  })
+  const seedUploadedCount = seedStatus.filter(s => s.uploaded).length
+
   const tabs = [
     { id: 'overview', label: 'Overview' },
+    { id: 'documents', label: `Documents (${SEED_DOCUMENTS.length})` },
     { id: 'upload', label: 'Upload' },
     { id: 'pending', label: `Pending (${pending.length})`, alert: pending.length > 0 },
     { id: 'approved', label: `Approved (${approved.length})` },
@@ -397,15 +504,7 @@ export default function ScrollAdmin() {
 
             {/* Seed checklist — show when not all foundation documents are uploaded */}
             {(() => {
-              const seedStatus = SEED_DOCUMENTS.map(seed => {
-                const match = approved.find(d =>
-                  d.title.toLowerCase().includes(seed.title.toLowerCase()) ||
-                  seed.title.toLowerCase().includes(d.title.toLowerCase().replace(/\s*\(.*\)/, ''))
-                )
-                return { ...seed, uploaded: !!match, docId: match?.id }
-              })
-              const uploadedCount = seedStatus.filter(s => s.uploaded).length
-              const allSeeded = uploadedCount === SEED_DOCUMENTS.length
+              const allSeeded = seedUploadedCount === SEED_DOCUMENTS.length
 
               return (
                 <div className={`mb-12 rounded-xl border p-6 ${allSeeded ? 'bg-green-500/5 border-green-500/20' : 'bg-yellow-500/5 border-yellow-500/20'}`}>
@@ -424,7 +523,7 @@ export default function ScrollAdmin() {
                     </div>
                     <div className="text-right">
                       <span className={`text-2xl font-mono font-bold ${allSeeded ? 'text-green-400' : 'text-yellow-400'}`}>
-                        {uploadedCount}/{SEED_DOCUMENTS.length}
+                        {seedUploadedCount}/{SEED_DOCUMENTS.length}
                       </span>
                       <p className="text-[10px] text-gray-600 uppercase tracking-wider">seeded</p>
                     </div>
@@ -457,11 +556,11 @@ export default function ScrollAdmin() {
                             <>
                               <a href={seed.pdfUrl} target="_blank" rel="noopener noreferrer"
                                 className="px-3 py-1.5 text-xs bg-white/5 border border-gray-800 rounded hover:text-white hover:border-gray-600 transition text-gray-400">
-                                Download PDF
+                                Open PDF
                               </a>
-                              <button onClick={() => { setActiveTab('upload') }}
+                              <button onClick={() => { setActiveTab('documents') }}
                                 className="px-3 py-1.5 text-xs bg-white/10 border border-gray-700 rounded hover:bg-white/20 transition text-white font-medium">
-                                Upload .txt
+                                Add .txt
                               </button>
                             </>
                           )}
@@ -473,9 +572,8 @@ export default function ScrollAdmin() {
                   {!allSeeded && (
                     <div className="mt-4 bg-black/30 border border-gray-900 rounded-lg p-4">
                       <p className="text-xs text-gray-500 leading-relaxed">
-                        <strong className="text-gray-400">How to seed:</strong> Download each PDF above, open it, select all text (Ctrl+A / Cmd+A),
-                        copy and paste into a .txt file, then upload that .txt file using the Upload tab. This ensures The Scroll has clean,
-                        searchable text that Grok can use for accurate RAG responses.
+                        <strong className="text-gray-400">How to seed:</strong> Go to the <button onClick={() => setActiveTab('documents')} className="text-white underline hover:no-underline">Documents</button> tab
+                        to open each PDF, copy the text, and upload .txt files directly alongside each document.
                       </p>
                     </div>
                   )}
@@ -561,6 +659,132 @@ export default function ScrollAdmin() {
                 <p className="text-white font-medium mb-1">Grok Admin</p>
                 <p className="text-xs text-gray-500">Ask Grok with full admin context and Scroll data</p>
               </Link>
+            </div>
+          </div>
+        )}
+
+        {/* DOCUMENTS — Full PDF catalogue with inline .txt upload */}
+        {activeTab === 'documents' && (
+          <div>
+            <div className="mb-8">
+              <h1 className="text-3xl font-bold tracking-tight mb-2">Document Catalogue</h1>
+              <p className="text-gray-500 text-sm">
+                All official UNC governance documents. Open PDFs directly or upload .txt versions to The Scroll.
+                {seedUploadedCount < SEED_DOCUMENTS.length
+                  ? ` ${seedUploadedCount}/${SEED_DOCUMENTS.length} documents are in The Scroll.`
+                  : ' All documents are in The Scroll.'}
+              </p>
+            </div>
+
+            {/* Progress bar */}
+            <div className="mb-8 bg-white/5 border border-gray-800 rounded-xl p-5">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs text-gray-500 uppercase tracking-wider">Scroll Coverage</span>
+                <span className={`text-sm font-mono font-bold ${seedUploadedCount === SEED_DOCUMENTS.length ? 'text-green-400' : 'text-yellow-400'}`}>
+                  {seedUploadedCount}/{SEED_DOCUMENTS.length}
+                </span>
+              </div>
+              <div className="w-full bg-gray-900 rounded-full h-2">
+                <div
+                  className={`h-2 rounded-full transition-all ${seedUploadedCount === SEED_DOCUMENTS.length ? 'bg-green-500' : 'bg-yellow-500'}`}
+                  style={{ width: `${(seedUploadedCount / SEED_DOCUMENTS.length) * 100}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Category groups */}
+            {['Student Government', 'University Policy', 'Student Conduct'].map(category => {
+              const catDocs = seedStatus.filter(s => s.category === category)
+              const catUploaded = catDocs.filter(s => s.uploaded).length
+              const catColors = {
+                'Student Government': 'text-purple-400 border-purple-500/30 bg-purple-500/10',
+                'University Policy': 'text-blue-400 border-blue-500/30 bg-blue-500/10',
+                'Student Conduct': 'text-yellow-400 border-yellow-500/30 bg-yellow-500/10',
+              }
+              return (
+                <div key={category} className="mb-8">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className={`px-2.5 py-1 rounded border text-xs font-medium uppercase tracking-wider ${catColors[category]}`}>
+                      {category}
+                    </span>
+                    <span className="text-xs text-gray-600 font-mono">{catUploaded}/{catDocs.length} in Scroll</span>
+                  </div>
+                  <div className="space-y-3">
+                    {catDocs.map(seed => (
+                      <div key={seed.key} className={`rounded-xl border p-5 transition-all ${
+                        seed.uploaded
+                          ? 'bg-green-500/5 border-green-500/20'
+                          : 'bg-white/[0.02] border-gray-800 hover:border-gray-700'
+                      }`}>
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-3 mb-1">
+                              <span className={`text-base font-mono ${seed.uploaded ? 'text-green-400' : 'text-gray-700'}`}>
+                                {seed.uploaded ? '\u2713' : '\u2022'}
+                              </span>
+                              <h3 className={`font-semibold text-sm ${seed.uploaded ? 'text-green-300' : 'text-white'}`}>
+                                {seed.title}
+                              </h3>
+                              <span className="text-[10px] text-gray-600 font-mono">v{seed.version}</span>
+                              {seed.required && (
+                                <span className="px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/30 text-[10px] text-red-400 font-mono">REQUIRED</span>
+                              )}
+                              {seed.uploaded && (
+                                <span className="px-1.5 py-0.5 rounded bg-green-500/10 border border-green-500/30 text-[10px] text-green-400 font-mono">IN SCROLL</span>
+                              )}
+                            </div>
+                            <p className="text-xs text-gray-500 ml-7">{seed.description}</p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <a
+                              href={seed.pdfUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-4 py-2 text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/30 hover:bg-blue-500/20 transition rounded-lg"
+                            >
+                              Open PDF
+                            </a>
+                            {!seed.uploaded && (
+                              <button
+                                onClick={() => setExpandedDoc(expandedDoc === seed.key ? null : seed.key)}
+                                className={`px-4 py-2 text-xs font-medium rounded-lg transition ${
+                                  expandedDoc === seed.key
+                                    ? 'bg-green-500 text-black'
+                                    : 'bg-green-500/10 text-green-400 border border-green-500/30 hover:bg-green-500/20'
+                                }`}
+                              >
+                                {expandedDoc === seed.key ? 'Close' : 'Add .txt'}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Inline .txt upload panel */}
+                        {!seed.uploaded && expandedDoc === seed.key && (
+                          <DocTxtUploader
+                            seed={seed}
+                            authHeaders={authHeaders}
+                            onUploaded={() => { loadDocuments(); setExpandedDoc(null) }}
+                            notify={notify}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+
+            {/* Instructions */}
+            <div className="bg-white/[0.02] border border-gray-900 rounded-xl p-6 mt-4">
+              <h3 className="text-sm font-semibold text-white mb-2">How to add documents to The Scroll</h3>
+              <ol className="text-xs text-gray-500 space-y-1.5 list-decimal list-inside leading-relaxed">
+                <li>Click <strong className="text-gray-400">Open PDF</strong> to view the original document</li>
+                <li>Select all text in the PDF (Ctrl+A / Cmd+A), copy it</li>
+                <li>Paste into a plain text editor and save as a .txt file</li>
+                <li>Click <strong className="text-gray-400">Add .txt</strong> next to the document and upload the file</li>
+                <li>The document is instantly chunked, embedded, and available to Grok</li>
+              </ol>
             </div>
           </div>
         )}

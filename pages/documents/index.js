@@ -3,114 +3,17 @@ import Head from 'next/head'
 import Layout from '../../components/Layout'
 import { ADMIN_KEY } from '../../lib/data'
 import { useApp } from '../../lib/store'
+import { SEED_DOCUMENTS } from '../../lib/scrollRegistry'
 
-const documents = [
-  {
-    id: 'ferpa',
-    name: 'Policies and Procedures Under the Family Educational Rights and Privacy Act of 1974 ("FERPA")',
-    category: 'University Policy',
-    size: '3.6 MB',
-    url: 'https://policies.unc.edu/files/2024/10/Policies-and-Procedures-Under-the-Family-Educational-Rights-and-Privacy-Act-of-1974-FERPA.pdf',
-  },
-  {
-    id: 'appeals-bot',
-    name: 'Procedure for Appeals to the Board of Trustees',
-    category: 'University Policy',
-    size: '1.1 MB',
-    url: 'https://policies.unc.edu/files/2024/10/Procedure-for-Appeals-to-the-Board-of-Trustees.pdf',
-  },
-  {
-    id: 'gpsg-code',
-    name: 'GPSG Code',
-    category: 'Student Government',
-    size: '1.3 MB',
-    url: 'https://studentgovernment.unc.edu/wp-content/uploads/sites/136/2025/09/GPSG_Code_08_25_25.pdf',
-  },
-  {
-    id: 'undergrad-statutes',
-    name: 'Undergraduate General Statutes',
-    category: 'Student Government',
-    size: '1.8 MB',
-    url: 'https://studentgovernment.unc.edu/wp-content/uploads/sites/136/2025/09/Undergraduate_General_Statutes_09_03_2025.pdf',
-  },
-  {
-    id: 'joint-code',
-    name: 'Joint Code of the Student Government',
-    category: 'Student Government',
-    size: '1017 KB',
-    url: 'https://studentgovernment.unc.edu/wp-content/uploads/sites/136/2023/02/Joint_Code_of_the_Student_Government_01_12_23.pdf',
-  },
-  {
-    id: 'constitution',
-    name: 'Constitution of the Student Body',
-    category: 'Student Government',
-    size: '361 KB',
-    url: 'https://studentgovernment.unc.edu/wp-content/uploads/sites/136/2025/09/Constitution_of_the_Student_Body_8_20_25.pdf',
-  },
-  {
-    id: 'workplace-violence',
-    name: 'Workplace Violence Policy',
-    category: 'University Policy',
-    size: '1.6 MB',
-    url: 'https://policies.unc.edu/files/2024/10/Workplace-Violence-Policy.pdf',
-  },
-  {
-    id: 'whistleblower',
-    name: 'Whistleblower Policy',
-    category: 'University Policy',
-    size: '1.2 MB',
-    url: 'https://policies.unc.edu/files/2024/10/Whistleblower-Policy.pdf',
-  },
-  {
-    id: 'threat-assessment',
-    name: 'Behavioral Threat Assessment Policy',
-    category: 'University Policy',
-    size: '1.2 MB',
-    url: 'https://policies.unc.edu/files/2024/10/Behavioral-Threat-Assessment-Policy.pdf',
-  },
-  {
-    id: 'discrimination',
-    name: 'Policy on Prohibited Discrimination, Harassment, and Related Misconduct Including Sex-Based Harassment, Sexual Assault, Interpersonal Violence, and Stalking',
-    category: 'University Policy',
-    size: '7.2 MB',
-    url: 'https://policies.unc.edu/files/2024/10/Policy-on-Prohibited-Discrimination-Harassment-and-Related-Misconduct.pdf',
-  },
-  {
-    id: 'eoc-guide',
-    name: 'EOC Comprehensive Resource Guide',
-    category: 'University Policy',
-    size: '826 KB',
-    url: 'https://eoc.unc.edu/files/2024/08/eoc-comprehensive-resource-guide.pdf',
-  },
-  {
-    id: 'drugs',
-    name: 'Illegal Drugs Policy',
-    category: 'University Policy',
-    size: '947 KB',
-    url: 'https://policies.unc.edu/files/2024/10/Illegal-Drugs-Policy.pdf',
-  },
-  {
-    id: 'alcohol',
-    name: 'Alcohol Policy',
-    category: 'University Policy',
-    size: '4.6 MB',
-    url: 'https://policies.unc.edu/files/2024/10/Alcohol-Policy.pdf',
-  },
-  {
-    id: 'conduct-procedures',
-    name: 'Student Conduct Procedures',
-    category: 'Student Conduct',
-    size: '6.7 MB',
-    url: 'https://dos.unc.edu/files/2024/08/Student-Conduct-Procedures.pdf',
-  },
-  {
-    id: 'code-of-conduct',
-    name: 'The Student Code of Conduct',
-    category: 'Student Conduct',
-    size: '3.4 MB',
-    url: 'https://dos.unc.edu/files/2024/08/The-Student-Code-of-Conduct.pdf',
-  },
-]
+// Build documents list from the scroll registry (single source of truth)
+const documents = SEED_DOCUMENTS.map(seed => ({
+  id: seed.key,
+  name: seed.title,
+  category: seed.category,
+  url: seed.pdfUrl,
+  version: seed.version,
+  description: seed.description,
+}))
 
 const categories = ['All', ...new Set(documents.map(d => d.category))]
 
@@ -164,7 +67,7 @@ function TxtUploadPanel({ doc, onUploaded, onClose }) {
           files: [{
             title: doc.name,
             text_content: textContent,
-            version: '1.0',
+            version: doc.version || '1.0',
             file_name: file.name,
             file_size: file.size,
           }],
@@ -354,7 +257,7 @@ export default function Documents() {
                         <span className={`px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded border ${colors.bg} ${colors.text} ${colors.border}`}>
                           {doc.category}
                         </span>
-                        <span className="text-[10px] text-[#6e7681] font-mono">{doc.size}</span>
+                        <span className="text-[10px] text-[#6e7681] font-mono">{doc.version}</span>
                         {inScroll && (
                           <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded border bg-[#3fb950]/10 text-[#3fb950] border-[#3fb950]/30">
                             In The Scroll
@@ -385,7 +288,7 @@ export default function Documents() {
                       rel="noopener noreferrer"
                       className="px-3 py-1.5 text-xs font-medium text-[#f0f6fc] bg-[#388bfd] rounded hover:bg-[#58a6ff] transition"
                     >
-                      Open
+                      Open PDF
                     </a>
                   </div>
                 </div>
