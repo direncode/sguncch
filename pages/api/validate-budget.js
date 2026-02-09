@@ -1,6 +1,6 @@
 // ============================================
 // BUDGET VALIDATION API
-// Uses Groq LLAMA 3.3 for real-world context checking
+// Uses Grok (xAI) for real-world context checking
 // ============================================
 
 import { validateFundingRequest, quickPriceCheck } from '../../lib/groq'
@@ -13,9 +13,7 @@ const limiter = createRateLimiter({
 })
 
 export default async function handler(req, res) {
-  // Log all requests for debugging
   console.log(`[validate-budget] ${req.method} request from ${getClientIP(req)}`)
-  console.log(`[validate-budget] Headers:`, JSON.stringify(req.headers, null, 2))
 
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {

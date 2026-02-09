@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import Head from 'next/head'
 import Layout from '../components/Layout'
 
@@ -28,13 +28,18 @@ export default function ScrollPage() {
 
   // Submission state
   const [showSubmit, setShowSubmit] = useState(false)
+  const [submitMode, setSubmitMode] = useState('text') // 'text' or 'file'
   const [submitTitle, setSubmitTitle] = useState('')
   const [submitText, setSubmitText] = useState('')
   const [submitName, setSubmitName] = useState('')
+  const [submitFile, setSubmitFile] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitResult, setSubmitResult] = useState(null)
+  const [dragActive, setDragActive] = useState(false)
 
   const scrollRef = useRef(null)
+  const fileInputRef = useRef(null)
+  const dropRef = useRef(null)
 
   useEffect(() => {
     loadScroll()
@@ -64,18 +69,66 @@ export default function ScrollPage() {
     })
   }
 
+  // File drop handlers
+  const handleDragOver = useCallback((e) => { e.preventDefault(); e.stopPropagation(); setDragActive(true) }, [])
+  const handleDragLeave = useCallback((e) => {
+    e.preventDefault(); e.stopPropagation()
+    if (dropRef.current && !dropRef.current.contains(e.relatedTarget)) setDragActive(false)
+  }, [])
+  const handleDrop = useCallback((e) => {
+    e.preventDefault(); e.stopPropagation(); setDragActive(false)
+    const file = e.dataTransfer.files[0]
+    if (file && file.name.endsWith('.txt')) {
+      setSubmitFile(file)
+      if (!submitTitle) setSubmitTitle(file.name.replace(/\.txt$/, ''))
+    } else {
+      setSubmitResult({ type: 'error', message: 'Only .txt files are accepted.' })
+    }
+  }, [submitTitle])
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0]
+    if (file && file.name.endsWith('.txt')) {
+      setSubmitFile(file)
+      if (!submitTitle) setSubmitTitle(file.name.replace(/\.txt$/, ''))
+    } else if (file) {
+      setSubmitResult({ type: 'error', message: 'Only .txt files are accepted.' })
+    }
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
   const handleSubmit = async () => {
-    if (!submitTitle.trim() || !submitText.trim()) return
     setSubmitting(true)
     setSubmitResult(null)
+
+    let textContent = submitText.trim()
+
+    // If file mode, read the file
+    if (submitMode === 'file' && submitFile) {
+      try {
+        textContent = await submitFile.text()
+      } catch {
+        setSubmitResult({ type: 'error', message: 'Failed to read file.' })
+        setSubmitting(false)
+        return
+      }
+    }
+
+    if (!submitTitle.trim() || !textContent) {
+      setSubmitResult({ type: 'error', message: 'Title and content are required.' })
+      setSubmitting(false)
+      return
+    }
+
     try {
       const res = await fetch('/api/codex/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: submitTitle.trim(),
-          text_content: submitText.trim(),
+          text_content: textContent,
           submitter_name: submitName.trim() || undefined,
+          file_name: submitFile?.name || undefined,
         }),
       })
       const data = await res.json()
@@ -84,6 +137,7 @@ export default function ScrollPage() {
         setSubmitTitle('')
         setSubmitText('')
         setSubmitName('')
+        setSubmitFile(null)
       } else {
         setSubmitResult({ type: 'error', message: data.error })
       }
@@ -197,7 +251,7 @@ export default function ScrollPage() {
           <div className="mb-10 bg-white/[0.02] border border-gray-900 rounded-xl p-6 sm:p-8">
             <h2 className="text-xl font-bold tracking-tight mb-1">Contribute to The Scroll</h2>
             <p className="text-gray-500 text-sm mb-6">
-              Submit text for review. An admin will approve contributions before they appear in The Scroll.
+              Upload a .txt file or paste text for review. An admin will approve contributions before they appear in The Scroll.
             </p>
 
             {submitResult && (
@@ -209,6 +263,30 @@ export default function ScrollPage() {
                 {submitResult.message}
               </div>
             )}
+
+            {/* Mode toggle */}
+            <div className="flex items-center gap-2 mb-6">
+              <button
+                onClick={() => { setSubmitMode('file'); setSubmitText('') }}
+                className={`px-4 py-2 text-xs font-mono uppercase tracking-wider rounded border transition ${
+                  submitMode === 'file'
+                    ? 'bg-white/10 border-gray-600 text-white'
+                    : 'border-gray-800 text-gray-500 hover:text-white hover:border-gray-700'
+                }`}
+              >
+                Upload .txt
+              </button>
+              <button
+                onClick={() => { setSubmitMode('text'); setSubmitFile(null) }}
+                className={`px-4 py-2 text-xs font-mono uppercase tracking-wider rounded border transition ${
+                  submitMode === 'text'
+                    ? 'bg-white/10 border-gray-600 text-white'
+                    : 'border-gray-800 text-gray-500 hover:text-white hover:border-gray-700'
+                }`}
+              >
+                Paste Text
+              </button>
+            </div>
 
             <div className="space-y-4">
               <div className="grid sm:grid-cols-2 gap-4">
@@ -234,22 +312,71 @@ export default function ScrollPage() {
                   />
                 </div>
               </div>
-              <div>
-                <label className="caption block mb-2">Document Text *</label>
-                <textarea
-                  value={submitText}
-                  onChange={(e) => setSubmitText(e.target.value)}
-                  rows={8}
-                  placeholder="Paste the full text of the document here..."
-                  className="w-full bg-black border border-gray-800 rounded p-3 text-sm text-white placeholder-gray-600 focus:border-gray-600 focus:outline-none resize-none"
-                />
-                {submitText && (
-                  <p className="text-xs text-gray-600 mt-1 font-mono">{submitText.length.toLocaleString()} characters</p>
-                )}
-              </div>
+
+              {submitMode === 'file' ? (
+                <div>
+                  <label className="caption block mb-2">Upload .txt File *</label>
+                  <div
+                    ref={dropRef}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-all ${
+                      dragActive
+                        ? 'border-white bg-white/10'
+                        : submitFile
+                          ? 'border-green-500/30 bg-green-500/5'
+                          : 'border-gray-800 hover:border-gray-600 hover:bg-white/[0.02]'
+                    }`}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".txt"
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                    {submitFile ? (
+                      <div>
+                        <p className="text-green-400 font-medium text-sm">{submitFile.name}</p>
+                        <p className="text-xs text-gray-500 mt-1 font-mono">
+                          {(submitFile.size / 1024).toFixed(1)} KB
+                        </p>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSubmitFile(null) }}
+                          className="mt-2 text-xs text-gray-500 hover:text-white transition"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-gray-400 text-sm">Drop a .txt file here or click to browse</p>
+                        <p className="text-xs text-gray-600 mt-1 font-mono">.TXT only</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="caption block mb-2">Document Text *</label>
+                  <textarea
+                    value={submitText}
+                    onChange={(e) => setSubmitText(e.target.value)}
+                    rows={8}
+                    placeholder="Paste the full text of the document here..."
+                    className="w-full bg-black border border-gray-800 rounded p-3 text-sm text-white placeholder-gray-600 focus:border-gray-600 focus:outline-none resize-none"
+                  />
+                  {submitText && (
+                    <p className="text-xs text-gray-600 mt-1 font-mono">{submitText.length.toLocaleString()} characters</p>
+                  )}
+                </div>
+              )}
+
               <button
                 onClick={handleSubmit}
-                disabled={submitting || !submitTitle.trim() || !submitText.trim()}
+                disabled={submitting || !submitTitle.trim() || (submitMode === 'text' ? !submitText.trim() : !submitFile)}
                 className="w-full py-3 bg-white text-black font-medium rounded text-sm hover:bg-gray-200 transition disabled:opacity-30 disabled:cursor-not-allowed"
               >
                 {submitting ? 'Submitting...' : 'Submit for Review'}

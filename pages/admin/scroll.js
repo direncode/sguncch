@@ -68,6 +68,10 @@ export default function ScrollAdmin() {
   const [pasteTitle, setPasteTitle] = useState('')
   const [pasteText, setPasteText] = useState('')
 
+  // AI classification cache: { [docId]: { category, tags, summary, commit_id, ... } }
+  const [classifications, setClassifications] = useState({})
+  const [classifyingId, setClassifyingId] = useState(null)
+
   // Reject modal
   const [rejectingId, setRejectingId] = useState(null)
   const [rejectReason, setRejectReason] = useState('')
@@ -148,10 +152,11 @@ export default function ScrollAdmin() {
     await Promise.all(queued.map(async (item) => {
       updateQueueItem(item.id, { status: 'uploading' })
       try {
+        const textContent = await item.file.text()
         const body = {
           title: item.title, version: '1.0',
           file_name: item.file.name, file_size: item.file.size,
-          text_content: await item.file.text(),
+          text_content: textContent,
         }
         const res = await fetch('/api/codex/batch-upload', {
           method: 'POST', headers: authHeaders,
@@ -163,7 +168,20 @@ export default function ScrollAdmin() {
           throw new Error(res.status === 413 ? `File too large` : `Server error (${res.status})`)
         }
         if (res.ok && data.results?.[0]?.status === 'approved') {
-          updateQueueItem(item.id, { status: 'done', chunks: data.results[0].chunk_count || 0 })
+          const docId = data.results[0].document_id
+          updateQueueItem(item.id, { status: 'done', chunks: data.results[0].chunk_count || 0, docId })
+
+          // Auto-classify with Grok
+          try {
+            const classRes = await fetch('/api/codex/classify', {
+              method: 'POST', headers: authHeaders,
+              body: JSON.stringify({ title: item.title, text_preview: textContent.slice(0, 2000) }),
+            })
+            if (classRes.ok) {
+              const classData = await classRes.json()
+              setClassifications(prev => ({ ...prev, [docId]: classData }))
+            }
+          } catch { /* classification is non-blocking */ }
         } else {
           updateQueueItem(item.id, { status: 'error', error: data.results?.[0]?.error || data.error || 'Failed' })
         }
@@ -189,7 +207,23 @@ export default function ScrollAdmin() {
       })
       const data = await res.json()
       if (res.ok && data.succeeded > 0) {
+        const docId = data.results[0]?.document_id
         notify(`Ingested — ${data.results[0]?.chunk_count || 0} chunks indexed`)
+
+        // Auto-classify with Grok
+        if (docId) {
+          try {
+            const classRes = await fetch('/api/codex/classify', {
+              method: 'POST', headers: authHeaders,
+              body: JSON.stringify({ title: pasteTitle.trim(), text_preview: pasteText.slice(0, 2000) }),
+            })
+            if (classRes.ok) {
+              const classData = await classRes.json()
+              setClassifications(prev => ({ ...prev, [docId]: classData }))
+            }
+          } catch { /* non-blocking */ }
+        }
+
         setPasteTitle(''); setPasteText('')
         loadDocuments()
       } else { notify(data.results?.[0]?.error || 'Failed') }
@@ -217,6 +251,30 @@ export default function ScrollAdmin() {
       else { notify('Failed') }
     } catch { notify('Failed') }
     setActionLoading(false)
+  }
+
+  const classifyDocument = async (doc) => {
+    setClassifyingId(doc.id)
+    try {
+      const res = await fetch('/api/codex/classify', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          title: doc.title,
+          text_preview: doc.text_full || '',
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setClassifications(prev => ({ ...prev, [doc.id]: data }))
+        notify(`Classified: ${data.category} (${Math.round(data.confidence * 100)}% confidence)`)
+      } else {
+        notify(data.error || 'Classification failed')
+      }
+    } catch {
+      notify('Classification failed')
+    }
+    setClassifyingId(null)
   }
 
   if (!isLoaded) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="text-white">Loading...</div></div>
@@ -409,10 +467,10 @@ export default function ScrollAdmin() {
                 <p className="text-white font-medium mb-1">View Public Scroll</p>
                 <p className="text-xs text-gray-500">See how approved content appears to users</p>
               </Link>
-              <Link href="/chat"
+              <Link href="/chat?mode=admin"
                 className="p-6 bg-white/5 border border-gray-800 rounded-xl hover:bg-white/10 transition-all text-left block">
-                <p className="text-white font-medium mb-1">Test Grok</p>
-                <p className="text-xs text-gray-500">Ask Grok questions to verify knowledge base</p>
+                <p className="text-white font-medium mb-1">Grok Admin</p>
+                <p className="text-xs text-gray-500">Ask Grok with full admin context and Scroll data</p>
               </Link>
             </div>
           </div>
@@ -461,9 +519,21 @@ export default function ScrollAdmin() {
                       </span>
                       <div className="flex-1 min-w-0">
                         <span className="text-sm text-white truncate block">{item.title}</span>
-                        <span className="text-[10px] text-gray-600 font-mono">
-                          {item.status === 'done' ? `${item.chunks} chunks indexed` : item.status === 'error' ? item.error : item.status === 'uploading' ? 'Uploading...' : 'Queued'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-gray-600 font-mono">
+                            {item.status === 'done' ? `${item.chunks} chunks indexed` : item.status === 'error' ? item.error : item.status === 'uploading' ? 'Uploading & classifying...' : 'Queued'}
+                          </span>
+                          {item.status === 'done' && item.docId && classifications[item.docId] && (
+                            <span className={`px-1.5 py-0.5 rounded border text-[10px] font-mono uppercase ${CATEGORIES[classifications[item.docId].category]?.color || CATEGORIES.general.color}`}>
+                              {classifications[item.docId].category}
+                            </span>
+                          )}
+                          {item.status === 'done' && item.docId && classifications[item.docId]?.commit_id && (
+                            <span className="text-[10px] text-gray-600 font-mono">
+                              #{classifications[item.docId].commit_id}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       {(item.status === 'queued' || item.status === 'done' || item.status === 'error') && (
                         <button onClick={() => removeFromQueue(item.id)} className="text-gray-600 hover:text-white text-sm">&times;</button>
@@ -512,7 +582,8 @@ export default function ScrollAdmin() {
             ) : (
               <div className="space-y-4">
                 {pending.map(doc => {
-                  const cat = autoCategory(doc.title)
+                  const aiClass = classifications[doc.id]
+                  const cat = aiClass?.category || autoCategory(doc.title)
                   const catInfo = CATEGORIES[cat] || CATEGORIES.general
                   return (
                     <div key={doc.id} className="bg-white/[0.02] border border-gray-900 rounded-xl p-6">
@@ -523,14 +594,31 @@ export default function ScrollAdmin() {
                             <span className={`px-2 py-0.5 rounded border text-[10px] font-mono uppercase ${catInfo.color}`}>
                               {catInfo.label}
                             </span>
+                            {aiClass?.commit_id && (
+                              <span className="text-[10px] text-gray-600 font-mono">#{aiClass.commit_id}</span>
+                            )}
                           </div>
                           <div className="flex items-center gap-3 text-xs text-gray-500">
                             <span className="font-mono">v{doc.version}</span>
                             {doc.file_name && <span className="font-mono">{doc.file_name}</span>}
                             <span>{formatDate(doc.created_at)}</span>
                           </div>
+                          {aiClass && (
+                            <div className="flex items-center gap-2 mt-2 flex-wrap">
+                              {aiClass.tags?.map(tag => (
+                                <span key={tag} className="px-1.5 py-0.5 rounded bg-white/[0.03] border border-gray-900 text-[10px] text-gray-500 font-mono">{tag}</span>
+                              ))}
+                              {aiClass.summary && <span className="text-[11px] text-gray-500 italic">{aiClass.summary}</span>}
+                            </div>
+                          )}
                         </div>
                         <div className="flex gap-2 shrink-0">
+                          {!aiClass && (
+                            <button onClick={() => classifyDocument(doc)} disabled={classifyingId === doc.id}
+                              className="px-4 py-2 text-sm font-medium bg-white/5 text-gray-400 border border-gray-800 hover:text-white hover:border-gray-600 transition disabled:opacity-50 rounded-lg">
+                              {classifyingId === doc.id ? 'Classifying...' : 'AI Classify'}
+                            </button>
+                          )}
                           <button onClick={() => handleApprove(doc.id)} disabled={actionLoading}
                             className="px-4 py-2 text-sm font-medium bg-green-500/10 text-green-400 border border-green-500/30 hover:bg-green-500/20 transition disabled:opacity-50 rounded-lg">
                             Approve & Index
@@ -563,7 +651,7 @@ export default function ScrollAdmin() {
           <div>
             <div className="mb-8">
               <h1 className="text-3xl font-bold tracking-tight mb-2">Live in The Scroll</h1>
-              <p className="text-gray-500 text-sm">These documents are active in the knowledge base and feeding Grok.</p>
+              <p className="text-gray-500 text-sm">These documents are active in the knowledge base and feeding Grok. Click AI Classify to get Grok-powered category, metadata, and commit ID.</p>
             </div>
             {approved.length === 0 ? (
               <div className="bg-white/[0.02] border border-gray-900 rounded-xl p-16 text-center">
@@ -572,7 +660,8 @@ export default function ScrollAdmin() {
             ) : (
               <div className="space-y-2">
                 {approved.map(doc => {
-                  const cat = autoCategory(doc.title)
+                  const aiClass = classifications[doc.id]
+                  const cat = aiClass?.category || autoCategory(doc.title)
                   const catInfo = CATEGORIES[cat] || CATEGORIES.general
                   return (
                     <div key={doc.id} className="bg-white/[0.02] border border-gray-900 rounded-lg p-5 hover:bg-white/[0.04] hover:border-gray-800 transition-all group">
@@ -581,18 +670,57 @@ export default function ScrollAdmin() {
                           <span className={`w-2 h-2 rounded-full shrink-0 ${catInfo.color.includes('green') ? 'bg-green-400' : catInfo.color.includes('red') ? 'bg-red-400' : catInfo.color.includes('blue') ? 'bg-blue-400' : catInfo.color.includes('purple') ? 'bg-purple-400' : catInfo.color.includes('yellow') ? 'bg-yellow-400' : catInfo.color.includes('cyan') ? 'bg-cyan-400' : 'bg-gray-400'}`} />
                           <h3 className="text-white font-medium truncate">{doc.title}</h3>
                           <span className={`px-2 py-0.5 rounded border text-[10px] font-mono uppercase shrink-0 ${catInfo.color}`}>
-                            {catInfo.label}
+                            {aiClass ? catInfo.label : catInfo.label}
                           </span>
+                          {aiClass && (
+                            <>
+                              <span className="text-[10px] text-gray-600 font-mono" title="Commit ID">
+                                #{aiClass.commit_id}
+                              </span>
+                              {aiClass.document_type && (
+                                <span className="px-1.5 py-0.5 rounded bg-white/5 border border-gray-800 text-[10px] text-gray-500 font-mono">
+                                  {aiClass.document_type}
+                                </span>
+                              )}
+                            </>
+                          )}
                         </div>
-                        <div className="flex items-center gap-4 shrink-0 text-xs text-gray-600">
+                        <div className="flex items-center gap-3 shrink-0 text-xs text-gray-600">
                           <span className="font-mono">v{doc.version}</span>
                           <span>{formatDate(doc.approved_at)}</span>
+                          {!aiClass && (
+                            <button
+                              onClick={() => classifyDocument(doc)}
+                              disabled={classifyingId === doc.id}
+                              className="px-3 py-1.5 bg-white/5 border border-gray-800 hover:text-white hover:border-gray-600 transition rounded opacity-0 group-hover:opacity-100 disabled:opacity-50"
+                            >
+                              {classifyingId === doc.id ? 'Classifying...' : 'AI Classify'}
+                            </button>
+                          )}
                           <Link href={`/chat?doc=${doc.id}&title=${encodeURIComponent(doc.title)}`}
                             className="px-3 py-1.5 bg-white/5 border border-gray-800 hover:text-white hover:border-gray-600 transition rounded opacity-0 group-hover:opacity-100">
                             Ask Grok
                           </Link>
                         </div>
                       </div>
+                      {/* AI classification details */}
+                      {aiClass && (
+                        <div className="mt-3 flex items-center gap-3 flex-wrap">
+                          {aiClass.tags?.map(tag => (
+                            <span key={tag} className="px-2 py-0.5 rounded bg-white/[0.03] border border-gray-900 text-[10px] text-gray-500 font-mono">
+                              {tag}
+                            </span>
+                          ))}
+                          {aiClass.summary && (
+                            <span className="text-[11px] text-gray-500 italic">{aiClass.summary}</span>
+                          )}
+                          {aiClass.confidence && (
+                            <span className="text-[10px] text-gray-600 font-mono ml-auto">
+                              {Math.round(aiClass.confidence * 100)}% confidence
+                            </span>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )
                 })}

@@ -32,7 +32,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { title, text_content, submitter_name } = req.body
+    const { title, text_content, submitter_name, file_name } = req.body
 
     if (!title || !title.trim()) {
       return res.status(400).json({ error: 'Title is required' })
@@ -54,7 +54,7 @@ export default async function handler(req, res) {
       version: '1.0',
       source_url: null,
       text_full: text_content.trim(),
-      file_name: null,
+      file_name: file_name || null,
       file_size: Buffer.byteLength(text_content),
     })
 

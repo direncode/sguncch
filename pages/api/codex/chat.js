@@ -1,5 +1,5 @@
 import { searchRelevantChunks, callGrok, isEmbeddingAvailable } from '../../../lib/embeddings'
-import { getDocumentById } from '../../../lib/codex'
+import { getDocumentById, getDocuments } from '../../../lib/codex'
 import { buildPlatformContext, buildEnhancedSystemPrompt } from '../../../lib/platformContext'
 
 // In-memory rate limiting
@@ -35,7 +35,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { question, platformData } = req.body
+    const { question, platformData, isAdminMode } = req.body
 
     if (!question || !question.trim()) {
       return res.status(400).json({ error: 'Question is required' })
@@ -85,8 +85,27 @@ export default async function handler(req, res) {
       platformContextStr = buildPlatformContext(platformData)
     }
 
+    // === 2b. For admin mode, append Scroll metadata summary ===
+    let adminContext = ''
+    if (isAdminMode) {
+      try {
+        const { data: allDocs } = await getDocuments('approved')
+        if (allDocs && allDocs.length > 0) {
+          adminContext = `\n\n## SCROLL KNOWLEDGE BASE (Admin View)\n`
+          adminContext += `Total approved documents: ${allDocs.length}\n`
+          adminContext += `Documents:\n`
+          for (const doc of allDocs.slice(0, 30)) {
+            adminContext += `- ${doc.title} (v${doc.version}, approved: ${doc.approved_at || 'unknown'})\n`
+          }
+          if (allDocs.length > 30) {
+            adminContext += `... and ${allDocs.length - 30} more\n`
+          }
+        }
+      } catch { /* non-blocking */ }
+    }
+
     // === 3. Build the enhanced system prompt ===
-    const systemPrompt = buildEnhancedSystemPrompt(documentContext, platformContextStr)
+    const systemPrompt = buildEnhancedSystemPrompt(documentContext, platformContextStr + adminContext, isAdminMode)
 
     // === 4. Call Grok ===
     const messages = [

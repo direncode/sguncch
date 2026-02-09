@@ -49,17 +49,21 @@ function SendIcon() {
 
 export default function Chat() {
   const router = useRouter()
-  const { doc: docId, title: docTitle } = router.query
+  const { doc: docId, title: docTitle, mode } = router.query
 
-  const { policies, operationalData, budgetData, quickStats, announcements, feedback } = useApp()
+  const { policies, operationalData, budgetData, quickStats, announcements, feedback, isAdmin } = useApp()
 
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
   const [hasAutoAsked, setHasAutoAsked] = useState(false)
+  const [scrollStats, setScrollStats] = useState(null)
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
+
+  // Determine if we're in admin mode
+  const isAdminMode = isAdmin && mode === 'admin'
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -72,6 +76,22 @@ export default function Chat() {
       sendMessage(question)
     }
   }, [docTitle, hasAutoAsked])
+
+  // Load Scroll stats for context indicator
+  useEffect(() => {
+    fetch('/api/codex/scroll')
+      .then(r => r.json())
+      .then(data => {
+        if (data.documents) {
+          setScrollStats({
+            count: data.documents.length,
+            categories: data.buckets?.length || 0,
+            chars: data.documents.reduce((sum, d) => sum + (d.char_count || 0), 0),
+          })
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const sendMessage = async (questionText) => {
     const question = questionText || input.trim()
@@ -87,6 +107,7 @@ export default function Chat() {
         body: JSON.stringify({
           question,
           platformData: { policies, operationalData, budgetData, quickStats, announcements, feedback },
+          isAdminMode,
         }),
       })
       const data = await res.json()
@@ -108,22 +129,70 @@ export default function Chat() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
   }
 
-  const suggestedQuestions = [
-    'What governance documents are available?',
+  const userQuestions = [
+    'What governance documents are in The Scroll?',
     'How are policy initiatives progressing?',
     'What is the current budget status?',
-    'Summarize recent student feedback',
+    'What student resources are available?',
   ]
+
+  const adminQuestions = [
+    'Summarize all pending budget requests',
+    'What documents are in The Scroll knowledge base?',
+    'Audit report: policy progress across departments',
+    'Summarize recent student feedback and action items',
+    'What funding requests have been flagged?',
+    'Which departments are behind on milestones?',
+  ]
+
+  const suggestedQuestions = isAdminMode ? adminQuestions : userQuestions
 
   return (
     <Layout>
       <Head>
-        <title>Grok | Gov Codex</title>
+        <title>{isAdminMode ? 'Grok Admin' : 'Grok'} | The Scroll</title>
       </Head>
 
       <div className="flex flex-col" style={{ height: '100vh' }}>
         {/* Spacer for nav */}
         <div className="h-20 shrink-0" />
+
+        {/* Admin/User mode toggle bar */}
+        {isAdmin && (
+          <div className="shrink-0 border-b border-white/[0.06] bg-black/60 backdrop-blur-sm">
+            <div className="max-w-[720px] mx-auto px-4 sm:px-6 py-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => router.push('/chat', undefined, { shallow: true })}
+                  className={`px-3 py-1.5 text-xs font-mono uppercase tracking-wider rounded border transition ${
+                    !isAdminMode
+                      ? 'bg-white/10 border-gray-600 text-white'
+                      : 'border-gray-800 text-gray-500 hover:text-white hover:border-gray-700'
+                  }`}
+                >
+                  User
+                </button>
+                <button
+                  onClick={() => router.push('/chat?mode=admin', undefined, { shallow: true })}
+                  className={`px-3 py-1.5 text-xs font-mono uppercase tracking-wider rounded border transition ${
+                    isAdminMode
+                      ? 'bg-white/10 border-gray-600 text-white'
+                      : 'border-gray-800 text-gray-500 hover:text-white hover:border-gray-700'
+                  }`}
+                >
+                  Admin
+                </button>
+              </div>
+              {scrollStats && (
+                <div className="flex items-center gap-3 text-[10px] text-gray-600 font-mono">
+                  <span>Scroll: {scrollStats.count} docs</span>
+                  <span>{scrollStats.categories} categories</span>
+                  <span>{(scrollStats.chars / 1000).toFixed(0)}K chars</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto min-h-0">
@@ -131,20 +200,43 @@ export default function Chat() {
 
             {/* Welcome screen */}
             {messages.length === 0 && !isLoading && (
-              <div className="flex flex-col items-center justify-center pt-[15vh]">
+              <div className="flex flex-col items-center justify-center pt-[12vh]">
                 <div className="mb-6 opacity-20">
                   <GrokIcon size={48} />
                 </div>
-                <h1 className="text-2xl font-semibold tracking-tight text-white mb-2">Gov Codex</h1>
-                <p className="text-gray-500 text-sm text-center max-w-md mb-10">
-                  Ask anything about UNC governance, policies, budget, or student services. Powered by Grok with access to approved documents and live platform data.
+                <h1 className="text-2xl font-semibold tracking-tight text-white mb-2">
+                  {isAdminMode ? 'Grok Admin' : 'Grok'}
+                </h1>
+                <p className="text-gray-500 text-sm text-center max-w-md mb-3">
+                  {isAdminMode
+                    ? 'Admin interface with full access to The Scroll knowledge base, budget data, operational metrics, feedback, and all governance documents.'
+                    : 'Ask anything about UNC governance, policies, budget, or student services. Powered by Grok with The Scroll as its knowledge base.'
+                  }
                 </p>
+
+                {/* Scroll RAG indicator */}
+                {scrollStats && (
+                  <div className="flex items-center gap-2 mb-6 px-4 py-2 bg-white/[0.02] border border-gray-900 rounded-full">
+                    <GrokIcon size={12} />
+                    <span className="text-[11px] text-gray-500">
+                      Sourcing from The Scroll: {scrollStats.count} documents across {scrollStats.categories} categories
+                    </span>
+                  </div>
+                )}
+
+                {isAdminMode && (
+                  <div className="mb-6 flex items-center gap-2 text-xs text-yellow-400 bg-yellow-500/5 border border-yellow-500/20 rounded-full px-4 py-2">
+                    <span>Admin Mode — includes operational data, budget details, and feedback</span>
+                  </div>
+                )}
+
                 {docTitle && (
                   <div className="mb-6 flex items-center gap-2 text-sm text-gray-400 bg-white/[0.03] border border-gray-800 rounded-full px-4 py-2">
                     <span>Context: {decodeURIComponent(docTitle)}</span>
-                    <button onClick={() => router.push('/chat', undefined, { shallow: true })} className="text-gray-500 hover:text-white ml-1">&times;</button>
+                    <button onClick={() => router.push(isAdminMode ? '/chat?mode=admin' : '/chat', undefined, { shallow: true })} className="text-gray-500 hover:text-white ml-1">&times;</button>
                   </div>
                 )}
+
                 <div className="flex flex-wrap justify-center gap-2 max-w-lg">
                   {suggestedQuestions.map((q) => (
                     <button key={q} onClick={() => sendMessage(q)}
@@ -167,17 +259,20 @@ export default function Chat() {
                     <div className="flex-1 min-w-0">
                       <p className="text-[15px] text-gray-200 leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                       {msg.sources && msg.sources.length > 0 && (
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          {msg.sources.filter((s, idx, arr) => arr.findIndex(x => x.document_id === s.document_id) === idx).map((source, j) => (
-                            <Link key={j} href={`/knowledge-base/${source.document_id}`}
-                              className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/[0.03] border border-gray-800 rounded-full text-xs text-gray-400 hover:text-white hover:border-gray-600 transition-all">
-                              <span className="w-1 h-1 rounded-full bg-gray-500" />
-                              <span>{source.title}</span>
-                              {source.section && source.section !== 'General' && (
-                                <span className="text-gray-600">{source.section}</span>
-                              )}
-                            </Link>
-                          ))}
+                        <div className="mt-4">
+                          <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2 font-mono">From The Scroll</p>
+                          <div className="flex flex-wrap gap-2">
+                            {msg.sources.filter((s, idx, arr) => arr.findIndex(x => x.document_id === s.document_id) === idx).map((source, j) => (
+                              <Link key={j} href={`/knowledge-base/${source.document_id}`}
+                                className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/[0.03] border border-gray-800 rounded-full text-xs text-gray-400 hover:text-white hover:border-gray-600 transition-all">
+                                <span className="w-1 h-1 rounded-full bg-gray-500" />
+                                <span>{source.title}</span>
+                                {source.section && source.section !== 'General' && (
+                                  <span className="text-gray-600">{source.section}</span>
+                                )}
+                              </Link>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </div>
@@ -228,7 +323,7 @@ export default function Chat() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask anything..."
+                placeholder={isAdminMode ? 'Ask Grok (admin context)...' : 'Ask anything...'}
                 disabled={isLoading}
                 className="w-full bg-white/[0.04] border border-gray-800 rounded-full pl-5 pr-12 py-3.5 text-[15px] text-white placeholder-gray-600 focus:border-gray-600 focus:outline-none focus:bg-white/[0.06] transition-all disabled:opacity-50"
                 style={{ background: 'rgba(255,255,255,0.04)' }}
@@ -242,7 +337,7 @@ export default function Chat() {
               </button>
             </div>
             <p className="text-center text-[11px] text-gray-600 mt-3 tracking-wide">
-              Grok  /  Gov Codex  /  Documents + Live Data
+              Grok  /  The Scroll  /  {isAdminMode ? 'Admin Data + Documents + Live Platform' : 'Documents + Live Data'}
             </p>
           </div>
         </div>
