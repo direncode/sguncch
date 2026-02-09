@@ -344,12 +344,24 @@ export default function ScrollPage() {
 }
 
 function DocumentCard({ doc, expanded, onToggle }) {
+  const [copied, setCopied] = useState(false)
   const style = getCatStyle(doc.category)
   const preview = (doc.text_full || '').slice(0, 400)
   const hasMore = (doc.text_full || '').length > 400
+  const wordCount = (doc.text_full || '').split(/\s+/).filter(Boolean).length
+  const readTime = Math.max(1, Math.ceil(wordCount / 200))
+
+  const handleCopy = async (e) => {
+    e.stopPropagation()
+    try {
+      await navigator.clipboard.writeText(doc.text_full || '')
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {}
+  }
 
   return (
-    <div className={`bg-white/[0.02] border border-gray-900 rounded-lg overflow-hidden hover:bg-white/[0.04] hover:border-gray-800 transition-all`}>
+    <div className="bg-white/[0.02] border border-gray-900 rounded-lg overflow-hidden hover:bg-white/[0.04] hover:border-gray-800 transition-all group">
       {/* Header */}
       <button
         onClick={onToggle}
@@ -365,7 +377,8 @@ function DocumentCard({ doc, expanded, onToggle }) {
           <div className="flex items-center gap-4 text-xs text-gray-600">
             {doc.version && <span className="font-mono">v{doc.version}</span>}
             {doc.approved_at && <span>{formatDate(doc.approved_at)}</span>}
-            <span className="font-mono">{(doc.char_count || 0).toLocaleString()} chars</span>
+            <span className="font-mono">{wordCount.toLocaleString()} words</span>
+            <span>{readTime} min read</span>
           </div>
         </div>
         <span className={`text-gray-600 text-sm transition-transform duration-200 shrink-0 mt-1 ${expanded ? 'rotate-180' : ''}`}>
@@ -374,18 +387,49 @@ function DocumentCard({ doc, expanded, onToggle }) {
       </button>
 
       {/* Preview / Full text */}
-      <div className={`px-5 pb-4 ${expanded ? '' : ''}`}>
+      <div className="px-5 pb-4">
         {expanded ? (
-          <div className="bg-black/50 border border-gray-900 rounded p-4 max-h-[600px] overflow-y-auto">
-            <pre className="text-sm text-gray-300 whitespace-pre-wrap font-sans leading-relaxed">
-              {doc.text_full}
-            </pre>
+          <div>
+            {/* Action bar */}
+            <div className="flex items-center gap-2 mb-3">
+              <a
+                href={`/chat?doc=${doc.id}&title=${encodeURIComponent(doc.title)}`}
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] border border-gray-800 rounded-full text-xs text-gray-400 hover:text-white hover:border-gray-600 transition-all"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>
+                Ask Grok
+              </a>
+              <button
+                onClick={handleCopy}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] border border-gray-800 rounded-full text-xs text-gray-400 hover:text-white hover:border-gray-600 transition-all"
+              >
+                {copied ? 'Copied' : 'Copy text'}
+              </button>
+              <span className="text-[10px] text-gray-600 font-mono ml-auto">{(doc.char_count || 0).toLocaleString()} characters</span>
+            </div>
+            <div className="bg-black/50 border border-gray-900 rounded p-4 max-h-[600px] overflow-y-auto">
+              <pre className="text-sm text-gray-300 whitespace-pre-wrap font-sans leading-relaxed">
+                {doc.text_full}
+              </pre>
+            </div>
           </div>
         ) : (
           <div>
             <p className="text-sm text-gray-500 leading-relaxed line-clamp-3">
               {preview}{hasMore ? '...' : ''}
             </p>
+            {/* Hover actions */}
+            <div className="mt-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <a
+                href={`/chat?doc=${doc.id}&title=${encodeURIComponent(doc.title)}`}
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] text-gray-500 hover:text-white transition"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>
+                Ask Grok about this
+              </a>
+            </div>
           </div>
         )}
       </div>
