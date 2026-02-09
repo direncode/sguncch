@@ -119,6 +119,7 @@ export default function Chat() {
         role: 'assistant',
         content: stripMarkdown(data.answer),
         sources: data.sources || [],
+        webSearchUsed: data.webSearchUsed || false,
       }])
     } catch {
       setError('Failed to connect. Please try again.')
@@ -292,6 +293,14 @@ export default function Chat() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-[15px] text-gray-200 leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+                      {msg.webSearchUsed && (
+                        <div className="mt-3 mb-1">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-500/5 border border-blue-500/20 rounded-full text-[10px] text-blue-400 font-mono">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+                            Web search used
+                          </span>
+                        </div>
+                      )}
                       {msg.sources && msg.sources.length > 0 && (
                         <div className="mt-4">
                           <p className="text-[10px] text-gray-600 uppercase tracking-wider mb-2 font-mono">From The Scroll</p>

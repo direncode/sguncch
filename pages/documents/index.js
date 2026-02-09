@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Head from 'next/head'
 import Layout from '../../components/Layout'
 import { ADMIN_KEY } from '../../lib/data'
+import { useApp } from '../../lib/store'
 
 const documents = [
   {
@@ -113,6 +114,18 @@ const documents = [
 
 const categories = ['All', ...new Set(documents.map(d => d.category))]
 
+// Match a PDF doc to a Scroll entry by fuzzy title matching
+function findScrollMatch(doc, scrollDocs) {
+  const name = doc.name.toLowerCase()
+  return scrollDocs.find(sd => {
+    const title = sd.title.toLowerCase()
+    return name.includes(title) || title.includes(name) ||
+      // Match on key terms
+      name.split(/\s+/).filter(w => w.length > 3).some(word => title.includes(word)) &&
+      title.split(/\s+/).filter(w => w.length > 3).some(word => name.includes(word))
+  })
+}
+
 function AiPanel({ doc, grokAvailable, onClose }) {
   const [content, setContent] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -168,7 +181,6 @@ function AiPanel({ doc, grokAvailable, onClose }) {
 
       {grokAvailable && (
         <>
-          {/* Action buttons */}
           <div className="flex gap-2 mb-3">
             <button
               onClick={() => extractContent(null)}
@@ -179,7 +191,6 @@ function AiPanel({ doc, grokAvailable, onClose }) {
             </button>
           </div>
 
-          {/* Ask a question */}
           <form onSubmit={handleAsk} className="flex gap-2 mb-3">
             <input
               type="text"
@@ -199,14 +210,12 @@ function AiPanel({ doc, grokAvailable, onClose }) {
         </>
       )}
 
-      {/* Error */}
       {error && (
         <div className="bg-[#f85149]/10 border border-[#f85149]/30 rounded-lg p-3 mb-3">
           <p className="text-xs text-[#f85149]">{error}</p>
         </div>
       )}
 
-      {/* Loading */}
       {loading && (
         <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6 text-center">
           <div className="inline-block w-5 h-5 border-2 border-[#a371f7] border-t-transparent rounded-full animate-spin mb-2" />
@@ -215,7 +224,6 @@ function AiPanel({ doc, grokAvailable, onClose }) {
         </div>
       )}
 
-      {/* Content */}
       {content && !loading && (
         <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4 max-h-[500px] overflow-y-auto">
           <div className="prose prose-invert prose-sm max-w-none">
@@ -235,12 +243,125 @@ function AiPanel({ doc, grokAvailable, onClose }) {
   )
 }
 
+// .txt upload panel for a specific PDF document
+function TxtUploadPanel({ doc, onUploaded, onClose }) {
+  const [file, setFile] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const [result, setResult] = useState(null)
+  const fileRef = useRef(null)
+
+  const handleFile = (e) => {
+    const f = e.target.files?.[0]
+    if (f && f.name.endsWith('.txt')) {
+      setFile(f)
+      setResult(null)
+    } else if (f) {
+      setResult({ ok: false, message: 'Only .txt files are accepted.' })
+    }
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  const handleUpload = async () => {
+    if (!file) return
+    setUploading(true)
+    setResult(null)
+    try {
+      const textContent = await file.text()
+      if (!textContent.trim()) {
+        setResult({ ok: false, message: 'File is empty.' })
+        setUploading(false)
+        return
+      }
+      const res = await fetch('/api/codex/batch-upload', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${ADMIN_KEY}`,
+        },
+        body: JSON.stringify({
+          files: [{
+            title: doc.name,
+            text_content: textContent,
+            version: '1.0',
+            file_name: file.name,
+            file_size: file.size,
+          }],
+        }),
+      })
+      const data = await res.json()
+      if (res.ok && data.succeeded > 0) {
+        setResult({ ok: true, message: `Added to The Scroll — ${data.results[0]?.chunk_count || 0} chunks indexed. Grok can now use this document.` })
+        setFile(null)
+        onUploaded()
+      } else {
+        setResult({ ok: false, message: data.results?.[0]?.error || data.error || 'Upload failed' })
+      }
+    } catch {
+      setResult({ ok: false, message: 'Upload failed. Check your connection.' })
+    }
+    setUploading(false)
+  }
+
+  return (
+    <div className="mt-4 border-t border-[#30363d] pt-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold text-[#3fb950] uppercase tracking-wider">Add .txt to The Scroll</span>
+          <span className="text-[10px] text-[#6e7681]">Enables Grok RAG for this document</span>
+        </div>
+        <button onClick={onClose} className="text-[10px] text-[#6e7681] hover:text-[#f0f6fc] transition">Close</button>
+      </div>
+
+      <p className="text-xs text-[#8b949e] mb-3">
+        Upload the .txt version of this PDF. Open the PDF, select all text (Ctrl+A), copy, and paste into a .txt file.
+        Once uploaded, Grok can search and reference this document instantly.
+      </p>
+
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => fileRef.current?.click()}
+          className="px-4 py-2 text-xs font-medium bg-[#161b22] border border-[#30363d] rounded hover:border-[#3fb950] hover:text-[#3fb950] transition text-[#8b949e]"
+        >
+          {file ? file.name : 'Choose .txt file'}
+        </button>
+        <input ref={fileRef} type="file" accept=".txt" onChange={handleFile} className="hidden" />
+
+        {file && (
+          <>
+            <span className="text-[10px] text-[#6e7681] font-mono">{(file.size / 1024).toFixed(1)} KB</span>
+            <button
+              onClick={handleUpload}
+              disabled={uploading}
+              className="px-4 py-2 text-xs font-medium bg-[#3fb950] text-black rounded hover:bg-[#3fb950]/80 transition disabled:opacity-50"
+            >
+              {uploading ? 'Uploading...' : 'Add to Scroll'}
+            </button>
+          </>
+        )}
+      </div>
+
+      {result && (
+        <div className={`mt-3 p-3 rounded border text-xs ${
+          result.ok
+            ? 'bg-[#3fb950]/10 border-[#3fb950]/30 text-[#3fb950]'
+            : 'bg-[#f85149]/10 border-[#f85149]/30 text-[#f85149]'
+        }`}>
+          {result.message}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Documents() {
+  const { isAdmin } = useApp()
   const [selectedCategory, setSelectedCategory] = useState('All')
   const [previewDoc, setPreviewDoc] = useState(null)
   const [aiDoc, setAiDoc] = useState(null)
+  const [txtUploadDoc, setTxtUploadDoc] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [grokAvailable, setGrokAvailable] = useState(false)
+  const [scrollDocs, setScrollDocs] = useState([])
 
   // Check if Grok PDF extraction is available
   useEffect(() => {
@@ -251,6 +372,18 @@ export default function Documents() {
       .then(d => d?.available && setGrokAvailable(true))
       .catch(() => {})
   }, [])
+
+  // Load Scroll documents to track which PDFs have .txt uploaded
+  const loadScrollDocs = () => {
+    fetch('/api/codex/documents?status=approved')
+      .then(r => r.json())
+      .then(data => setScrollDocs(data.documents || []))
+      .catch(() => {})
+  }
+
+  useEffect(() => { loadScrollDocs() }, [])
+
+  const scrollCount = scrollDocs.length
 
   const filtered = documents.filter(doc => {
     const matchesCategory = selectedCategory === 'All' || doc.category === selectedCategory
@@ -283,10 +416,16 @@ export default function Documents() {
                 Grok Connected
               </div>
             )}
+            {scrollCount > 0 && (
+              <div className="inline-flex items-center gap-2 px-2 py-1 bg-[#3fb950]/10 border border-[#3fb950] rounded text-[10px] font-semibold text-[#3fb950] uppercase tracking-wider">
+                {scrollCount} in The Scroll
+              </div>
+            )}
           </div>
           <h1 className="text-3xl font-bold text-[#f0f6fc] tracking-tight mb-2">Document Catalogue</h1>
           <p className="text-[#8b949e] max-w-2xl">
             Official UNC governance documents, university policies, student government codes, and conduct procedures.
+            {isAdmin ? ' Upload .txt versions under each PDF to add them to The Scroll for Grok RAG.' : ''}
             {grokAvailable ? ' Use AI Read to extract content and ask Grok questions about any document.' : ''}
           </p>
         </div>
@@ -325,34 +464,67 @@ export default function Documents() {
         <div className="grid gap-3">
           {filtered.map(doc => {
             const colors = categoryColors[doc.category] || categoryColors['University Policy']
+            const scrollMatch = findScrollMatch(doc, scrollDocs)
+            const inScroll = !!scrollMatch
             return (
               <div
                 key={doc.id}
-                className="bg-[#161b22] border border-[#30363d] rounded-lg p-5 hover:border-[#484f58] transition group"
+                className={`bg-[#161b22] border rounded-lg p-5 hover:border-[#484f58] transition group ${
+                  inScroll ? 'border-[#3fb950]/30' : 'border-[#30363d]'
+                }`}
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex items-start gap-4 min-w-0 flex-1">
                     {/* PDF Icon */}
-                    <div className="w-10 h-12 bg-[#f85149]/10 border border-[#f85149]/30 rounded flex items-center justify-center shrink-0">
-                      <span className="text-[10px] font-bold text-[#f85149] uppercase">PDF</span>
+                    <div className={`w-10 h-12 rounded flex items-center justify-center shrink-0 ${
+                      inScroll
+                        ? 'bg-[#3fb950]/10 border border-[#3fb950]/30'
+                        : 'bg-[#f85149]/10 border border-[#f85149]/30'
+                    }`}>
+                      <span className={`text-[10px] font-bold uppercase ${inScroll ? 'text-[#3fb950]' : 'text-[#f85149]'}`}>
+                        {inScroll ? 'TXT' : 'PDF'}
+                      </span>
                     </div>
                     <div className="min-w-0">
                       <h3 className="font-semibold text-[#f0f6fc] text-sm mb-1 leading-snug">{doc.name}</h3>
-                      <div className="flex items-center gap-3 mt-2">
+                      <div className="flex items-center gap-3 mt-2 flex-wrap">
                         <span className={`px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded border ${colors.bg} ${colors.text} ${colors.border}`}>
                           {doc.category}
                         </span>
                         <span className="text-[10px] text-[#6e7681] font-mono">{doc.size}</span>
+                        {inScroll && (
+                          <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded border bg-[#3fb950]/10 text-[#3fb950] border-[#3fb950]/30">
+                            In The Scroll
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+                    {/* Add .txt button — shown for admin when not yet in Scroll */}
+                    {isAdmin && !inScroll && (
+                      <button
+                        onClick={() => {
+                          setTxtUploadDoc(txtUploadDoc?.id === doc.id ? null : doc)
+                          if (aiDoc?.id === doc.id) setAiDoc(null)
+                          if (previewDoc?.id === doc.id) setPreviewDoc(null)
+                        }}
+                        className={`px-3 py-1.5 text-xs font-medium rounded transition ${
+                          txtUploadDoc?.id === doc.id
+                            ? 'bg-[#3fb950] text-black'
+                            : 'text-[#3fb950] border border-[#3fb950]/30 hover:border-[#3fb950]'
+                        }`}
+                      >
+                        {txtUploadDoc?.id === doc.id ? 'Close' : 'Add .txt'}
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         setAiDoc(aiDoc?.id === doc.id ? null : doc)
                         if (previewDoc?.id === doc.id) setPreviewDoc(null)
+                        if (txtUploadDoc?.id === doc.id) setTxtUploadDoc(null)
                       }}
                       className={`px-3 py-1.5 text-xs font-medium rounded transition ${
                         aiDoc?.id === doc.id
@@ -366,6 +538,7 @@ export default function Documents() {
                       onClick={() => {
                         setPreviewDoc(previewDoc?.id === doc.id ? null : doc)
                         if (aiDoc?.id === doc.id) setAiDoc(null)
+                        if (txtUploadDoc?.id === doc.id) setTxtUploadDoc(null)
                       }}
                       className="px-3 py-1.5 text-xs font-medium text-[#8b949e] border border-[#30363d] rounded hover:text-[#00d4ff] hover:border-[#00d4ff] transition"
                     >
@@ -381,6 +554,15 @@ export default function Documents() {
                     </a>
                   </div>
                 </div>
+
+                {/* .txt Upload Panel */}
+                {txtUploadDoc?.id === doc.id && (
+                  <TxtUploadPanel
+                    doc={doc}
+                    onUploaded={loadScrollDocs}
+                    onClose={() => setTxtUploadDoc(null)}
+                  />
+                )}
 
                 {/* AI Reader Panel */}
                 {aiDoc?.id === doc.id && (
@@ -417,9 +599,9 @@ export default function Documents() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
               { step: '01', title: 'Browse', desc: 'Find the governance document you need from the catalogue above.' },
-              { step: '02', title: 'Preview', desc: 'Use your browser\'s native PDF viewer to read the document inline.' },
-              { step: '03', title: 'Ask Grok', desc: 'Click "Ask Grok" to have xAI read the full PDF and extract text or answer questions.' },
-              { step: '04', title: 'Get Answers', desc: 'Ask specific questions about any policy — Grok reads the full document and responds.' },
+              { step: '02', title: 'Add .txt', desc: 'Admin uploads the .txt version of each PDF to add it to The Scroll knowledge base.' },
+              { step: '03', title: 'Ask Grok', desc: 'Once in The Scroll, Grok can search, reference, and answer questions about the document.' },
+              { step: '04', title: 'Get Answers', desc: 'Ask specific questions about any policy — Grok uses The Scroll and web search to respond.' },
             ].map(item => (
               <div key={item.step} className="space-y-2">
                 <span className="text-[10px] font-mono text-[#6e7681]">{item.step}</span>
