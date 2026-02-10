@@ -80,12 +80,6 @@ export default function Layout({ children }) {
               >
                 Admin
               </Link>
-              <Link
-                href="/funding-request"
-                className="btn-primary text-sm py-2 px-4"
-              >
-                Get Started
-              </Link>
 
               {/* Mobile menu button */}
               <button

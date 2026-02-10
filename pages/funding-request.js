@@ -2,7 +2,6 @@ import { useState, useMemo } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import { useApp } from '../lib/store'
-import { sampleBudgetLineItems } from '../lib/data'
 import { BUDGET_CATEGORIES } from '../lib/budgetEngine'
 import { Button, Input } from '../components/FormInput'
 
@@ -32,8 +31,7 @@ export default function FundingRequest() {
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Use sample data if no real data exists
-  const displayLineItems = budgetLineItems?.length > 0 ? budgetLineItems : sampleBudgetLineItems
+  const displayLineItems = budgetLineItems || []
 
   // Calculate budget statistics
   const budgetStats = useMemo(() => {

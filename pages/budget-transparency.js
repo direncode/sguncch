@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import { useApp } from '../lib/store'
-import { sampleBudgetLineItems, sampleFundingRequests } from '../lib/data'
 import {
   BUDGET_CATEGORIES,
   exportLineItemsToCSV,
@@ -40,9 +39,8 @@ export default function BudgetTransparency() {
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Use sample data if no real data exists
-  const displayLineItems = budgetLineItems?.length > 0 ? budgetLineItems : sampleBudgetLineItems
-  const displayFundingRequests = fundingRequests?.length > 0 ? fundingRequests : sampleFundingRequests
+  const displayLineItems = budgetLineItems || []
+  const displayFundingRequests = fundingRequests || []
 
   // Calculate statistics
   const stats = useMemo(() => {
