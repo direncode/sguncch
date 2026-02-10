@@ -7,6 +7,15 @@ import { Button, Input } from '../../components/FormInput'
 
 const TEMP_ACCESS_CODE = 'dev-only-change-in-production'
 
+/**
+ * Render the Admin Login page and handle admin authentication flows.
+ *
+ * Presents a form for entering an admin key and an optional temporary access flow.
+ * Attempts to authenticate using provided credentials and navigates to "/admin" on success.
+ * If the user is already an admin, triggers an immediate redirect and renders nothing.
+ *
+ * @returns {JSX.Element|null} The Admin Login page element, or `null` when an immediate redirect occurs.
+ */
 export default function AdminLogin() {
   const [key, setKey] = useState('')
   const [error, setError] = useState('')
