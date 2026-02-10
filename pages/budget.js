@@ -1,10 +1,8 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import Head from 'next/head'
-import Link from 'next/link'
 import Layout from '../components/Layout'
 import { Input, Select, Textarea } from '../components/FormInput'
 import { useApp } from '../lib/store'
-import { sampleBudgetLineItems, sampleFundingRequests } from '../lib/data'
 import {
   BUDGET_CATEGORIES,
   exportLineItemsToCSV,
@@ -85,10 +83,8 @@ export default function BudgetPage() {
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Use sample data if no real data exists
-  const displayLineItems = budgetLineItems?.length > 0 ? budgetLineItems : sampleBudgetLineItems
-  const displayFundingRequests = fundingRequests?.length > 0 ? fundingRequests : sampleFundingRequests
-  const isUsingDemoData = budgetLineItems?.length === 0 && fundingRequests?.length === 0
+  const displayLineItems = budgetLineItems || []
+  const displayFundingRequests = fundingRequests || []
 
   // Calculate statistics
   const stats = useMemo(() => {
@@ -298,27 +294,6 @@ export default function BudgetPage() {
           {/* OVERVIEW TAB */}
           {activeTab === 'overview' && (
             <div>
-              {/* Demo Data Notice */}
-              {isUsingDemoData && (
-                <Reveal>
-                  <div className="card border-yellow-500/30 p-6 mb-8 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-2 h-2 bg-yellow-400 rounded-full" />
-                      <div>
-                        <p className="text-white font-medium"><Editable k="budget.overview.demoTitle">Displaying Sample Data</Editable></p>
-                        <p className="text-sm text-gray-400"><Editable k="budget.overview.demoDescription">Configure database and APIs to use real budget data.</Editable></p>
-                      </div>
-                    </div>
-                    <Link
-                      href="/setup"
-                      className="btn-secondary text-sm"
-                    >
-                      <Editable k="budget.overview.setupButton">Setup Guide</Editable>
-                    </Link>
-                  </div>
-                </Reveal>
-              )}
-
               <Reveal>
                 <h2 className="section-title mb-8">
                   <Editable k="budget.overview.title">Budget Overview</Editable>

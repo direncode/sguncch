@@ -172,13 +172,13 @@ export default function ScrollPage() {
         <title>The Scroll | Project Bold</title>
       </Head>
 
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-12 pt-28 pb-20">
+      <div className="max-w-[1600px] mx-auto px-6 lg:px-12 pt-28 pb-20">
 
         {/* Hero */}
         <div className="mb-12">
-          <p className="caption mb-3">Knowledge Base</p>
-          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-3">The Scroll</h1>
-          <p className="text-gray-500 text-sm max-w-xl">
+          <span className="caption mb-4 block">Knowledge Base</span>
+          <h1 className="section-title mb-3">The Scroll</h1>
+          <p className="body-text text-gray-400 max-w-2xl">
             The living knowledge base of UNC Student Government. Every approved document,
             searchable and organized. Anyone can contribute.
           </p>

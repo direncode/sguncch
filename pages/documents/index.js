@@ -6,20 +6,17 @@ import { useApp } from '../../lib/store'
 import { SEED_DOCUMENTS } from '../../lib/scrollRegistry'
 
 // Build documents list from the scroll registry (single source of truth)
-// Note: pdfUrl from registry is only used as a default suggestion for admin — user side
-// only shows a working link if admin has set source_url on the Scroll entry
 const documents = SEED_DOCUMENTS.map(seed => ({
   id: seed.key,
   name: seed.title,
   category: seed.category,
   version: seed.version,
   description: seed.description,
-  defaultPdfUrl: seed.pdfUrl, // admin-only default suggestion
+  defaultPdfUrl: seed.pdfUrl,
 }))
 
 const categories = ['All', ...new Set(documents.map(d => d.category))]
 
-// Match a PDF doc to a Scroll entry by fuzzy title matching
 function findScrollMatch(doc, scrollDocs) {
   const name = doc.name.toLowerCase()
   return scrollDocs.find(sd => {
@@ -96,37 +93,35 @@ function TxtUploadPanel({ doc, onUploaded, onClose }) {
   }
 
   return (
-    <div className="mt-4 border-t border-[#30363d] pt-4">
+    <div className="mt-4 border-t border-gray-900 pt-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-semibold text-[#3fb950] uppercase tracking-wider">Add .txt to The Scroll</span>
-          <span className="text-[10px] text-[#6e7681]">Enables Grok RAG for this document</span>
+          <span className="caption text-green-400">Add .txt to The Scroll</span>
+          <span className="text-xs text-gray-600">Enables Grok RAG for this document</span>
         </div>
-        <button onClick={onClose} className="text-[10px] text-[#6e7681] hover:text-[#f0f6fc] transition">Close</button>
+        <button onClick={onClose} className="text-xs text-gray-500 hover:text-white transition">Close</button>
       </div>
 
-      <p className="text-xs text-[#8b949e] mb-3">
+      <p className="text-xs text-gray-500 mb-3">
         Upload the .txt version of this PDF and set the direct PDF link for users.
       </p>
 
-      {/* PDF URL input */}
       <div className="mb-3">
-        <label className="text-[10px] text-[#6e7681] uppercase tracking-wider block mb-1.5">PDF Link (required)</label>
+        <label className="caption block mb-1.5">PDF Link (required)</label>
         <input
           type="url"
           value={pdfUrl}
           onChange={(e) => setPdfUrl(e.target.value)}
           placeholder="https://policies.unc.edu/files/..."
-          className="w-full px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded text-xs text-[#f0f6fc] placeholder-[#484f58] focus:border-[#388bfd] focus:outline-none"
+          className="w-full px-4 py-3 bg-black border border-gray-800 rounded text-sm text-white placeholder-gray-600 focus:border-gray-600 focus:outline-none"
         />
-        <p className="text-[10px] text-[#484f58] mt-1">This URL becomes the "Open PDF" link users see.</p>
+        <p className="text-xs text-gray-600 mt-1">This URL becomes the "Open PDF" link users see.</p>
       </div>
 
-      {/* File picker */}
       <div className="flex items-center gap-3">
         <button
           onClick={() => fileRef.current?.click()}
-          className="px-4 py-2 text-xs font-medium bg-[#161b22] border border-[#30363d] rounded hover:border-[#3fb950] hover:text-[#3fb950] transition text-[#8b949e]"
+          className="px-4 py-2 text-xs font-medium border border-gray-800 rounded hover:border-green-500/50 hover:text-green-400 transition text-gray-500"
         >
           {file ? file.name : 'Choose .txt file'}
         </button>
@@ -134,11 +129,11 @@ function TxtUploadPanel({ doc, onUploaded, onClose }) {
 
         {file && (
           <>
-            <span className="text-[10px] text-[#6e7681] font-mono">{(file.size / 1024).toFixed(1)} KB</span>
+            <span className="text-xs text-gray-600 font-mono">{(file.size / 1024).toFixed(1)} KB</span>
             <button
               onClick={handleUpload}
               disabled={uploading || !pdfUrl.trim()}
-              className="px-4 py-2 text-xs font-medium bg-[#3fb950] text-black rounded hover:bg-[#3fb950]/80 transition disabled:opacity-50"
+              className="btn-primary text-xs py-2 px-4 disabled:opacity-50"
             >
               {uploading ? 'Uploading...' : 'Add to Scroll'}
             </button>
@@ -149,8 +144,8 @@ function TxtUploadPanel({ doc, onUploaded, onClose }) {
       {result && (
         <div className={`mt-3 p-3 rounded border text-xs ${
           result.ok
-            ? 'bg-[#3fb950]/10 border-[#3fb950]/30 text-[#3fb950]'
-            : 'bg-[#f85149]/10 border-[#f85149]/30 text-[#f85149]'
+            ? 'bg-green-500/5 border-green-500/20 text-green-400'
+            : 'bg-red-500/5 border-red-500/20 text-red-400'
         }`}>
           {result.message}
         </div>
@@ -166,7 +161,6 @@ export default function Documents() {
   const [searchQuery, setSearchQuery] = useState('')
   const [scrollDocs, setScrollDocs] = useState([])
 
-  // Load Scroll documents to track which PDFs have .txt uploaded and their source_url
   const loadScrollDocs = () => {
     fetch('/api/codex/documents?status=approved')
       .then(r => r.json())
@@ -184,12 +178,6 @@ export default function Documents() {
     return matchesCategory && matchesSearch
   })
 
-  const categoryColors = {
-    'University Policy': { bg: 'bg-[#388bfd]/10', text: 'text-[#388bfd]', border: 'border-[#388bfd]' },
-    'Student Government': { bg: 'bg-[#a371f7]/10', text: 'text-[#a371f7]', border: 'border-[#a371f7]' },
-    'Student Conduct': { bg: 'bg-[#d29922]/10', text: 'text-[#d29922]', border: 'border-[#d29922]' },
-  }
-
   return (
     <Layout>
       <Head>
@@ -197,166 +185,157 @@ export default function Documents() {
         <meta name="description" content="UNC governance documents, policies, and student government codes" />
       </Head>
 
-      {/* Header */}
-      <div className="bg-[#0d1117] border-b border-[#30363d]">
-        <div className="max-w-[1600px] mx-auto px-6 py-10">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="inline-flex items-center gap-2 px-2 py-1 bg-[#388bfd]/10 border border-[#388bfd] rounded text-[10px] font-semibold text-[#388bfd] uppercase tracking-wider">
-              {documents.length} Documents
-            </div>
+      {/* Hero */}
+      <section className="min-h-[40vh] flex items-end relative overflow-hidden border-b border-gray-900">
+        <div className="max-w-[1600px] mx-auto px-6 lg:px-12 py-24">
+          <div className="flex items-center gap-4 mb-4">
+            <span className="caption">{documents.length} Documents</span>
             {scrollCount > 0 && (
-              <div className="inline-flex items-center gap-2 px-2 py-1 bg-[#3fb950]/10 border border-[#3fb950] rounded text-[10px] font-semibold text-[#3fb950] uppercase tracking-wider">
-                {scrollCount} in The Scroll
-              </div>
+              <span className="caption text-green-400">{scrollCount} in The Scroll</span>
             )}
           </div>
-          <h1 className="text-3xl font-bold text-[#f0f6fc] tracking-tight mb-2">Document Catalogue</h1>
-          <p className="text-[#8b949e] max-w-2xl">
+          <h1 className="section-title mb-3">Document Catalogue</h1>
+          <p className="body-text text-gray-400 max-w-2xl">
             Official UNC governance documents, university policies, student government codes, and conduct procedures.
             {isAdmin ? ' Upload .txt versions and set PDF links to add them to The Scroll for Grok RAG.' : ''}
           </p>
         </div>
-      </div>
+      </section>
 
-      <main className="max-w-[1600px] mx-auto px-6 py-8">
-        {/* Search and Filters */}
-        <div className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-6">
-          <div className="relative flex-1 max-w-md">
-            <input
-              type="text"
-              placeholder="Search documents..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              className="w-full bg-[#161b22] border border-[#30363d] rounded-lg px-4 py-2.5 text-sm text-[#f0f6fc] placeholder-[#6e7681] focus:outline-none focus:border-[#388bfd] transition"
-            />
+      <main className="section-padding">
+        <div className="max-w-[1600px] mx-auto px-6 lg:px-12">
+          {/* Search and Filters */}
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-4 mb-8">
+            <div className="relative flex-1 max-w-md w-full">
+              <input
+                type="text"
+                placeholder="Search documents..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full px-4 py-3 bg-black border border-gray-800 rounded text-sm text-white placeholder-gray-600 focus:border-gray-600 focus:outline-none transition"
+              />
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-3 py-1.5 text-xs font-mono uppercase tracking-wider rounded border transition ${
+                    selectedCategory === cat
+                      ? 'bg-white/10 border-gray-600 text-white'
+                      : 'border-gray-800 text-gray-500 hover:text-gray-300 hover:border-gray-700'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex gap-2 flex-wrap">
-            {categories.map(cat => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider rounded transition ${
-                  selectedCategory === cat
-                    ? 'bg-[#00d4ff]/10 text-[#00d4ff] border border-[#00d4ff]'
-                    : 'text-[#8b949e] border border-[#30363d] hover:bg-[#21262d]'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-        </div>
 
-        {/* Document Grid */}
-        <div className="grid gap-3">
-          {filtered.map(doc => {
-            const colors = categoryColors[doc.category] || categoryColors['University Policy']
-            const scrollMatch = findScrollMatch(doc, scrollDocs)
-            const inScroll = !!scrollMatch
-            const pdfLink = scrollMatch?.source_url || null
-            return (
-              <div
-                key={doc.id}
-                className={`bg-[#161b22] border rounded-lg p-5 hover:border-[#484f58] transition group ${
-                  inScroll ? 'border-[#3fb950]/30' : 'border-[#30363d]'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex items-start gap-4 min-w-0 flex-1">
-                    {/* Icon */}
-                    <div className={`w-10 h-12 rounded flex items-center justify-center shrink-0 ${
-                      inScroll
-                        ? 'bg-[#3fb950]/10 border border-[#3fb950]/30'
-                        : 'bg-[#f85149]/10 border border-[#f85149]/30'
-                    }`}>
-                      <span className={`text-[10px] font-bold uppercase ${inScroll ? 'text-[#3fb950]' : 'text-[#f85149]'}`}>
-                        {inScroll ? 'TXT' : 'PDF'}
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="font-semibold text-[#f0f6fc] text-sm mb-1 leading-snug">{doc.name}</h3>
-                      <div className="flex items-center gap-3 mt-2 flex-wrap">
-                        <span className={`px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded border ${colors.bg} ${colors.text} ${colors.border}`}>
-                          {doc.category}
+          {/* Document Grid */}
+          <div className="grid gap-3">
+            {filtered.map(doc => {
+              const scrollMatch = findScrollMatch(doc, scrollDocs)
+              const inScroll = !!scrollMatch
+              const pdfLink = scrollMatch?.source_url || null
+              return (
+                <div
+                  key={doc.id}
+                  className={`card p-6 group ${inScroll ? 'border-green-500/20' : ''}`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start gap-4 min-w-0 flex-1">
+                      <div className={`w-10 h-12 rounded flex items-center justify-center shrink-0 border ${
+                        inScroll
+                          ? 'bg-green-500/5 border-green-500/20'
+                          : 'bg-red-500/5 border-red-500/20'
+                      }`}>
+                        <span className={`text-[10px] font-bold uppercase ${inScroll ? 'text-green-400' : 'text-red-400'}`}>
+                          {inScroll ? 'TXT' : 'PDF'}
                         </span>
-                        <span className="text-[10px] text-[#6e7681] font-mono">{doc.version}</span>
-                        {inScroll && (
-                          <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded border bg-[#3fb950]/10 text-[#3fb950] border-[#3fb950]/30">
-                            In The Scroll
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-white text-sm mb-1 leading-snug">{doc.name}</h3>
+                        <div className="flex items-center gap-3 mt-2 flex-wrap">
+                          <span className="px-2 py-0.5 text-xs font-mono uppercase tracking-wider rounded border border-gray-800 text-gray-500 bg-white/5">
+                            {doc.category}
                           </span>
-                        )}
+                          <span className="text-xs text-gray-600 font-mono">{doc.version}</span>
+                          {inScroll && (
+                            <span className="px-2 py-0.5 text-xs font-mono uppercase tracking-wider rounded border bg-green-500/5 text-green-400 border-green-500/20">
+                              In The Scroll
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      {isAdmin && !inScroll && (
+                        <button
+                          onClick={() => setTxtUploadDoc(txtUploadDoc?.id === doc.id ? null : doc)}
+                          className={`px-3 py-1.5 text-xs font-medium rounded border transition ${
+                            txtUploadDoc?.id === doc.id
+                              ? 'bg-white text-black border-white'
+                              : 'text-green-400 border-green-500/30 hover:border-green-400'
+                          }`}
+                        >
+                          {txtUploadDoc?.id === doc.id ? 'Close' : 'Add .txt'}
+                        </button>
+                      )}
+                      {pdfLink ? (
+                        <a
+                          href={pdfLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-primary text-xs py-1.5 px-3"
+                        >
+                          Open PDF
+                        </a>
+                      ) : (
+                        <span className="px-3 py-1.5 text-xs font-medium text-gray-600 border border-gray-800 rounded cursor-not-allowed" title="PDF link not yet set by admin">
+                          Open PDF
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-2 shrink-0">
-                    {/* Add .txt button — shown for admin when not yet in Scroll */}
-                    {isAdmin && !inScroll && (
-                      <button
-                        onClick={() => setTxtUploadDoc(txtUploadDoc?.id === doc.id ? null : doc)}
-                        className={`px-3 py-1.5 text-xs font-medium rounded transition ${
-                          txtUploadDoc?.id === doc.id
-                            ? 'bg-[#3fb950] text-black'
-                            : 'text-[#3fb950] border border-[#3fb950]/30 hover:border-[#3fb950]'
-                        }`}
-                      >
-                        {txtUploadDoc?.id === doc.id ? 'Close' : 'Add .txt'}
-                      </button>
-                    )}
-                    {/* Open PDF — only works when admin has set a source_url via the Scroll */}
-                    {pdfLink ? (
-                      <a
-                        href={pdfLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-3 py-1.5 text-xs font-medium text-[#f0f6fc] bg-[#388bfd] rounded hover:bg-[#58a6ff] transition"
-                      >
-                        Open PDF
-                      </a>
-                    ) : (
-                      <span className="px-3 py-1.5 text-xs font-medium text-[#484f58] bg-[#21262d] border border-[#30363d] rounded cursor-not-allowed" title="PDF link not yet set by admin">
-                        Open PDF
-                      </span>
-                    )}
-                  </div>
+                  {txtUploadDoc?.id === doc.id && (
+                    <TxtUploadPanel
+                      doc={doc}
+                      onUploaded={loadScrollDocs}
+                      onClose={() => setTxtUploadDoc(null)}
+                    />
+                  )}
                 </div>
-
-                {/* .txt Upload Panel */}
-                {txtUploadDoc?.id === doc.id && (
-                  <TxtUploadPanel
-                    doc={doc}
-                    onUploaded={loadScrollDocs}
-                    onClose={() => setTxtUploadDoc(null)}
-                  />
-                )}
-              </div>
-            )
-          })}
-        </div>
-
-        {filtered.length === 0 && (
-          <div className="text-center py-16">
-            <p className="text-[#6e7681] text-sm">No documents match your search.</p>
+              )
+            })}
           </div>
-        )}
 
-        {/* How it works */}
-        <div className="mt-16 border-t border-[#21262d] pt-12">
-          <h3 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-6">How it works</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {[
-              { step: '01', title: 'Browse', desc: 'Find the governance document you need from the catalogue above.' },
-              { step: '02', title: 'Admin Adds', desc: 'Admin uploads the .txt version and sets the PDF link for each document.' },
-              { step: '03', title: 'Grok Indexes', desc: 'The document is chunked, embedded, and instantly available in The Scroll for Grok.' },
-              { step: '04', title: 'Ask Questions', desc: 'Go to Grok chat to ask questions — it sources from The Scroll and UNC news.' },
-            ].map(item => (
-              <div key={item.step} className="space-y-2">
-                <span className="text-[10px] font-mono text-[#6e7681]">{item.step}</span>
-                <h4 className="text-sm font-medium text-[#f0f6fc]">{item.title}</h4>
-                <p className="text-xs text-[#8b949e] leading-relaxed">{item.desc}</p>
-              </div>
-            ))}
+          {filtered.length === 0 && (
+            <div className="text-center py-16">
+              <p className="text-gray-500 text-sm">No documents match your search.</p>
+            </div>
+          )}
+
+          {/* How it works */}
+          <div className="mt-16 border-t border-gray-900 pt-12">
+            <span className="caption mb-6 block">How it works</span>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {[
+                { step: '01', title: 'Browse', desc: 'Find the governance document you need from the catalogue above.' },
+                { step: '02', title: 'Admin Adds', desc: 'Admin uploads the .txt version and sets the PDF link for each document.' },
+                { step: '03', title: 'Grok Indexes', desc: 'The document is chunked, embedded, and instantly available in The Scroll for Grok.' },
+                { step: '04', title: 'Ask Questions', desc: 'Go to Grok chat to ask questions — it sources from The Scroll and UNC news.' },
+              ].map(item => (
+                <div key={item.step} className="space-y-2">
+                  <span className="text-xs font-mono text-gray-600">{item.step}</span>
+                  <h4 className="text-sm font-medium text-white">{item.title}</h4>
+                  <p className="text-xs text-gray-500 leading-relaxed">{item.desc}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </main>
