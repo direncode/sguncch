@@ -1,366 +1,362 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import Layout from '../components/Layout'
 import { useApp } from '../lib/store'
-import { departments, getOverallProgress, getStatusCounts } from '../lib/data'
 
-export default function Home() {
-  const [selectedDept, setSelectedDept] = useState(null)
-  const [time, setTime] = useState(new Date())
-  const { policies, budgetData, announcements, activityLog, quickStats } = useApp()
-  const overallProgress = getOverallProgress(policies)
-  const statusCounts = getStatusCounts(policies)
+// Scroll reveal hook
+function useScrollReveal() {
+  const [revealed, setRevealed] = useState(false)
+  const ref = useRef(null)
 
   useEffect(() => {
-    const timer = setInterval(() => setTime(new Date()), 1000)
-    return () => clearInterval(timer)
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setRevealed(true)
+        }
+      },
+      { threshold: 0.1, rootMargin: '-50px' }
+    )
+
+    if (ref.current) {
+      observer.observe(ref.current)
+    }
+
+    return () => observer.disconnect()
   }, [])
 
-  const filteredPolicies = selectedDept
-    ? policies.filter(p => p.department === selectedDept)
-    : policies
+  return [ref, revealed]
+}
 
-  const deptLinks = {
-    'wellness': '/wellness',
-    'basic-needs': '/basic-needs',
-    'academic': '/academic',
-    'civic': '/civic',
-    'communications': '/communications',
-    'environmental': '/environmental',
-  }
+// Reveal component
+function Reveal({ children, delay = 0, className = '' }) {
+  const [ref, revealed] = useScrollReveal()
 
-  const recentActivity = activityLog?.slice(0, 5) || []
-  const pinnedAnnouncements = announcements?.filter(a => a.pinned) || []
+  return (
+    <div
+      ref={ref}
+      className={`transition-all duration-1000 ${className}`}
+      style={{
+        opacity: revealed ? 1 : 0,
+        transform: revealed ? 'translateY(0)' : 'translateY(40px)',
+        transitionDelay: `${delay}ms`
+      }}
+    >
+      {children}
+    </div>
+  )
+}
+
+// Animated counter
+function Counter({ value, suffix = '' }) {
+  const [count, setCount] = useState(0)
+  const [ref, revealed] = useScrollReveal()
+
+  useEffect(() => {
+    if (!revealed) return
+
+    const target = parseInt(value) || 0
+    const duration = 2000
+    const increment = target / (duration / 16)
+    let current = 0
+
+    const timer = setInterval(() => {
+      current += increment
+      if (current >= target) {
+        setCount(target)
+        clearInterval(timer)
+      } else {
+        setCount(Math.floor(current))
+      }
+    }, 16)
+
+    return () => clearInterval(timer)
+  }, [value, revealed])
+
+  return (
+    <span ref={ref}>
+      {count.toLocaleString()}{suffix}
+    </span>
+  )
+}
+
+export default function Home() {
+  const { policies } = useApp()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const completedCount = policies?.filter(p => p.status === 'completed').length || 0
+  const totalPolicies = policies?.length || 40
 
   return (
     <Layout>
       <Head>
-        <title>Command Center | Project Bold</title>
-        <meta name="description" content="Project Bold Operations Platform - UNC Student Government" />
+        <title>Project Bold | UNC Student Government</title>
+        <meta name="description" content="Building the future of student governance through transparency, innovation, and collective action." />
       </Head>
 
-      {/* Hero Command Center */}
-      <div className="relative bg-[#0d1117] border-b border-[#30363d] overflow-hidden">
-        {/* Grid Background */}
-        <div className="absolute inset-0 opacity-20" style={{
-          backgroundImage: 'linear-gradient(#21262d 1px, transparent 1px), linear-gradient(90deg, #21262d 1px, transparent 1px)',
-          backgroundSize: '40px 40px'
-        }} />
+      {/* Hero Section */}
+      <section className="min-h-screen flex items-center justify-center relative overflow-hidden">
+        <div className="max-w-[1600px] mx-auto px-6 lg:px-12 py-32 lg:py-0">
+          <div className="max-w-4xl">
+            {/* Eyebrow */}
+            <div
+              className="mb-8 opacity-0 animate-fade-in"
+              style={{ animationDelay: '0.2s', animationFillMode: 'forwards' }}
+            >
+              <span className="caption">UNC Student Government 2026</span>
+            </div>
 
-        <div className="relative max-w-[1600px] mx-auto px-6 py-12">
-          <div className="flex items-start justify-between mb-8">
-            <div>
-              <div className="flex items-center gap-3 mb-4">
-                <div className="inline-flex items-center gap-2 px-2 py-1 bg-[#3fb950]/10 border border-[#3fb950] rounded text-[10px] font-semibold text-[#3fb950] uppercase tracking-wider">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#3fb950] animate-pulse shadow-[0_0_8px_#3fb950]" />
-                  Live
-                </div>
-                <span className="text-[10px] text-[#6e7681] font-mono">Last updated: {time.toLocaleTimeString()}</span>
+            {/* Main Title */}
+            <h1
+              className="hero-title mb-8 opacity-0 animate-fade-in-up"
+              style={{ animationDelay: '0.4s', animationFillMode: 'forwards' }}
+            >
+              Transforming
+              <br />
+              Student Life
+            </h1>
+
+            {/* Subtitle */}
+            <p
+              className="hero-subtitle max-w-2xl mb-12 opacity-0 animate-fade-in-up"
+              style={{ animationDelay: '0.6s', animationFillMode: 'forwards' }}
+            >
+              We build platforms that empower every Carolina student to thrive.
+              Transparent governance. Data-driven decisions. Real impact.
+            </p>
+
+            {/* CTA Buttons */}
+            <div
+              className="flex flex-wrap gap-4 opacity-0 animate-fade-in-up"
+              style={{ animationDelay: '0.8s', animationFillMode: 'forwards' }}
+            >
+              <Link href="/funding-request" className="btn-primary">
+                Submit Request
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+              </Link>
+              <Link href="/budget" className="btn-secondary">
+                View Budget
+              </Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Scroll indicator */}
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 opacity-0 animate-fade-in" style={{ animationDelay: '1.5s', animationFillMode: 'forwards' }}>
+          <div className="flex flex-col items-center gap-2 text-gray-500">
+            <span className="text-xs tracking-widest uppercase">Scroll</span>
+            <div className="w-px h-12 bg-gradient-to-b from-gray-500 to-transparent" />
+          </div>
+        </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="section-padding border-t border-gray-900">
+        <div className="max-w-[1600px] mx-auto px-6 lg:px-12">
+          <div className="grid md:grid-cols-3 gap-12 lg:gap-24">
+            <Reveal>
+              <div>
+                <span className="counter"><Counter value={totalPolicies} /></span>
+                <p className="body-large mt-4">Policy initiatives actively tracked and managed across campus.</p>
               </div>
-              <h1 className="text-4xl font-bold text-[#f0f6fc] tracking-tight mb-2">Operations Command</h1>
-              <p className="text-[#8b949e] max-w-xl">
-                Real-time monitoring of all 40 policy initiatives across 8 departments.
-                Building a Carolina where every student thrives.
+            </Reveal>
+
+            <Reveal delay={100}>
+              <div>
+                <span className="counter"><Counter value={completedCount} /></span>
+                <p className="body-large mt-4">Initiatives completed this year, directly improving student life.</p>
+              </div>
+            </Reveal>
+
+            <Reveal delay={200}>
+              <div>
+                <span className="counter"><Counter value={31000} suffix="+" /></span>
+                <p className="body-large mt-4">Students served through our programs and resources.</p>
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
+      {/* Mission Section */}
+      <section className="section-padding">
+        <div className="max-w-[1600px] mx-auto px-6 lg:px-12">
+          <div className="grid lg:grid-cols-2 gap-16 lg:gap-24 items-center">
+            <Reveal>
+              <div>
+                <span className="caption mb-6 block">Our Mission</span>
+                <h2 className="section-title mb-8">
+                  First, Best,
+                  <br />
+                  For All
+                </h2>
+                <p className="body-large mb-8">
+                  Project Bold represents a fundamental shift in how student government
+                  operates. We&apos;re building transparent, accessible platforms that put
+                  students first.
+                </p>
+                <Link href="/communications" className="btn-ghost">
+                  Learn more about our work
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                </Link>
+              </div>
+            </Reveal>
+
+            <Reveal delay={200}>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="card p-8">
+                  <div className="text-4xl mb-4">$</div>
+                  <h3 className="text-xl font-semibold text-white mb-2">Transparent Budget</h3>
+                  <p className="text-gray-400 text-sm">Every dollar tracked and accountable.</p>
+                </div>
+                <div className="card p-8">
+                  <div className="text-4xl mb-4">W</div>
+                  <h3 className="text-xl font-semibold text-white mb-2">Student Wellness</h3>
+                  <p className="text-gray-400 text-sm">Mental health and crisis resources.</p>
+                </div>
+                <div className="card p-8">
+                  <div className="text-4xl mb-4">B</div>
+                  <h3 className="text-xl font-semibold text-white mb-2">Basic Needs</h3>
+                  <p className="text-gray-400 text-sm">Food, housing, and emergency aid.</p>
+                </div>
+                <div className="card p-8">
+                  <div className="text-4xl mb-4">A</div>
+                  <h3 className="text-xl font-semibold text-white mb-2">Academic Support</h3>
+                  <p className="text-gray-400 text-sm">Resources for student success.</p>
+                </div>
+              </div>
+            </Reveal>
+          </div>
+        </div>
+      </section>
+
+      {/* Features Section */}
+      <section className="section-padding border-t border-gray-900">
+        <div className="max-w-[1600px] mx-auto px-6 lg:px-12">
+          <Reveal>
+            <div className="max-w-2xl mb-20">
+              <span className="caption mb-6 block">Departments</span>
+              <h2 className="section-title mb-6">
+                Built for transparency
+              </h2>
+              <p className="body-large">
+                Our departments are designed with one goal: making student government
+                accessible to everyone.
               </p>
             </div>
-            <div className="text-right hidden lg:block">
-              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-1">Session</p>
-              <p className="text-[#00d4ff] font-mono text-sm">SG-2026-BOLD</p>
-              <p className="text-[10px] text-[#6e7681] mt-2">First, Best, For All</p>
-            </div>
-          </div>
+          </Reveal>
 
-          {/* Key Metrics Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-[#30363d] rounded-lg overflow-hidden">
-            <div className="bg-[#161b22] p-5">
-              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-2">Overall Progress</p>
-              <p className="text-4xl font-bold font-mono text-[#00d4ff]">{overallProgress}%</p>
-              <div className="mt-3 h-1 bg-[#21262d] rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-[#00d4ff] to-[#388bfd] rounded-full" style={{ width: `${overallProgress}%` }} />
-              </div>
-            </div>
-            <div className="bg-[#161b22] p-5">
-              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-2">Active Policies</p>
-              <p className="text-4xl font-bold font-mono text-[#f0f6fc]">{policies.length}</p>
-              <p className="text-xs text-[#8b949e] mt-1">across {departments.length} depts</p>
-            </div>
-            <div className="bg-[#161b22] p-5">
-              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-2">Completed</p>
-              <p className="text-4xl font-bold font-mono text-[#3fb950]">{statusCounts.completed}</p>
-              <p className="text-xs text-[#8b949e] mt-1">initiatives done</p>
-            </div>
-            <div className="bg-[#161b22] p-5">
-              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-2">In Progress</p>
-              <p className="text-4xl font-bold font-mono text-[#d29922]">{statusCounts.in_progress}</p>
-              <p className="text-xs text-[#8b949e] mt-1">active now</p>
-            </div>
-            <div className="bg-[#161b22] p-5">
-              <p className="text-[10px] text-[#6e7681] uppercase tracking-widest mb-2">Students Reached</p>
-              <p className="text-4xl font-bold font-mono text-[#a371f7]">{(quickStats?.totalStudentsReached || 0).toLocaleString()}</p>
-              <p className="text-xs text-[#8b949e] mt-1">this semester</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <main className="max-w-[1600px] mx-auto px-6 py-8">
-        {/* Pinned Announcements */}
-        {pinnedAnnouncements.length > 0 && (
-          <div className="mb-8">
-            <div className="flex items-center gap-3 mb-4">
-              <span className="text-[#d29922]">★</span>
-              <h2 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Pinned Announcements</h2>
-            </div>
-            <div className="grid md:grid-cols-2 gap-4">
-              {pinnedAnnouncements.slice(0, 2).map(a => (
-                <div key={a.id} className="bg-[#161b22] border border-[#d29922]/30 rounded-lg p-5">
-                  <div className="flex items-start justify-between mb-2">
-                    <span className={`px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded ${
-                      a.category === 'urgent' ? 'bg-[#f85149]/10 text-[#f85149] border border-[#f85149]' :
-                      a.category === 'milestone' ? 'bg-[#3fb950]/10 text-[#3fb950] border border-[#3fb950]' :
-                      'bg-[#21262d] text-[#8b949e] border border-[#30363d]'
-                    }`}>{a.category}</span>
-                    <span className="text-[10px] text-[#6e7681] font-mono">{new Date(a.createdAt).toLocaleDateString()}</span>
-                  </div>
-                  <h3 className="font-semibold text-[#f0f6fc] mb-1">{a.title}</h3>
-                  <p className="text-sm text-[#8b949e] line-clamp-2">{a.content}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Left Column - Departments & Progress */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Department Status Grid */}
-            <div>
-              <h2 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest pb-3 border-b border-[#21262d] mb-4">Department Status</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {departments.map(dept => {
-                  const deptPolicies = policies.filter(p => p.department === dept.id)
-                  const avgProgress = Math.round(deptPolicies.reduce((sum, p) => sum + p.progress, 0) / deptPolicies.length) || 0
-                  const completed = deptPolicies.filter(p => p.status === 'completed').length
-
-                  return (
-                    <Link
-                      key={dept.id}
-                      href={deptLinks[dept.id]}
-                      className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 hover:border-[#00d4ff]/50 hover:bg-[#161b22]/80 transition-all group"
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <span className="text-2xl">{dept.icon}</span>
-                        <span className={`w-2 h-2 rounded-full ${
-                          avgProgress >= 75 ? 'bg-[#3fb950] shadow-[0_0_8px_#3fb950]' :
-                          avgProgress >= 50 ? 'bg-[#d29922] shadow-[0_0_8px_#d29922]' :
-                          avgProgress >= 25 ? 'bg-[#db6d28] shadow-[0_0_8px_#db6d28]' :
-                          'bg-[#6e7681]'
-                        }`} />
-                      </div>
-                      <h3 className="font-semibold text-[#f0f6fc] text-sm mb-1 group-hover:text-[#00d4ff] transition">{dept.name}</h3>
-                      <div className="flex items-center justify-between text-[10px] text-[#6e7681] mb-2">
-                        <span>{deptPolicies.length} policies</span>
-                        <span className="font-mono">{avgProgress}%</span>
-                      </div>
-                      <div className="h-1 bg-[#21262d] rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full ${
-                          avgProgress >= 75 ? 'bg-[#3fb950]' :
-                          avgProgress >= 50 ? 'bg-[#d29922]' :
-                          avgProgress >= 25 ? 'bg-[#db6d28]' :
-                          'bg-[#6e7681]'
-                        }`} style={{ width: `${avgProgress}%` }} />
-                      </div>
-                      <p className="text-[10px] text-[#6e7681] mt-2">{completed}/{deptPolicies.length} completed</p>
-                    </Link>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Policy Feed */}
-            <div>
-              <div className="flex items-center justify-between pb-3 border-b border-[#21262d] mb-4">
-                <h2 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Policy Registry</h2>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => setSelectedDept(null)}
-                    className={`px-3 py-1.5 text-[10px] font-medium uppercase tracking-wider rounded transition ${
-                      !selectedDept ? 'bg-[#00d4ff]/10 text-[#00d4ff] border border-[#00d4ff]' : 'text-[#8b949e] border border-[#30363d] hover:bg-[#21262d]'
-                    }`}
-                  >
-                    All
-                  </button>
-                  {departments.slice(0, 4).map(d => (
-                    <button
-                      key={d.id}
-                      onClick={() => setSelectedDept(d.id)}
-                      className={`px-3 py-1.5 text-[10px] font-medium rounded transition hidden md:block ${
-                        selectedDept === d.id ? 'bg-[#00d4ff]/10 text-[#00d4ff] border border-[#00d4ff]' : 'text-[#8b949e] border border-[#30363d] hover:bg-[#21262d]'
-                      }`}
-                    >
-                      {d.icon}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                {filteredPolicies.slice(0, 8).map(policy => {
-                  const dept = departments.find(d => d.id === policy.department)
-                  return (
-                    <div key={policy.id} className="bg-[#161b22] border border-[#30363d] rounded-lg p-4 hover:border-[#484f58] transition">
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <span>{dept?.icon}</span>
-                          <span className="text-[10px] text-[#6e7681] uppercase tracking-wider">{dept?.name}</span>
-                        </div>
-                        <span className={`px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded border ${
-                          policy.status === 'completed' ? 'bg-[#3fb950]/10 text-[#3fb950] border-[#3fb950]' :
-                          policy.status === 'in_progress' ? 'bg-[#d29922]/10 text-[#d29922] border-[#d29922]' :
-                          'bg-[#21262d] text-[#6e7681] border-[#30363d]'
-                        }`}>
-                          {policy.status === 'in_progress' ? 'Active' : policy.status}
-                        </span>
-                      </div>
-                      <h3 className="font-semibold text-[#f0f6fc] mb-1">{policy.title}</h3>
-                      <p className="text-sm text-[#8b949e] mb-3 line-clamp-1">{policy.description}</p>
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1 mr-4">
-                          <div className="h-1 bg-[#21262d] rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${
-                              policy.status === 'completed' ? 'bg-[#3fb950]' :
-                              policy.status === 'in_progress' ? 'bg-gradient-to-r from-[#00d4ff] to-[#388bfd]' :
-                              'bg-[#6e7681]'
-                            }`} style={{ width: `${policy.progress}%` }} />
-                          </div>
-                        </div>
-                        <span className="text-xs font-mono text-[#8b949e]">{policy.progress}%</span>
+          <div className="space-y-1">
+            {[
+              {
+                title: 'Budget & Funding',
+                description: 'Real-time budget tracking, funding requests, and transparent allocation of student fees.',
+                href: '/budget',
+                num: '01'
+              },
+              {
+                title: 'Wellness Resources',
+                description: 'Mental health support, crisis intervention, and campus wellness initiatives.',
+                href: '/wellness',
+                num: '02'
+              },
+              {
+                title: 'Basic Needs Hub',
+                description: 'Food pantry access, emergency housing, and essential support services.',
+                href: '/basic-needs',
+                num: '03'
+              },
+              {
+                title: 'Academic Support',
+                description: 'Tutoring resources, study spaces, and academic advocacy programs.',
+                href: '/academic',
+                num: '04'
+              },
+              {
+                title: 'Environmental Action',
+                description: 'Sustainability initiatives, campus green programs, and environmental advocacy.',
+                href: '/environmental',
+                num: '05'
+              },
+            ].map((feature, index) => (
+              <Reveal key={feature.href} delay={index * 50}>
+                <Link
+                  href={feature.href}
+                  className="group block py-8 border-b border-gray-900 hover:bg-white/[0.02] transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-8">
+                      <span className="text-gray-600 font-mono text-sm">{feature.num}</span>
+                      <div>
+                        <h3 className="text-2xl font-semibold text-white group-hover:text-gray-300 transition-colors">
+                          {feature.title}
+                        </h3>
+                        <p className="text-gray-500 mt-2 max-w-xl">{feature.description}</p>
                       </div>
                     </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column - Activity & Stats */}
-          <div className="space-y-8">
-            {/* Quick Stats */}
-            <div>
-              <h2 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest pb-3 border-b border-[#21262d] mb-4">Platform Metrics</h2>
-              <div className="space-y-3">
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] text-[#6e7681] uppercase tracking-wider">Active Initiatives</span>
-                    <span className="text-lg font-bold font-mono text-[#00d4ff]">{quickStats?.activeInitiatives || 0}</span>
+                    <svg
+                      className="w-6 h-6 text-gray-600 group-hover:text-white group-hover:translate-x-2 transition-all"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                    </svg>
                   </div>
-                  <div className="h-1 bg-[#21262d] rounded-full">
-                    <div className="h-full w-3/4 bg-[#00d4ff] rounded-full" />
-                  </div>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] text-[#6e7681] uppercase tracking-wider">Events This Month</span>
-                    <span className="text-lg font-bold font-mono text-[#a371f7]">{quickStats?.eventsThisMonth || 0}</span>
-                  </div>
-                  <div className="h-1 bg-[#21262d] rounded-full">
-                    <div className="h-full w-1/2 bg-[#a371f7] rounded-full" />
-                  </div>
-                </div>
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] text-[#6e7681] uppercase tracking-wider">Feedback Received</span>
-                    <span className="text-lg font-bold font-mono text-[#3fb950]">{quickStats?.feedbackReceived || 0}</span>
-                  </div>
-                  <div className="h-1 bg-[#21262d] rounded-full">
-                    <div className="h-full w-2/3 bg-[#3fb950] rounded-full" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Budget Overview */}
-            <div>
-              <h2 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest pb-3 border-b border-[#21262d] mb-4">Budget Allocation</h2>
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-4">
-                <div className="grid grid-cols-3 gap-4 mb-4">
-                  <div className="text-center">
-                    <p className="text-[10px] text-[#6e7681] uppercase tracking-wider mb-1">Total</p>
-                    <p className="text-lg font-bold font-mono text-[#f0f6fc]">${(budgetData.total / 1000).toFixed(0)}K</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[10px] text-[#6e7681] uppercase tracking-wider mb-1">Allocated</p>
-                    <p className="text-lg font-bold font-mono text-[#00d4ff]">${(budgetData.allocated / 1000).toFixed(0)}K</p>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[10px] text-[#6e7681] uppercase tracking-wider mb-1">Spent</p>
-                    <p className="text-lg font-bold font-mono text-[#3fb950]">${(budgetData.spent / 1000).toFixed(0)}K</p>
-                  </div>
-                </div>
-                <div className="h-2 bg-[#21262d] rounded-full overflow-hidden flex">
-                  <div className="h-full bg-[#3fb950]" style={{ width: `${(budgetData.spent / budgetData.total) * 100}%` }} />
-                  <div className="h-full bg-[#00d4ff]" style={{ width: `${((budgetData.allocated - budgetData.spent) / budgetData.total) * 100}%` }} />
-                </div>
-                <div className="flex justify-between mt-2 text-[10px] text-[#6e7681]">
-                  <span>Spent: {((budgetData.spent / budgetData.total) * 100).toFixed(0)}%</span>
-                  <span>Remaining: {(((budgetData.total - budgetData.spent) / budgetData.total) * 100).toFixed(0)}%</span>
-                </div>
-                <Link href="/communications" className="flex items-center justify-center gap-2 mt-4 py-2 border border-[#30363d] rounded text-xs text-[#8b949e] hover:text-[#00d4ff] hover:border-[#00d4ff] transition">
-                  <span>→</span> View Full Transparency Dashboard
                 </Link>
-              </div>
-            </div>
-
-            {/* Activity Feed */}
-            <div>
-              <h2 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest pb-3 border-b border-[#21262d] mb-4">Activity Feed</h2>
-              <div className="space-y-3">
-                {recentActivity.length > 0 ? recentActivity.map(entry => (
-                  <div key={entry.id} className="flex items-start gap-3 py-2 border-b border-[#21262d]">
-                    <div className="w-2 h-2 rounded-full bg-[#00d4ff] mt-1.5 shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm text-[#8b949e] truncate">{entry.details}</p>
-                      <p className="text-[10px] text-[#6e7681] font-mono mt-0.5">
-                        {new Date(entry.timestamp).toLocaleTimeString()}
-                      </p>
-                    </div>
-                  </div>
-                )) : (
-                  <p className="text-sm text-[#6e7681] text-center py-4">No recent activity</p>
-                )}
-              </div>
-            </div>
-
-            {/* Quick Access */}
-            <div>
-              <h2 className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest pb-3 border-b border-[#21262d] mb-4">Quick Access</h2>
-              <div className="grid grid-cols-2 gap-3">
-                <Link href="/wellness" className="bg-[#3fb950]/10 border border-[#3fb950]/30 rounded-lg p-4 hover:border-[#3fb950] transition-all group">
-                  <span className="text-2xl">🆘</span>
-                  <p className="font-medium text-[#f0f6fc] text-sm mt-2 group-hover:text-[#3fb950] transition">Wellness</p>
-                  <p className="text-[10px] text-[#6e7681] mt-0.5">Crisis Support</p>
-                </Link>
-                <Link href="/basic-needs" className="bg-[#d29922]/10 border border-[#d29922]/30 rounded-lg p-4 hover:border-[#d29922] transition-all group">
-                  <span className="text-2xl">🍎</span>
-                  <p className="font-medium text-[#f0f6fc] text-sm mt-2 group-hover:text-[#d29922] transition">Basic Needs</p>
-                  <p className="text-[10px] text-[#6e7681] mt-0.5">Food & Housing</p>
-                </Link>
-                <Link href="/civic" className="bg-[#a371f7]/10 border border-[#a371f7]/30 rounded-lg p-4 hover:border-[#a371f7] transition-all group">
-                  <span className="text-2xl">🗳️</span>
-                  <p className="font-medium text-[#f0f6fc] text-sm mt-2 group-hover:text-[#a371f7] transition">Civic</p>
-                  <p className="text-[10px] text-[#6e7681] mt-0.5">Voter Resources</p>
-                </Link>
-                <Link href="/communications" className="bg-[#00d4ff]/10 border border-[#00d4ff]/30 rounded-lg p-4 hover:border-[#00d4ff] transition-all group">
-                  <span className="text-2xl">📊</span>
-                  <p className="font-medium text-[#f0f6fc] text-sm mt-2 group-hover:text-[#00d4ff] transition">Transparency</p>
-                  <p className="text-[10px] text-[#6e7681] mt-0.5">Full Dashboard</p>
-                </Link>
-              </div>
-            </div>
+              </Reveal>
+            ))}
           </div>
         </div>
-      </main>
+      </section>
+
+      {/* CTA Section */}
+      <section className="section-padding">
+        <div className="max-w-[1600px] mx-auto px-6 lg:px-12">
+          <Reveal>
+            <div className="card-highlight text-center py-20 lg:py-32">
+              <h2 className="section-title mb-6">
+                Ready to make an impact?
+              </h2>
+              <p className="body-large max-w-xl mx-auto mb-10">
+                Submit a funding request, explore our resources, or get involved
+                with student government today.
+              </p>
+              <div className="flex flex-wrap justify-center gap-4">
+                <Link href="/funding-request" className="btn-primary">
+                  Submit Funding Request
+                </Link>
+                <Link href="/admin" className="btn-secondary">
+                  Admin Portal
+                </Link>
+              </div>
+            </div>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* Bottom Tagline */}
+      <section className="py-20 border-t border-gray-900">
+        <div className="max-w-[1600px] mx-auto px-6 lg:px-12">
+          <Reveal>
+            <p className="text-center">
+              <span className="text-xl lg:text-2xl font-light text-gray-500">
+                Together, We Go{' '}
+                <span className="text-white font-semibold">Bold</span>
+              </span>
+            </p>
+          </Reveal>
+        </div>
+      </section>
     </Layout>
   )
 }

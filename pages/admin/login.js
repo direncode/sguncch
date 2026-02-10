@@ -5,11 +5,15 @@ import Link from 'next/link'
 import { useApp } from '../../lib/store'
 import { Button, Input } from '../../components/FormInput'
 
+const TEMP_ACCESS_CODE = 'dev-only-change-in-production'
+
 export default function AdminLogin() {
   const [key, setKey] = useState('')
   const [error, setError] = useState('')
+  const [showTempInput, setShowTempInput] = useState(false)
+  const [tempCode, setTempCode] = useState('')
   const router = useRouter()
-  const { loginAdmin, isAdmin } = useApp()
+  const { loginAdmin, tempLoginAdmin, isAdmin } = useApp()
 
   // Redirect if already logged in
   if (isAdmin) {
@@ -17,12 +21,29 @@ export default function AdminLogin() {
     return null
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    if (loginAdmin(key)) {
+    setError('')
+    const result = await loginAdmin(key)
+    if (result.success) {
       router.push('/admin')
     } else {
-      setError('Invalid admin key')
+      setError(result.error || 'Invalid admin key')
+    }
+  }
+
+  const handleTempAccess = () => {
+    if (!showTempInput) {
+      setShowTempInput(true)
+      setError('')
+      return
+    }
+    setError('')
+    if (tempCode === TEMP_ACCESS_CODE) {
+      tempLoginAdmin()
+      router.push('/admin')
+    } else {
+      setError('Invalid temp access code')
     }
   }
 
@@ -58,16 +79,30 @@ export default function AdminLogin() {
             </Button>
           </form>
 
+          <div className="mt-4 border-t pt-4">
+            <p className="text-gray-500 text-xs text-center mb-2">Or use temporary access</p>
+            {showTempInput && (
+              <Input
+                label="Temp Access Code"
+                type="password"
+                value={tempCode}
+                onChange={(e) => setTempCode(e.target.value)}
+                placeholder="Enter temp code"
+              />
+            )}
+            <Button
+              variant="secondary"
+              onClick={handleTempAccess}
+              className="w-full mt-2"
+            >
+              Temp Access
+            </Button>
+          </div>
+
           <div className="mt-6 text-center">
             <Link href="/" className="text-[#4B9CD3] text-sm hover:underline">
               Back to Home
             </Link>
-          </div>
-
-          <div className="mt-4 p-4 bg-amber-50 rounded-lg">
-            <p className="text-amber-800 text-sm">
-              <strong>Demo Mode:</strong> The admin key is <code className="bg-amber-100 px-1 rounded">projectbold2026</code>
-            </p>
           </div>
         </div>
       </div>

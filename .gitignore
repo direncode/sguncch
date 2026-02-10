@@ -66,6 +66,9 @@ certs/*.crt
 uploads/
 !uploads/.gitkeep
 
+# Local data storage (file-based fallback)
+.data/
+
 # Temporary files
 tmp/
 temp/

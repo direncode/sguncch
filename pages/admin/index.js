@@ -1,1168 +1,1700 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
 import Link from 'next/link'
 import { useApp } from '../../lib/store'
-import { departments, getOverallProgress, getStatusCounts } from '../../lib/data'
+import { departments as defaultDepartments, getOverallProgress, getStatusCounts } from '../../lib/data'
+import {
+  BUDGET_CATEGORIES,
+  exportLineItemsToCSV,
+  exportFundingRequestsToCSV,
+  generateAuditReport,
+} from '../../lib/budgetEngine'
 
-const formatDate = (dateString) => {
-  if (!dateString) return ''
-  const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+// ==========================================
+// PREDEFINED MILESTONE TEMPLATES
+// ==========================================
+const MILESTONE_TEMPLATES = {
+  'research-planning': {
+    name: 'Research & Planning',
+    milestones: [
+      { title: 'Initial research and data gathering', weight: 15 },
+      { title: 'Stakeholder interviews and feedback', weight: 15 },
+      { title: 'Draft proposal document', weight: 20 },
+      { title: 'Review with advisors', weight: 10 },
+      { title: 'Finalize plan and timeline', weight: 10 },
+    ]
+  },
+  'partnership-outreach': {
+    name: 'Partnership & Outreach',
+    milestones: [
+      { title: 'Identify potential partners', weight: 10 },
+      { title: 'Initial outreach and meetings', weight: 20 },
+      { title: 'Draft partnership agreements', weight: 20 },
+      { title: 'Negotiate terms and finalize', weight: 15 },
+      { title: 'Onboard partners and launch', weight: 15 },
+    ]
+  },
+  'program-launch': {
+    name: 'Program Launch',
+    milestones: [
+      { title: 'Define program structure', weight: 15 },
+      { title: 'Develop materials and resources', weight: 20 },
+      { title: 'Recruit and train staff/volunteers', weight: 20 },
+      { title: 'Marketing and promotion', weight: 15 },
+      { title: 'Launch and initial operations', weight: 15 },
+      { title: 'Gather feedback and iterate', weight: 15 },
+    ]
+  },
+  'digital-platform': {
+    name: 'Digital Platform',
+    milestones: [
+      { title: 'Requirements gathering', weight: 10 },
+      { title: 'Design and wireframes', weight: 15 },
+      { title: 'Development phase 1 (core features)', weight: 25 },
+      { title: 'Development phase 2 (additional features)', weight: 20 },
+      { title: 'Testing and QA', weight: 15 },
+      { title: 'Launch and monitoring', weight: 15 },
+    ]
+  },
+  'event-series': {
+    name: 'Event Series',
+    milestones: [
+      { title: 'Event planning and logistics', weight: 20 },
+      { title: 'Secure venue and vendors', weight: 15 },
+      { title: 'Marketing and registrations', weight: 20 },
+      { title: 'Execute first event', weight: 20 },
+      { title: 'Post-event analysis', weight: 10 },
+      { title: 'Iterate for future events', weight: 15 },
+    ]
+  },
+  'advocacy-campaign': {
+    name: 'Advocacy Campaign',
+    milestones: [
+      { title: 'Research and position development', weight: 15 },
+      { title: 'Build coalition and supporters', weight: 20 },
+      { title: 'Draft proposal/petition', weight: 15 },
+      { title: 'Present to administration', weight: 20 },
+      { title: 'Negotiate and follow up', weight: 15 },
+      { title: 'Implementation and monitoring', weight: 15 },
+    ]
+  },
+  'infrastructure': {
+    name: 'Infrastructure Project',
+    milestones: [
+      { title: 'Site assessment and planning', weight: 15 },
+      { title: 'Budget approval and funding', weight: 20 },
+      { title: 'Procurement and contracting', weight: 15 },
+      { title: 'Installation/construction', weight: 25 },
+      { title: 'Testing and quality check', weight: 10 },
+      { title: 'Launch and maintenance plan', weight: 15 },
+    ]
+  },
+  'simple-task': {
+    name: 'Simple Task List',
+    milestones: [
+      { title: 'Task 1', weight: 25 },
+      { title: 'Task 2', weight: 25 },
+      { title: 'Task 3', weight: 25 },
+      { title: 'Task 4', weight: 25 },
+    ]
+  },
 }
 
-const formatTime = (dateString) => {
-  if (!dateString) return ''
-  const date = new Date(dateString)
-  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
-}
+// ==========================================
+// SCROLL REVEAL HOOK
+// ==========================================
+function useScrollReveal() {
+  const [revealed, setRevealed] = useState(false)
+  const ref = useRef(null)
 
-// Live clock component
-const LiveClock = () => {
-  const [time, setTime] = useState(new Date())
   useEffect(() => {
-    const interval = setInterval(() => setTime(new Date()), 1000)
-    return () => clearInterval(interval)
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setRevealed(true)
+      },
+      { threshold: 0.1, rootMargin: '-50px' }
+    )
+    if (ref.current) observer.observe(ref.current)
+    return () => observer.disconnect()
   }, [])
+
+  return [ref, revealed]
+}
+
+function Reveal({ children, delay = 0, className = '' }) {
+  const [ref, revealed] = useScrollReveal()
   return (
-    <div className="font-mono text-xs text-[#6e7681]">
-      {time.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} {time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+    <div
+      ref={ref}
+      className={`transition-all duration-700 ${className}`}
+      style={{
+        opacity: revealed ? 1 : 0,
+        transform: revealed ? 'translateY(0)' : 'translateY(30px)',
+        transitionDelay: `${delay}ms`
+      }}
+    >
+      {children}
     </div>
   )
 }
 
-export default function AdminDashboard() {
+// ==========================================
+// UTILITY FUNCTIONS
+// ==========================================
+const formatDate = (dateString) => {
+  if (!dateString) return ''
+  return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+const formatRelativeTime = (dateString) => {
+  if (!dateString) return ''
+  const diff = Date.now() - new Date(dateString).getTime()
+  const minutes = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+  if (minutes < 1) return 'Just now'
+  if (minutes < 60) return `${minutes}m ago`
+  if (hours < 24) return `${hours}h ago`
+  return `${days}d ago`
+}
+
+// ==========================================
+// LIVE CLOCK
+// ==========================================
+const LiveClock = () => {
+  const [time, setTime] = useState(null)
+
+  useEffect(() => {
+    setTime(new Date())
+    const interval = setInterval(() => setTime(new Date()), 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  if (!time) return <div className="font-mono text-gray-500">--:--:--</div>
+
+  return (
+    <div className="text-right">
+      <div className="font-mono text-white text-sm">
+        {time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+      </div>
+      <div className="text-xs text-gray-500 uppercase tracking-wider">
+        {time.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+      </div>
+    </div>
+  )
+}
+
+// ==========================================
+// MAIN ADMIN COMPONENT
+// ==========================================
+export default function AdminConsole() {
   const router = useRouter()
   const {
-    isAdmin, isLoaded, policies, operationalData, budgetData, announcements,
-    activityLog, feedback, quickStats,
-    updatePolicy, updatePolicyMetrics, logPolicyProgress,
-    addAnnouncement, deleteAnnouncement, pinAnnouncement,
+    isAdmin,
+    isLoaded,
+    policies,
+    budgetData,
+    feedback,
+    activityLog,
+    announcements,
+    quickStats,
+    siteContent,
+    budgetLineItems,
+    fundingRequests,
+    reallocations,
+    // Actions
+    addPolicy,
+    deletePolicy,
+    updatePolicy,
+    logPolicyProgress,
+    addAnnouncement,
+    updateAnnouncement,
+    deleteAnnouncement,
     updateFeedbackStatus,
-    addTechDevice, updateTechDevice, deleteTechDevice, addTechLoan, updateTechLoan,
-    updatePantryLocation, logPantryVisit, logPantryDonation,
-    addTrainingSession,
-    updateBudget, updateBudgetCategory, addBudgetTransaction,
     updateQuickStats,
-    exportAllData, importData, resetAllData, clearActivityLog,
+    approveFundingRequest,
+    denyFundingRequest,
+    generateReallocations,
+    approveReallocation,
+    exportAllData,
+    importData,
+    resetAllData,
+    resetAllSiteContent,
+    logActivity,
   } = useApp()
 
-  const [activeTab, setActiveTab] = useState('overview')
-  const [selectedDept, setSelectedDept] = useState('all')
-  const [announcementForm, setAnnouncementForm] = useState({ title: '', content: '', category: 'general', pinned: false })
-  const [showModal, setShowModal] = useState(null)
-  const [deviceForm, setDeviceForm] = useState({ type: 'laptop-windows', name: '', total: 0, available: 0 })
-  const [loanForm, setLoanForm] = useState({ studentName: '', studentEmail: '', deviceType: '', dueDate: '' })
-  const [trainingForm, setTrainingForm] = useState({ type: 'mentalHealthFirstAid', title: '', date: '', location: '', capacity: 0 })
-  const [transactionForm, setTransactionForm] = useState({ type: 'expense', amount: 0, description: '', category: '' })
-  const [progressLogForm, setProgressLogForm] = useState({ policyId: null, progress: 0, note: '' })
-  const [quickEditPolicy, setQuickEditPolicy] = useState(null)
-  const [quickEditProgress, setQuickEditProgress] = useState(0)
-  const [toast, setToast] = useState(null)
+  const [activeTab, setActiveTab] = useState('dashboard')
+  const [selectedDepartment, setSelectedDepartment] = useState('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [showPolicyModal, setShowPolicyModal] = useState(false)
+  const [editingPolicy, setEditingPolicy] = useState(null)
+  const [showAnnouncementModal, setShowAnnouncementModal] = useState(false)
+  const [editingAnnouncement, setEditingAnnouncement] = useState(null)
+  const [showConfirmReset, setShowConfirmReset] = useState(false)
 
-  // Quick edit progress handler
-  const handleQuickProgressUpdate = (policyId, newProgress) => {
-    const policy = policies.find(p => p.id === policyId)
-    if (!policy) return
-    const clampedProgress = Math.max(0, Math.min(100, newProgress))
-    logPolicyProgress(policyId, clampedProgress, `Progress updated to ${clampedProgress}%`)
-    notify(`${policy.title}: ${clampedProgress}%`)
-  }
-
+  // Redirect if not admin
   useEffect(() => {
     if (isLoaded && !isAdmin) {
       router.push('/admin/login')
     }
   }, [isLoaded, isAdmin, router])
 
-  if (!isLoaded || !isAdmin) {
-    return (
-      <div className="min-h-screen bg-[#0a0e14] flex items-center justify-center">
-        <div className="flex items-center gap-3">
-          <div className="w-2 h-2 bg-[#00d4ff] rounded-full animate-pulse" />
-          <div className="w-2 h-2 bg-[#00d4ff] rounded-full animate-pulse delay-100" />
-          <div className="w-2 h-2 bg-[#00d4ff] rounded-full animate-pulse delay-200" />
-        </div>
-      </div>
-    )
-  }
+  // Calculate stats
+  const overallProgress = useMemo(() => getOverallProgress(policies), [policies])
+  const statusCounts = useMemo(() => getStatusCounts(policies), [policies])
 
-  const notify = (message) => {
-    setToast(message)
-    setTimeout(() => setToast(null), 2500)
-  }
+  const filteredPolicies = useMemo(() => {
+    let items = policies
+    if (selectedDepartment !== 'all') {
+      items = items.filter(p => p.department === selectedDepartment)
+    }
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      items = items.filter(p =>
+        p.title?.toLowerCase().includes(q) ||
+        p.description?.toLowerCase().includes(q)
+      )
+    }
+    return items
+  }, [policies, selectedDepartment, searchQuery])
 
-  const overallProgress = getOverallProgress(policies)
-  const statusCounts = getStatusCounts(policies)
-  const filteredPolicies = selectedDept === 'all' ? policies : policies.filter(p => p.department === selectedDept)
+  const pendingRequests = fundingRequests.filter(r => r.status === 'pending')
+  const newFeedback = feedback.filter(f => f.status === 'new')
 
-  const handleExport = () => {
+  // Export handlers
+  const handleExportAll = () => {
     const data = exportAllData()
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `projectbold-${new Date().toISOString().split('T')[0]}.json`
+    a.download = `project-bold-backup-${new Date().toISOString().split('T')[0]}.json`
     a.click()
-    notify('Data exported')
   }
 
   const handleImport = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        try {
-          const data = JSON.parse(event.target.result)
-          importData(data)
-          notify('Data imported')
-        } catch {
-          notify('Import failed')
-        }
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target.result)
+        importData(data)
+        alert('Data imported successfully!')
+      } catch (err) {
+        alert('Failed to import data: ' + err.message)
       }
-      reader.readAsText(file)
     }
+    reader.readAsText(file)
   }
 
   const tabs = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'announcements', label: 'Announcements' },
-    { id: 'policies', label: 'Policies' },
-    { id: 'operations', label: 'Operations' },
-    { id: 'budget', label: 'Budget' },
-    { id: 'feedback', label: 'Feedback' },
-    { id: 'activity', label: 'Activity' },
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'platform', label: 'Platform Builder' },
+    { id: 'budget', label: 'Budget & Funding' },
+    { id: 'scroll', label: 'The Scroll', href: '/admin/scroll' },
+    { id: 'content', label: 'Content' },
+    { id: 'feedback', label: 'Feedback', badge: newFeedback.length },
     { id: 'settings', label: 'Settings' },
   ]
 
-  // Modal Component
-  const Modal = ({ title, onClose, children }) => (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[#161b22] border border-[#30363d] rounded-lg max-w-lg w-full shadow-2xl shadow-black/50">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#30363d]">
-          <h3 className="text-base font-semibold text-[#f0f6fc]">{title}</h3>
-          <button onClick={onClose} className="w-8 h-8 rounded-lg bg-[#21262d] border border-[#30363d] flex items-center justify-center hover:bg-[#30363d] hover:border-[#8b949e] transition-all">
-            <span className="text-[#8b949e] text-lg leading-none">&times;</span>
-          </button>
-        </div>
-        <div className="p-6">{children}</div>
-      </div>
-    </div>
-  )
-
-  // Input Component
-  const Input = ({ label, ...props }) => (
-    <div>
-      {label && <label className="block text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-2">{label}</label>}
-      <input {...props} className="w-full px-4 py-3 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] placeholder-[#6e7681] focus:ring-1 focus:ring-[#00d4ff] focus:border-[#00d4ff] font-mono text-sm" />
-    </div>
-  )
-
-  // Select Component
-  const Select = ({ label, options, ...props }) => (
-    <div>
-      {label && <label className="block text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-2">{label}</label>}
-      <select {...props} className="w-full px-4 py-3 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] focus:ring-1 focus:ring-[#00d4ff] focus:border-[#00d4ff] text-sm">
-        {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-      </select>
-    </div>
-  )
-
-  // Button Component
-  const Button = ({ variant = 'primary', children, ...props }) => {
-    const base = "px-5 py-2.5 rounded-lg font-medium text-sm transition-all border"
-    const variants = {
-      primary: "bg-[#00d4ff]/10 text-[#00d4ff] border-[#00d4ff]/50 hover:bg-[#00d4ff]/20 hover:border-[#00d4ff] hover:shadow-[0_0_20px_rgba(0,212,255,0.3)] active:scale-[0.98]",
-      secondary: "bg-[#21262d] text-[#8b949e] border-[#30363d] hover:text-[#f0f6fc] hover:bg-[#30363d] hover:border-[#8b949e]",
-      danger: "bg-[#f85149]/10 text-[#f85149] border-[#f85149]/50 hover:bg-[#f85149]/20 hover:border-[#f85149] hover:shadow-[0_0_20px_rgba(248,81,73,0.3)]",
-    }
-    return <button {...props} className={`${base} ${variants[variant]}`}>{children}</button>
-  }
-
-  // Stat Card
-  const StatCard = ({ value, label, color = 'cyan' }) => {
-    const colors = {
-      cyan: 'text-[#00d4ff] border-[#00d4ff]/30',
-      green: 'text-[#3fb950] border-[#3fb950]/30',
-      yellow: 'text-[#d29922] border-[#d29922]/30',
-      purple: 'text-[#a371f7] border-[#a371f7]/30',
-      red: 'text-[#f85149] border-[#f85149]/30',
-    }
+  if (!isLoaded) {
     return (
-      <div className={`bg-[#161b22] border border-[#30363d] rounded-lg p-6 hover:border-l-2 hover:${colors[color].split(' ')[1]} transition-all`}>
-        <p className={`text-3xl font-mono font-semibold ${colors[color].split(' ')[0]} tracking-tight`}>{value}</p>
-        <p className="text-[#6e7681] text-xs uppercase tracking-wider mt-2">{label}</p>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white">Loading...</div>
       </div>
     )
   }
 
+  if (!isAdmin) {
+    return null
+  }
+
   return (
-    <div className="min-h-screen bg-[#0a0e14]">
+    <div className="min-h-screen bg-black text-white">
       <Head>
-        <title>Admin | Project Bold</title>
+        <title>Admin Console | Project Bold</title>
       </Head>
 
-      {/* Toast */}
-      {toast && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-[#161b22] border border-[#00d4ff]/50 text-[#00d4ff] px-6 py-3 rounded-lg shadow-lg shadow-[#00d4ff]/10 text-sm font-mono animate-[fadeIn_0.2s]">
-          {toast}
-        </div>
-      )}
-
-      {/* Command Center Header */}
-      <header className="bg-[#0d1117]/95 backdrop-blur-xl border-b border-[#30363d] sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex items-center justify-between h-14">
-            <div className="flex items-center gap-6">
-              <Link href="/" className="text-[#8b949e] text-xs font-medium hover:text-[#00d4ff] transition-colors flex items-center gap-1.5">
-                <span>&larr;</span>
-                <span>EXIT</span>
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-black/90 backdrop-blur-xl border-b border-gray-900">
+        <div className="max-w-[1800px] mx-auto px-6 lg:px-12">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-8">
+              <Link href="/" className="text-xl font-bold tracking-tight">
+                Project Bold
               </Link>
-              <div className="h-4 w-px bg-[#30363d]" />
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 bg-[#3fb950] rounded-full animate-pulse" />
-                <h1 className="text-[#f0f6fc] text-sm font-semibold tracking-widest uppercase">Command Center</h1>
-              </div>
+              <span className="px-3 py-1 bg-white/10 rounded text-xs font-mono uppercase tracking-wider">
+                Admin
+              </span>
             </div>
-            <div className="flex items-center gap-5">
+            <div className="flex items-center gap-6">
               <LiveClock />
-              <div className="h-4 w-px bg-[#30363d]" />
               <div className="flex items-center gap-2">
-                <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.2em]">Project Bold</span>
-                <div className="px-2 py-0.5 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded text-[#3fb950] text-[9px] font-mono tracking-wider">ONLINE</div>
+                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <span className="text-xs text-gray-500">Live</span>
               </div>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Tab Navigation */}
-      <nav className="bg-[#0d1117] border-b border-[#30363d]">
-        <div className="max-w-7xl mx-auto px-6">
+      {/* Tabs */}
+      <nav className="sticky top-16 z-40 bg-black/80 backdrop-blur-xl border-b border-gray-900">
+        <div className="max-w-[1800px] mx-auto px-6 lg:px-12">
           <div className="flex gap-0 overflow-x-auto">
-            {tabs.map(tab => (
+            {tabs.map(tab => tab.href ? (
+              <Link
+                key={tab.id}
+                href={tab.href}
+                className="px-5 py-4 text-xs font-medium tracking-widest uppercase whitespace-nowrap transition-all border-b-2 border-transparent text-gray-500 hover:text-white hover:border-gray-700 flex items-center gap-2"
+              >
+                {tab.label}
+              </Link>
+            ) : (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-5 py-4 text-sm font-medium whitespace-nowrap transition-all border-b-2 -mb-[1px] ${
+                className={`px-5 py-4 text-xs font-medium tracking-widest uppercase whitespace-nowrap transition-all border-b-2 flex items-center gap-2 ${
                   activeTab === tab.id
-                    ? 'text-[#00d4ff] border-[#00d4ff]'
-                    : 'text-[#8b949e] border-transparent hover:text-[#f0f6fc] hover:border-[#30363d]'
+                    ? 'border-white text-white'
+                    : 'border-transparent text-gray-500 hover:text-white hover:border-gray-700'
                 }`}
               >
                 {tab.label}
+                {tab.badge > 0 && (
+                  <span className="px-1.5 py-0.5 bg-red-500 rounded text-[10px] font-mono">
+                    {tab.badge}
+                  </span>
+                )}
               </button>
             ))}
           </div>
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        {/* OVERVIEW - Command Center */}
-        {activeTab === 'overview' && (
-          <div className="space-y-6">
-            {/* System Status Bar */}
-            <div className="grid grid-cols-4 gap-3">
-              <div className="bg-[#161b22] border border-[#00d4ff]/30 rounded-lg p-4 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#00d4ff] to-[#00d4ff]/0" />
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Overall</span>
-                  <div className="w-1.5 h-1.5 bg-[#00d4ff] rounded-full animate-pulse" />
-                </div>
-                <p className="text-3xl font-mono font-bold text-[#00d4ff] mt-2 tracking-tight">{overallProgress}%</p>
-              </div>
-              <div className="bg-[#161b22] border border-[#3fb950]/30 rounded-lg p-4 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#3fb950] to-[#3fb950]/0" />
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Completed</span>
-                  <div className="w-1.5 h-1.5 bg-[#3fb950] rounded-full" />
-                </div>
-                <p className="text-3xl font-mono font-bold text-[#3fb950] mt-2 tracking-tight">{statusCounts.completed}</p>
-              </div>
-              <div className="bg-[#161b22] border border-[#d29922]/30 rounded-lg p-4 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#d29922] to-[#d29922]/0" />
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Active</span>
-                  <div className="w-1.5 h-1.5 bg-[#d29922] rounded-full animate-pulse" />
-                </div>
-                <p className="text-3xl font-mono font-bold text-[#d29922] mt-2 tracking-tight">{statusCounts.in_progress}</p>
-              </div>
-              <div className="bg-[#161b22] border border-[#a371f7]/30 rounded-lg p-4 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#a371f7] to-[#a371f7]/0" />
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Feedback</span>
-                  {feedback.filter(f => f.status === 'new').length > 0 && <div className="w-1.5 h-1.5 bg-[#a371f7] rounded-full animate-pulse" />}
-                </div>
-                <p className="text-3xl font-mono font-bold text-[#a371f7] mt-2 tracking-tight">{feedback.filter(f => f.status === 'new').length}</p>
-              </div>
-            </div>
+      {/* Main Content */}
+      <main className="py-12">
+        <div className="max-w-[1800px] mx-auto px-6 lg:px-12">
 
-            {/* Quick Stats - Editable */}
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg">
-              <div className="px-5 py-3 border-b border-[#30363d] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-1 bg-[#00d4ff] rounded-full" />
-                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Platform Metrics</span>
+          {/* ==========================================
+              DASHBOARD TAB
+          ========================================== */}
+          {activeTab === 'dashboard' && (
+            <div>
+              <Reveal>
+                <div className="mb-12">
+                  <h1 className="text-4xl font-bold mb-4">Command Center</h1>
+                  <p className="text-gray-400 text-lg">Real-time overview of your platform's performance and activity.</p>
                 </div>
-                <span className="text-[9px] font-mono text-[#6e7681]">Click to edit</span>
-              </div>
-              <div className="grid grid-cols-4 divide-x divide-[#30363d]">
-                {[
-                  { key: 'totalStudentsReached', label: 'Students Reached', color: '#00d4ff' },
-                  { key: 'activeInitiatives', label: 'Active Initiatives', color: '#3fb950' },
-                  { key: 'eventsThisMonth', label: 'Events This Month', color: '#d29922' },
-                  { key: 'feedbackReceived', label: 'Total Feedback', color: '#a371f7' },
-                ].map(item => (
-                  <div key={item.key} className="p-4 hover:bg-[#21262d]/50 transition-colors">
-                    <label className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.1em] block mb-2">{item.label}</label>
-                    <input
-                      type="number"
-                      value={quickStats[item.key]}
-                      onChange={(e) => updateQuickStats({ [item.key]: parseInt(e.target.value) || 0 })}
-                      className="w-full bg-transparent text-2xl font-mono font-bold border-0 p-0 focus:ring-0 focus:outline-none"
-                      style={{ color: item.color }}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
+              </Reveal>
 
-            {/* Department Command Panels */}
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg">
-              <div className="px-5 py-3 border-b border-[#30363d] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-1 bg-[#3fb950] rounded-full animate-pulse" />
-                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Department Control</span>
-                </div>
-                <span className="text-[9px] font-mono text-[#6e7681]">Real-time progress editing</span>
-              </div>
-              <div className="p-5 space-y-4">
-                {departments.map(dept => {
-                  const deptPolicies = policies.filter(p => p.department === dept.id)
-                  const deptProgress = getOverallProgress(deptPolicies)
-                  return (
-                    <div key={dept.id} className="group">
-                      <div className="flex items-center gap-4 mb-3">
-                        <span className="text-xl">{dept.icon}</span>
-                        <span className="font-medium text-[#f0f6fc] text-sm flex-1">{dept.name}</span>
-                        <span className="text-xl font-mono font-bold text-[#00d4ff] tabular-nums">{deptProgress}%</span>
-                      </div>
-                      {/* Individual policy progress controls */}
-                      <div className="ml-9 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                        {deptPolicies.map(policy => (
-                          <div key={policy.id} className="bg-[#0d1117] border border-[#30363d] rounded px-3 py-2 hover:border-[#00d4ff]/50 transition-colors group/policy">
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="text-xs text-[#8b949e] truncate flex-1" title={policy.title}>{policy.title}</span>
-                              <div className="flex items-center gap-1">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  value={policy.progress}
-                                  onChange={(e) => handleQuickProgressUpdate(policy.id, parseInt(e.target.value) || 0)}
-                                  className="w-12 text-right bg-transparent text-sm font-mono font-semibold text-[#00d4ff] border-0 p-0 focus:ring-0 focus:outline-none"
-                                />
-                                <span className="text-[#6e7681] text-xs">%</span>
-                              </div>
-                            </div>
-                            <div className="h-1 bg-[#21262d] rounded-full overflow-hidden mt-1.5">
-                              <div className={`h-full rounded-full transition-all ${
-                                policy.progress >= 100 ? 'bg-[#3fb950]' :
-                                policy.progress >= 50 ? 'bg-[#00d4ff]' :
-                                policy.progress > 0 ? 'bg-[#d29922]' : 'bg-[#6e7681]'
-                              }`} style={{ width: `${policy.progress}%` }} />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+              {/* Stats Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+                <Reveal delay={50}>
+                  <div className="bg-white/5 border border-gray-800 rounded-xl p-6">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Overall Progress</p>
+                    <p className="text-4xl font-mono font-bold text-white">{overallProgress}%</p>
+                    <div className="mt-3 h-1 bg-gray-800 rounded-full overflow-hidden">
+                      <div className="h-full bg-white rounded-full transition-all" style={{ width: `${overallProgress}%` }} />
                     </div>
-                  )
-                })}
+                  </div>
+                </Reveal>
+                <Reveal delay={100}>
+                  <div className="bg-white/5 border border-gray-800 rounded-xl p-6">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Active Policies</p>
+                    <p className="text-4xl font-mono font-bold text-white">{statusCounts.in_progress}</p>
+                    <p className="text-xs text-gray-500 mt-2">{policies.length} total policies</p>
+                  </div>
+                </Reveal>
+                <Reveal delay={150}>
+                  <div className="bg-white/5 border border-gray-800 rounded-xl p-6">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Pending Requests</p>
+                    <p className="text-4xl font-mono font-bold text-white">{pendingRequests.length}</p>
+                    <p className="text-xs text-gray-500 mt-2">${pendingRequests.reduce((s, r) => s + (r.amount || 0), 0).toLocaleString()} total</p>
+                  </div>
+                </Reveal>
+                <Reveal delay={200}>
+                  <div className="bg-white/5 border border-gray-800 rounded-xl p-6">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">New Feedback</p>
+                    <p className="text-4xl font-mono font-bold text-white">{newFeedback.length}</p>
+                    <p className="text-xs text-gray-500 mt-2">{feedback.length} total submissions</p>
+                  </div>
+                </Reveal>
               </div>
-            </div>
 
-            {/* Activity Feed */}
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg">
-              <div className="px-5 py-3 border-b border-[#30363d] flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-1 bg-[#3fb950] rounded-full animate-pulse" />
-                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Activity Feed</span>
+              {/* Department Progress */}
+              <Reveal>
+                <div className="mb-12">
+                  <h2 className="text-xl font-semibold mb-6">Department Progress</h2>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    {defaultDepartments.map((dept, i) => {
+                      const deptPolicies = policies.filter(p => p.department === dept.id)
+                      const progress = getOverallProgress(deptPolicies)
+                      return (
+                        <Reveal key={dept.id} delay={i * 50}>
+                          <button
+                            onClick={() => {
+                              setSelectedDepartment(dept.id)
+                              setActiveTab('platform')
+                            }}
+                            className="bg-white/5 border border-gray-800 rounded-xl p-5 hover:bg-white/10 transition-all text-left group"
+                          >
+                            <p className="text-sm text-gray-400 mb-2 group-hover:text-white transition-colors">{dept.name}</p>
+                            <p className="text-2xl font-mono font-bold text-white">{progress}%</p>
+                            <div className="mt-3 h-1 bg-gray-800 rounded-full overflow-hidden">
+                              <div className="h-full bg-white rounded-full transition-all" style={{ width: `${progress}%` }} />
+                            </div>
+                            <p className="text-xs text-gray-600 mt-2">{deptPolicies.length} policies</p>
+                          </button>
+                        </Reveal>
+                      )
+                    })}
+                  </div>
                 </div>
-                <span className="text-[9px] font-mono text-[#6e7681]">{activityLog.length} entries</span>
-              </div>
-              <div className="max-h-[300px] overflow-y-auto">
-                {activityLog.slice(0, 15).map(entry => {
-                  const dept = departments.find(d => d.id === entry.category)
-                  const hasProgress = entry.metadata?.progress !== undefined
-                  return (
-                    <div key={entry.id} className="flex items-center gap-3 px-5 py-3 border-b border-[#21262d] last:border-0 hover:bg-[#21262d]/50 transition-colors">
-                      <div className={`w-1 h-1 rounded-full ${hasProgress ? 'bg-[#3fb950]' : 'bg-[#00d4ff]'}`} />
-                      {dept && <span className="text-sm">{dept.icon}</span>}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-[#f0f6fc] truncate">{entry.details}</p>
-                        <p className="text-[10px] font-mono text-[#6e7681]">{formatTime(entry.timestamp)}</p>
-                      </div>
-                      {hasProgress && (
-                        <span className="px-2 py-0.5 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded text-[10px] font-mono font-bold text-[#3fb950]">
-                          {entry.metadata.progress}%
-                        </span>
+              </Reveal>
+
+              {/* Recent Activity */}
+              <div className="grid lg:grid-cols-2 gap-8">
+                <Reveal>
+                  <div className="bg-white/5 border border-gray-800 rounded-xl p-6">
+                    <h3 className="text-lg font-semibold mb-4">Recent Activity</h3>
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto">
+                      {activityLog.slice(0, 15).map((entry, i) => (
+                        <div key={entry.id} className={`flex items-start gap-3 p-3 rounded-lg ${i === 0 ? 'bg-white/5' : ''}`}>
+                          <div className={`w-2 h-2 rounded-full mt-1.5 ${
+                            entry.action.includes('PROGRESS') ? 'bg-green-500' :
+                            entry.action.includes('CREATE') ? 'bg-blue-500' :
+                            entry.action.includes('UPDATE') ? 'bg-yellow-500' :
+                            'bg-gray-500'
+                          }`} />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-white truncate">{entry.details}</p>
+                            <p className="text-xs text-gray-500 mt-1">{formatRelativeTime(entry.timestamp)}</p>
+                          </div>
+                        </div>
+                      ))}
+                      {activityLog.length === 0 && (
+                        <p className="text-center text-gray-500 py-8">No activity recorded yet</p>
                       )}
                     </div>
-                  )
-                })}
-                {activityLog.length === 0 && <p className="text-[#6e7681] text-xs py-6 text-center">No activity recorded</p>}
-              </div>
-            </div>
-          </div>
-        )}
+                  </div>
+                </Reveal>
 
-        {/* ANNOUNCEMENTS */}
-        {activeTab === 'announcements' && (
-          <div className="space-y-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Communications</span>
-                </div>
-                <h2 className="text-3xl font-semibold text-[#f0f6fc] tracking-tight">Announcements</h2>
-                <p className="text-[#8b949e] mt-1">Communicate directly with students</p>
-              </div>
-              <Button onClick={() => setShowModal('announcement')}>New Announcement</Button>
-            </div>
-
-            <div className="space-y-4">
-              {[...announcements].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0)).map(a => (
-                <div key={a.id} className={`bg-[#161b22] border rounded-lg p-6 ${a.pinned ? 'border-[#d29922]' : 'border-[#30363d]'}`}>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
-                        {a.pinned && <span className="text-[#d29922]">&#9733;</span>}
-                        <span className={`px-2.5 py-1 rounded border text-xs font-mono ${
-                          a.category === 'urgent' ? 'bg-transparent border-[#f85149]/50 text-[#f85149]' :
-                          a.category === 'event' ? 'bg-transparent border-[#a371f7]/50 text-[#a371f7]' :
-                          a.category === 'milestone' ? 'bg-transparent border-[#3fb950]/50 text-[#3fb950]' :
-                          'bg-transparent border-[#30363d] text-[#8b949e]'
-                        }`}>{a.category}</span>
-                      </div>
-                      <h3 className="text-lg font-semibold text-[#f0f6fc]">{a.title}</h3>
-                      <p className="text-[#8b949e] mt-2">{a.content}</p>
-                      <p className="text-xs font-mono text-[#6e7681] mt-4">{formatDate(a.createdAt)}</p>
-                    </div>
-                    <div className="flex gap-2 ml-4">
-                      <button onClick={() => pinAnnouncement(a.id, !a.pinned)} className="w-8 h-8 rounded-lg bg-[#21262d] border border-[#30363d] flex items-center justify-center hover:border-[#d29922] text-[#8b949e] hover:text-[#d29922] transition-all">&#9733;</button>
-                      <button onClick={() => { deleteAnnouncement(a.id); notify('Deleted') }} className="w-8 h-8 rounded-lg bg-[#21262d] border border-[#30363d] flex items-center justify-center hover:border-[#f85149] text-[#8b949e] hover:text-[#f85149] transition-all">&times;</button>
+                <Reveal delay={100}>
+                  <div className="bg-white/5 border border-gray-800 rounded-xl p-6">
+                    <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => setShowAnnouncementModal(true)}
+                        className="p-4 bg-white/5 border border-gray-700 rounded-lg hover:bg-white/10 transition-all text-left"
+                      >
+                        <p className="text-sm font-medium text-white">New Announcement</p>
+                        <p className="text-xs text-gray-500 mt-1">Post update to students</p>
+                      </button>
+                      <button
+                        onClick={handleExportAll}
+                        className="p-4 bg-white/5 border border-gray-700 rounded-lg hover:bg-white/10 transition-all text-left"
+                      >
+                        <p className="text-sm font-medium text-white">Export Data</p>
+                        <p className="text-xs text-gray-500 mt-1">Download all platform data</p>
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('feedback')}
+                        className="p-4 bg-white/5 border border-gray-700 rounded-lg hover:bg-white/10 transition-all text-left"
+                      >
+                        <p className="text-sm font-medium text-white">Review Feedback</p>
+                        <p className="text-xs text-gray-500 mt-1">{newFeedback.length} pending</p>
+                      </button>
+                      <button
+                        onClick={() => setActiveTab('budget')}
+                        className="p-4 bg-white/5 border border-gray-700 rounded-lg hover:bg-white/10 transition-all text-left"
+                      >
+                        <p className="text-sm font-medium text-white">Funding Requests</p>
+                        <p className="text-xs text-gray-500 mt-1">{pendingRequests.length} pending</p>
+                      </button>
+                      <Link
+                        href="/admin/scroll"
+                        className="p-4 bg-white/5 border border-gray-700 rounded-lg hover:bg-white/10 transition-all text-left block col-span-2"
+                      >
+                        <p className="text-sm font-medium text-white">The Scroll</p>
+                        <p className="text-xs text-gray-500 mt-1">Manage knowledge base, approve submissions, upload documents</p>
+                      </Link>
                     </div>
                   </div>
-                </div>
-              ))}
-              {announcements.length === 0 && (
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-12 text-center">
-                  <p className="text-[#6e7681]">No announcements yet</p>
-                </div>
-              )}
+                </Reveal>
+              </div>
             </div>
+          )}
 
-            {showModal === 'announcement' && (
-              <Modal title="New Announcement" onClose={() => setShowModal(null)}>
-                <form onSubmit={(e) => { e.preventDefault(); addAnnouncement(announcementForm); setAnnouncementForm({ title: '', content: '', category: 'general', pinned: false }); setShowModal(null); notify('Published') }} className="space-y-4">
-                  <Input label="Title" value={announcementForm.title} onChange={(e) => setAnnouncementForm({ ...announcementForm, title: e.target.value })} required />
-                  <Select label="Category" value={announcementForm.category} onChange={(e) => setAnnouncementForm({ ...announcementForm, category: e.target.value })} options={[
-                    { value: 'general', label: 'General' },
-                    { value: 'policy', label: 'Policy Update' },
-                    { value: 'event', label: 'Event' },
-                    { value: 'urgent', label: 'Urgent' },
-                    { value: 'milestone', label: 'Milestone' },
-                  ]} />
+          {/* ==========================================
+              PLATFORM BUILDER TAB
+          ========================================== */}
+          {activeTab === 'platform' && (
+            <div>
+              <Reveal>
+                <div className="flex items-center justify-between mb-8">
                   <div>
-                    <label className="block text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-2">Content</label>
-                    <textarea value={announcementForm.content} onChange={(e) => setAnnouncementForm({ ...announcementForm, content: e.target.value })} rows={4} required className="w-full px-4 py-3 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] resize-none focus:ring-1 focus:ring-[#00d4ff] focus:border-[#00d4ff] text-sm" />
+                    <h1 className="text-4xl font-bold mb-4">Platform Builder</h1>
+                    <p className="text-gray-400 text-lg">Create, edit, and manage your entire policy platform.</p>
                   </div>
-                  <label className="flex items-center gap-3">
-                    <input type="checkbox" checked={announcementForm.pinned} onChange={(e) => setAnnouncementForm({ ...announcementForm, pinned: e.target.checked })} className="w-4 h-4 bg-[#0d1117] border-[#30363d] rounded text-[#00d4ff] focus:ring-[#00d4ff]" />
-                    <span className="text-sm text-[#8b949e]">Pin announcement</span>
-                  </label>
-                  <div className="flex gap-3 pt-2">
-                    <Button type="submit">Publish</Button>
-                    <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
-                  </div>
-                </form>
-              </Modal>
-            )}
-          </div>
-        )}
-
-        {/* POLICIES */}
-        {activeTab === 'policies' && (
-          <div className="space-y-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Policy Management</span>
+                  <button
+                    onClick={() => { setEditingPolicy(null); setShowPolicyModal(true) }}
+                    className="px-6 py-3 bg-white text-black font-medium rounded-lg hover:bg-gray-200 transition-all"
+                  >
+                    + New Policy
+                  </button>
                 </div>
-                <h2 className="text-3xl font-semibold text-[#f0f6fc] tracking-tight">Policies</h2>
-                <p className="text-[#8b949e] mt-1">Manage all 40 policy initiatives</p>
-              </div>
-              <select value={selectedDept} onChange={(e) => setSelectedDept(e.target.value)} className="px-4 py-2 bg-[#21262d] border border-[#30363d] rounded-lg text-sm text-[#f0f6fc] focus:ring-1 focus:ring-[#00d4ff] focus:border-[#00d4ff]">
-                <option value="all">All Departments</option>
-                {departments.map(d => <option key={d.id} value={d.id}>{d.icon} {d.name}</option>)}
-              </select>
-            </div>
+              </Reveal>
 
-            <div className="space-y-4">
-              {filteredPolicies.map(policy => (
-                <div key={policy.id} className="bg-[#161b22] border border-[#30363d] rounded-lg p-6 hover:border-[#8b949e]/30 transition-colors">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-start gap-3">
-                      <span className="text-2xl">{departments.find(d => d.id === policy.department)?.icon}</span>
-                      <div>
-                        <h3 className="font-semibold text-[#f0f6fc]">{policy.title}</h3>
-                        <p className="text-sm text-[#8b949e] mt-0.5">{policy.description}</p>
-                      </div>
-                    </div>
-                    <span className={`px-2.5 py-1 rounded border text-xs font-mono ${
-                      policy.priority === 'high' ? 'bg-transparent border-[#f85149]/50 text-[#f85149]' :
-                      policy.priority === 'medium' ? 'bg-transparent border-[#d29922]/50 text-[#d29922]' :
-                      'bg-transparent border-[#30363d] text-[#6e7681]'
-                    }`}>{policy.priority}</span>
-                  </div>
-
-                  <div className="grid md:grid-cols-3 gap-4 mb-4">
-                    <div>
-                      <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Status</label>
-                      <select value={policy.status} onChange={(e) => { updatePolicy(policy.id, { status: e.target.value }); notify('Updated') }} className="w-full mt-2 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#f0f6fc] focus:ring-1 focus:ring-[#00d4ff]">
-                        <option value="planned">Planned</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="completed">Completed</option>
-                      </select>
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Progress</label>
-                        <button
-                          onClick={() => { setProgressLogForm({ policyId: policy.id, progress: policy.progress, note: '' }); setShowModal('progressLog') }}
-                          className="text-[10px] font-semibold text-[#00d4ff] uppercase tracking-widest hover:text-[#00d4ff]/80 transition flex items-center gap-1"
-                        >
-                          <span>+</span> Log Update
-                        </button>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="number"
-                          min="0"
-                          max="100"
-                          value={policy.progress}
-                          onChange={(e) => handleQuickProgressUpdate(policy.id, parseInt(e.target.value) || 0)}
-                          className="w-20 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-center text-lg font-mono font-bold text-[#00d4ff] focus:ring-1 focus:ring-[#00d4ff] focus:border-[#00d4ff]"
-                        />
-                        <span className="text-[#6e7681] text-sm">%</span>
-                        <input type="range" min="0" max="100" value={policy.progress} onChange={(e) => handleQuickProgressUpdate(policy.id, parseInt(e.target.value))} className="flex-1 accent-[#00d4ff]" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Priority</label>
-                      <select value={policy.priority} onChange={(e) => { updatePolicy(policy.id, { priority: e.target.value }); notify('Updated') }} className="w-full mt-2 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#f0f6fc] focus:ring-1 focus:ring-[#00d4ff]">
-                        <option value="high">High</option>
-                        <option value="medium">Medium</option>
-                        <option value="low">Low</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="h-1 bg-[#21262d] rounded-full overflow-hidden mb-4">
-                    <div className={`h-full rounded-full transition-all ${
-                      policy.status === 'completed' ? 'bg-[#3fb950]' :
-                      policy.status === 'in_progress' ? 'bg-[#00d4ff]' : 'bg-[#6e7681]'
-                    }`} style={{ width: `${policy.progress}%` }} />
-                  </div>
-
-                  {policy.metrics && (
-                    <div>
-                      <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Metrics</label>
-                      <div className="grid grid-cols-3 gap-3 mt-3">
-                        {Object.entries(policy.metrics).map(([key, value]) => (
-                          <div key={key} className="bg-[#0d1117] border border-[#30363d] rounded-lg p-3">
-                            <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest block mb-2">{key.replace(/([A-Z])/g, ' $1')}</label>
-                            <input type="number" value={value} onChange={(e) => updatePolicyMetrics(policy.id, { [key]: parseInt(e.target.value) || 0 })} className="w-full bg-transparent text-lg font-mono font-semibold text-[#00d4ff] border-0 p-0 focus:ring-0" />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {showModal === 'progressLog' && progressLogForm.policyId && (
-              <Modal title="Log Progress Update" onClose={() => setShowModal(null)}>
-                {(() => {
-                  const policy = policies.find(p => p.id === progressLogForm.policyId)
-                  const dept = departments.find(d => d.id === policy?.department)
-                  return (
-                    <form onSubmit={(e) => {
-                      e.preventDefault()
-                      logPolicyProgress(progressLogForm.policyId, progressLogForm.progress, progressLogForm.note)
-                      setProgressLogForm({ policyId: null, progress: 0, note: '' })
-                      setShowModal(null)
-                      notify('Progress logged')
-                    }} className="space-y-4">
-                      <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
-                        <div className="flex items-center gap-3 mb-2">
-                          <span className="text-xl">{dept?.icon}</span>
-                          <div>
-                            <p className="font-semibold text-[#f0f6fc]">{policy?.title}</p>
-                            <p className="text-xs text-[#6e7681] font-mono uppercase">{dept?.name}</p>
-                          </div>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Progress</label>
-                          <span className="text-lg font-mono font-semibold text-[#00d4ff]">{progressLogForm.progress}%</span>
-                        </div>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={progressLogForm.progress}
-                          onChange={(e) => setProgressLogForm({ ...progressLogForm, progress: parseInt(e.target.value) })}
-                          className="w-full accent-[#00d4ff]"
-                        />
-                        <div className="flex justify-between text-[10px] text-[#6e7681] mt-1 font-mono">
-                          <span>0%</span>
-                          <span>50%</span>
-                          <span>100%</span>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mb-2">Update Note</label>
-                        <textarea
-                          value={progressLogForm.note}
-                          onChange={(e) => setProgressLogForm({ ...progressLogForm, note: e.target.value })}
-                          placeholder="Describe what was accomplished..."
-                          rows={3}
-                          className="w-full px-4 py-3 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] placeholder-[#6e7681] resize-none focus:ring-1 focus:ring-[#00d4ff] focus:border-[#00d4ff] text-sm"
-                        />
-                      </div>
-                      <div className="flex gap-3 pt-2">
-                        <Button type="submit">Log Progress</Button>
-                        <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
-                      </div>
-                    </form>
-                  )
-                })()}
-              </Modal>
-            )}
-          </div>
-        )}
-
-        {/* OPERATIONS */}
-        {activeTab === 'operations' && (
-          <div className="space-y-8">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Operational Management</span>
-              </div>
-              <h2 className="text-3xl font-semibold text-[#f0f6fc] tracking-tight">Operations</h2>
-              <p className="text-[#8b949e] mt-1">Manage programs and services</p>
-            </div>
-
-            {/* Tech Loaner */}
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#30363d]">
-                <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Tech Loaner Program</span>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="secondary" onClick={() => setShowModal('device')}>Add Device</Button>
-                  <Button onClick={() => setShowModal('loan')}>Record Loan</Button>
-                </div>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-[#30363d]">
-                      <th className="text-left py-3 text-[10px] text-[#6e7681] uppercase tracking-widest font-semibold">Device</th>
-                      <th className="text-center py-3 text-[10px] text-[#6e7681] uppercase tracking-widest font-semibold">Total</th>
-                      <th className="text-center py-3 text-[10px] text-[#6e7681] uppercase tracking-widest font-semibold">Available</th>
-                      <th className="text-center py-3 text-[10px] text-[#6e7681] uppercase tracking-widest font-semibold">On Loan</th>
-                      <th className="text-right py-3 text-[10px] text-[#6e7681] uppercase tracking-widest font-semibold">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {operationalData.techLoaners.devices.map(device => (
-                      <tr key={device.id} className="border-b border-[#21262d] hover:bg-[#21262d]/50">
-                        <td className="py-4 font-medium text-[#f0f6fc]">{device.name}</td>
-                        <td className="py-4 text-center">
-                          <input type="number" value={device.total} onChange={(e) => updateTechDevice(device.id, { total: parseInt(e.target.value) || 0 })} className="w-16 text-center bg-[#0d1117] border border-[#30363d] rounded-lg py-1 text-[#f0f6fc] font-mono" />
-                        </td>
-                        <td className="py-4 text-center">
-                          <input type="number" value={device.available} onChange={(e) => updateTechDevice(device.id, { available: parseInt(e.target.value) || 0 })} className="w-16 text-center bg-[#0d1117] border border-[#30363d] rounded-lg py-1 text-[#3fb950] font-mono" />
-                        </td>
-                        <td className="py-4 text-center">
-                          <input type="number" value={device.onLoan} onChange={(e) => updateTechDevice(device.id, { onLoan: parseInt(e.target.value) || 0 })} className="w-16 text-center bg-[#0d1117] border border-[#30363d] rounded-lg py-1 text-[#d29922] font-mono" />
-                        </td>
-                        <td className="py-4 text-right">
-                          <button onClick={() => { deleteTechDevice(device.id); notify('Deleted') }} className="text-[#f85149] text-sm font-medium hover:underline">Remove</button>
-                        </td>
-                      </tr>
+              {/* Filters */}
+              <Reveal>
+                <div className="flex flex-wrap gap-4 mb-8">
+                  <input
+                    type="text"
+                    placeholder="Search policies..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="px-4 py-3 bg-black border border-gray-800 rounded-lg text-sm text-white placeholder-gray-600 focus:border-white focus:outline-none min-w-[250px]"
+                  />
+                  <select
+                    value={selectedDepartment}
+                    onChange={(e) => setSelectedDepartment(e.target.value)}
+                    className="px-4 py-3 bg-black border border-gray-800 rounded-lg text-sm text-white focus:border-white focus:outline-none"
+                  >
+                    <option value="all">All Departments</option>
+                    {defaultDepartments.map(dept => (
+                      <option key={dept.id} value={dept.id}>{dept.name}</option>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-              {operationalData.techLoaners.loans.filter(l => l.status === 'active').length > 0 && (
-                <div className="mt-6 pt-6 border-t border-[#30363d]">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-2 h-2 bg-[#d29922] rounded-full animate-pulse" />
-                    <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Active Loans</span>
-                  </div>
-                  {operationalData.techLoaners.loans.filter(l => l.status === 'active').map(loan => (
-                    <div key={loan.id} className="flex items-center justify-between py-3 border-b border-[#21262d]">
-                      <div>
-                        <p className="font-medium text-[#f0f6fc]">{loan.studentName}</p>
-                        <p className="text-sm font-mono text-[#8b949e]">{loan.deviceType} &middot; Due {loan.dueDate}</p>
-                      </div>
-                      <button onClick={() => { updateTechLoan(loan.id, { status: 'returned' }); notify('Returned') }} className="text-[#00d4ff] text-sm font-medium hover:underline">Mark Returned</button>
-                    </div>
-                  ))}
+                  </select>
                 </div>
-              )}
-            </div>
+              </Reveal>
 
-            {/* Food Pantry */}
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#30363d]">
-                <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Food Pantry</span>
-              </div>
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                <div className="bg-[#0d1117] border border-[#d29922]/30 rounded-lg p-4 text-center">
-                  <p className="text-3xl font-mono font-semibold text-[#d29922]">{operationalData.foodPantry.totalVisits}</p>
-                  <p className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mt-2">Total Visits</p>
-                </div>
-                <div className="bg-[#0d1117] border border-[#3fb950]/30 rounded-lg p-4 text-center">
-                  <p className="text-3xl font-mono font-semibold text-[#3fb950]">${operationalData.foodPantry.donations}</p>
-                  <p className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mt-2">Donations</p>
-                </div>
-                <div className="bg-[#0d1117] border border-[#00d4ff]/30 rounded-lg p-4 text-center">
-                  <p className="text-3xl font-mono font-semibold text-[#00d4ff]">{operationalData.foodPantry.locations.length}</p>
-                  <p className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mt-2">Locations</p>
-                </div>
-              </div>
+              {/* Policy List */}
               <div className="space-y-4">
-                {operationalData.foodPantry.locations.map(loc => (
-                  <div key={loc.id} className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h4 className="font-medium text-[#f0f6fc]">{loc.name}</h4>
-                        <p className="text-sm font-mono text-[#8b949e]">{loc.hours}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => { logPantryVisit(loc.id, 1); notify('+1 visit') }} className="px-3 py-1 bg-[#21262d] border border-[#30363d] rounded-lg text-sm text-[#00d4ff] font-mono hover:border-[#00d4ff] transition-colors">+1</button>
-                        <button onClick={() => { logPantryVisit(loc.id, 10); notify('+10 visits') }} className="px-3 py-1 bg-[#21262d] border border-[#30363d] rounded-lg text-sm text-[#00d4ff] font-mono hover:border-[#00d4ff] transition-colors">+10</button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Visits</label>
-                        <input type="number" value={loc.visits || 0} onChange={(e) => updatePantryLocation(loc.id, { visits: parseInt(e.target.value) || 0 })} className="w-full mt-2 px-3 py-2 bg-[#161b22] border border-[#30363d] rounded-lg text-[#f0f6fc] font-mono focus:ring-1 focus:ring-[#00d4ff]" />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Inventory</label>
-                        <select value={loc.inventory || 'unknown'} onChange={(e) => updatePantryLocation(loc.id, { inventory: e.target.value })} className="w-full mt-2 px-3 py-2 bg-[#161b22] border border-[#30363d] rounded-lg text-[#f0f6fc] focus:ring-1 focus:ring-[#00d4ff]">
-                          <option value="well-stocked">Well Stocked</option>
-                          <option value="moderate">Moderate</option>
-                          <option value="low">Low</option>
-                          <option value="critical">Critical</option>
-                          <option value="unknown">Unknown</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Training */}
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-              <div className="flex items-center justify-between mb-6 pb-4 border-b border-[#30363d]">
-                <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Training Programs</span>
-                <Button variant="secondary" onClick={() => setShowModal('training')}>Add Session</Button>
-              </div>
-              <div className="grid md:grid-cols-1 gap-4">
-                <div className="bg-[#0d1117] border border-[#a371f7]/30 rounded-lg p-6">
-                  <h4 className="font-medium text-[#f0f6fc]">Mental Health First Aid</h4>
-                  <p className="text-3xl font-mono font-semibold text-[#a371f7] mt-3">{operationalData.trainings.mentalHealthFirstAid.totalTrained}</p>
-                  <p className="text-sm text-[#8b949e] mt-1">trained &middot; {operationalData.trainings.mentalHealthFirstAid.sessions.length} sessions</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Modals */}
-            {showModal === 'device' && (
-              <Modal title="Add Device" onClose={() => setShowModal(null)}>
-                <form onSubmit={(e) => { e.preventDefault(); addTechDevice({ ...deviceForm, onLoan: 0 }); setDeviceForm({ type: 'laptop-windows', name: '', total: 0, available: 0 }); setShowModal(null); notify('Device added') }} className="space-y-4">
-                  <Select label="Type" value={deviceForm.type} onChange={(e) => setDeviceForm({ ...deviceForm, type: e.target.value })} options={[
-                    { value: 'laptop-windows', label: 'Windows Laptop' },
-                    { value: 'laptop-mac', label: 'MacBook' },
-                    { value: 'hotspot', label: 'Wi-Fi Hotspot' },
-                    { value: 'tablet', label: 'Tablet' },
-                    { value: 'charger', label: 'Charger' },
-                  ]} />
-                  <Input label="Name" value={deviceForm.name} onChange={(e) => setDeviceForm({ ...deviceForm, name: e.target.value })} required />
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input label="Total" type="number" value={deviceForm.total} onChange={(e) => setDeviceForm({ ...deviceForm, total: parseInt(e.target.value) || 0 })} />
-                    <Input label="Available" type="number" value={deviceForm.available} onChange={(e) => setDeviceForm({ ...deviceForm, available: parseInt(e.target.value) || 0 })} />
-                  </div>
-                  <div className="flex gap-3 pt-2">
-                    <Button type="submit">Add</Button>
-                    <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
-                  </div>
-                </form>
-              </Modal>
-            )}
-            {showModal === 'loan' && (
-              <Modal title="Record Loan" onClose={() => setShowModal(null)}>
-                <form onSubmit={(e) => { e.preventDefault(); addTechLoan(loanForm); setLoanForm({ studentName: '', studentEmail: '', deviceType: '', dueDate: '' }); setShowModal(null); notify('Loan recorded') }} className="space-y-4">
-                  <Input label="Student Name" value={loanForm.studentName} onChange={(e) => setLoanForm({ ...loanForm, studentName: e.target.value })} required />
-                  <Input label="Email" type="email" value={loanForm.studentEmail} onChange={(e) => setLoanForm({ ...loanForm, studentEmail: e.target.value })} required />
-                  <Input label="Device Type" value={loanForm.deviceType} onChange={(e) => setLoanForm({ ...loanForm, deviceType: e.target.value })} required />
-                  <Input label="Due Date" type="date" value={loanForm.dueDate} onChange={(e) => setLoanForm({ ...loanForm, dueDate: e.target.value })} required />
-                  <div className="flex gap-3 pt-2">
-                    <Button type="submit">Record</Button>
-                    <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
-                  </div>
-                </form>
-              </Modal>
-            )}
-            {showModal === 'training' && (
-              <Modal title="Add Training Session" onClose={() => setShowModal(null)}>
-                <form onSubmit={(e) => { e.preventDefault(); addTrainingSession(trainingForm.type, trainingForm); setTrainingForm({ type: 'mentalHealthFirstAid', title: '', date: '', location: '', capacity: 0 }); setShowModal(null); notify('Session added') }} className="space-y-4">
-                  <Select label="Type" value={trainingForm.type} onChange={(e) => setTrainingForm({ ...trainingForm, type: e.target.value })} options={[
-                    { value: 'mentalHealthFirstAid', label: 'Mental Health First Aid' },
-                  ]} />
-                  <Input label="Title" value={trainingForm.title} onChange={(e) => setTrainingForm({ ...trainingForm, title: e.target.value })} required />
-                  <Input label="Date" type="date" value={trainingForm.date} onChange={(e) => setTrainingForm({ ...trainingForm, date: e.target.value })} required />
-                  <Input label="Location" value={trainingForm.location} onChange={(e) => setTrainingForm({ ...trainingForm, location: e.target.value })} />
-                  <Input label="Capacity" type="number" value={trainingForm.capacity} onChange={(e) => setTrainingForm({ ...trainingForm, capacity: parseInt(e.target.value) || 0 })} />
-                  <div className="flex gap-3 pt-2">
-                    <Button type="submit">Add</Button>
-                    <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
-                  </div>
-                </form>
-              </Modal>
-            )}
-          </div>
-        )}
-
-        {/* BUDGET */}
-        {activeTab === 'budget' && (
-          <div className="space-y-8">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Financial Management</span>
-                </div>
-                <h2 className="text-3xl font-semibold text-[#f0f6fc] tracking-tight">Budget</h2>
-                <p className="text-[#8b949e] mt-1">Track spending and allocations</p>
-              </div>
-              <Button onClick={() => setShowModal('transaction')}>Add Transaction</Button>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-4">
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Total Budget</label>
-                <div className="flex items-baseline gap-1 mt-3">
-                  <span className="text-[#6e7681] text-xl">$</span>
-                  <input type="number" value={budgetData.total} onChange={(e) => updateBudget({ total: parseFloat(e.target.value) || 0 })} className="text-3xl font-mono font-semibold text-[#3fb950] bg-transparent border-0 w-full focus:ring-0" />
-                </div>
-              </div>
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Allocated</label>
-                <div className="flex items-baseline gap-1 mt-3">
-                  <span className="text-[#6e7681] text-xl">$</span>
-                  <input type="number" value={budgetData.allocated} onChange={(e) => updateBudget({ allocated: parseFloat(e.target.value) || 0 })} className="text-3xl font-mono font-semibold text-[#00d4ff] bg-transparent border-0 w-full focus:ring-0" />
-                </div>
-              </div>
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Spent</label>
-                <p className="text-3xl font-mono font-semibold text-[#d29922] mt-3">${budgetData.spent.toLocaleString()}</p>
-              </div>
-            </div>
-
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#30363d]">
-                <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Categories</span>
-              </div>
-              <div className="space-y-6">
-                {budgetData.categories.map(cat => (
-                  <div key={cat.name}>
-                    <div className="flex justify-between mb-2">
-                      <span className="font-medium text-[#f0f6fc]">{cat.name}</span>
-                      <span className="text-sm font-mono text-[#8b949e]">${cat.spent} / ${cat.allocated}</span>
-                    </div>
-                    <div className="h-1 bg-[#21262d] rounded-full overflow-hidden mb-4">
-                      <div className="h-full bg-gradient-to-r from-[#3fb950] to-[#00d4ff] rounded-full" style={{ width: `${cat.allocated > 0 ? (cat.spent / cat.allocated) * 100 : 0}%` }} />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Allocated</label>
-                        <input type="number" value={cat.allocated} onChange={(e) => updateBudgetCategory(cat.name, { allocated: parseFloat(e.target.value) || 0 })} className="w-full mt-2 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] font-mono focus:ring-1 focus:ring-[#00d4ff]" />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Spent</label>
-                        <input type="number" value={cat.spent} onChange={(e) => updateBudgetCategory(cat.name, { spent: parseFloat(e.target.value) || 0 })} className="w-full mt-2 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-[#f0f6fc] font-mono focus:ring-1 focus:ring-[#00d4ff]" />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {budgetData.transactions?.length > 0 && (
-              <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-                <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#30363d]">
-                  <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Recent Transactions</span>
-                </div>
-                <div className="space-y-1">
-                  {budgetData.transactions.slice(-8).reverse().map(tx => (
-                    <div key={tx.id} className="flex items-center justify-between py-3 px-3 rounded-lg hover:bg-[#21262d] transition-colors">
-                      <div>
-                        <p className="font-medium text-[#f0f6fc]">{tx.description}</p>
-                        <p className="text-xs font-mono text-[#6e7681]">{formatDate(tx.date)}</p>
-                      </div>
-                      <span className={`font-mono font-semibold ${tx.type === 'expense' ? 'text-[#f85149]' : 'text-[#3fb950]'}`}>
-                        {tx.type === 'expense' ? '-' : '+'}${tx.amount}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {showModal === 'transaction' && (
-              <Modal title="Add Transaction" onClose={() => setShowModal(null)}>
-                <form onSubmit={(e) => { e.preventDefault(); addBudgetTransaction(transactionForm); setTransactionForm({ type: 'expense', amount: 0, description: '', category: '' }); setShowModal(null); notify('Transaction added') }} className="space-y-4">
-                  <Select label="Type" value={transactionForm.type} onChange={(e) => setTransactionForm({ ...transactionForm, type: e.target.value })} options={[
-                    { value: 'expense', label: 'Expense' },
-                    { value: 'income', label: 'Income' },
-                  ]} />
-                  <Input label="Amount" type="number" value={transactionForm.amount} onChange={(e) => setTransactionForm({ ...transactionForm, amount: parseFloat(e.target.value) || 0 })} required />
-                  <Input label="Description" value={transactionForm.description} onChange={(e) => setTransactionForm({ ...transactionForm, description: e.target.value })} required />
-                  <Select label="Category" value={transactionForm.category} onChange={(e) => setTransactionForm({ ...transactionForm, category: e.target.value })} options={[
-                    { value: '', label: 'Select...' },
-                    ...budgetData.categories.map(c => ({ value: c.name, label: c.name }))
-                  ]} />
-                  <div className="flex gap-3 pt-2">
-                    <Button type="submit">Add</Button>
-                    <Button variant="secondary" type="button" onClick={() => setShowModal(null)}>Cancel</Button>
-                  </div>
-                </form>
-              </Modal>
-            )}
-          </div>
-        )}
-
-        {/* FEEDBACK */}
-        {activeTab === 'feedback' && (
-          <div className="space-y-8">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">User Feedback</span>
-              </div>
-              <h2 className="text-3xl font-semibold text-[#f0f6fc] tracking-tight">Feedback</h2>
-              <p className="text-[#8b949e] mt-1">Student submissions and responses</p>
-            </div>
-
-            <div className="grid grid-cols-4 gap-4">
-              <StatCard value={feedback.length} label="Total" color="cyan" />
-              <StatCard value={feedback.filter(f => f.status === 'new').length} label="New" color="yellow" />
-              <StatCard value={feedback.filter(f => f.status === 'reviewed').length} label="Reviewed" color="purple" />
-              <StatCard value={feedback.filter(f => f.status === 'resolved').length} label="Resolved" color="green" />
-            </div>
-
-            <div className="space-y-4">
-              {feedback.map(item => (
-                <div key={item.id} className={`bg-[#161b22] border-l-2 border rounded-lg p-6 ${
-                  item.status === 'new' ? 'border-l-[#d29922] border-[#30363d]' :
-                  item.status === 'reviewed' ? 'border-l-[#a371f7] border-[#30363d]' :
-                  item.status === 'resolved' ? 'border-l-[#3fb950] border-[#30363d]' : 'border-[#30363d]'
-                }`}>
-                  <div className="flex items-start justify-between mb-3">
-                    <span className={`px-2.5 py-1 rounded border text-xs font-mono ${
-                      item.status === 'new' ? 'bg-transparent border-[#d29922]/50 text-[#d29922]' :
-                      item.status === 'reviewed' ? 'bg-transparent border-[#a371f7]/50 text-[#a371f7]' :
-                      item.status === 'resolved' ? 'bg-transparent border-[#3fb950]/50 text-[#3fb950]' :
-                      'bg-transparent border-[#30363d] text-[#6e7681]'
-                    }`}>{item.status}</span>
-                    <span className="text-xs font-mono text-[#6e7681]">{formatDate(item.submittedAt)}</span>
-                  </div>
-                  <p className="text-[#f0f6fc] mb-3">{item.message}</p>
-                  {item.email && <p className="text-sm font-mono text-[#8b949e] mb-3">From: {item.email}</p>}
-                  {item.adminNote && (
-                    <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-3 mb-3">
-                      <p className="text-sm text-[#8b949e]"><strong className="text-[#f0f6fc]">Note:</strong> {item.adminNote}</p>
-                    </div>
-                  )}
-                  <div className="flex gap-3">
-                    <select value={item.status} onChange={(e) => { updateFeedbackStatus(item.id, e.target.value); notify('Updated') }} className="px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#f0f6fc] focus:ring-1 focus:ring-[#00d4ff]">
-                      <option value="new">New</option>
-                      <option value="reviewed">Reviewed</option>
-                      <option value="resolved">Resolved</option>
-                      <option value="archived">Archived</option>
-                    </select>
-                    <input type="text" placeholder="Add note..." className="flex-1 px-3 py-2 bg-[#0d1117] border border-[#30363d] rounded-lg text-sm text-[#f0f6fc] placeholder-[#6e7681] focus:ring-1 focus:ring-[#00d4ff]" onKeyDown={(e) => { if (e.key === 'Enter' && e.target.value) { updateFeedbackStatus(item.id, item.status, e.target.value); e.target.value = ''; notify('Note added') }}} />
-                  </div>
-                </div>
-              ))}
-              {feedback.length === 0 && (
-                <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-12 text-center">
-                  <p className="text-[#6e7681]">No feedback yet</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ACTIVITY - Enhanced Audit Log */}
-        {activeTab === 'activity' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-1 h-1 bg-[#00d4ff] rounded-full" />
-                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Audit Log</span>
-                </div>
-                <h2 className="text-2xl font-semibold text-[#f0f6fc] tracking-tight">Activity Stream</h2>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-mono text-[#6e7681]">{activityLog.length} entries</span>
-                <button onClick={() => { if(confirm('Clear all activity?')) { clearActivityLog(); notify('Cleared') }}} className="text-xs text-[#f85149] hover:underline font-medium">Clear</button>
-              </div>
-            </div>
-
-            {/* Progress Updates Summary */}
-            {activityLog.filter(e => e.metadata?.progress !== undefined).length > 0 && (
-              <div className="bg-[#161b22] border border-[#3fb950]/30 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-1.5 h-1.5 bg-[#3fb950] rounded-full" />
-                  <span className="text-[9px] font-bold text-[#6e7681] uppercase tracking-[0.15em]">Recent Progress Updates</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {activityLog.filter(e => e.metadata?.progress !== undefined).slice(0, 10).map(entry => (
-                    <div key={entry.id} className="bg-[#0d1117] border border-[#30363d] rounded px-3 py-1.5 flex items-center gap-2">
-                      <span className="text-xs text-[#8b949e] max-w-[150px] truncate">{entry.metadata.policyTitle || 'Policy'}</span>
-                      {entry.metadata.previousProgress !== undefined && (
-                        <span className="text-[10px] font-mono text-[#6e7681]">{entry.metadata.previousProgress}%</span>
-                      )}
-                      <span className="text-[#6e7681]">&rarr;</span>
-                      <span className="text-sm font-mono font-bold text-[#3fb950]">{entry.metadata.progress}%</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Full Activity Log */}
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
-              <div className="max-h-[550px] overflow-y-auto">
-                {activityLog.map(entry => {
-                  const dept = departments.find(d => d.id === entry.category)
-                  const hasProgress = entry.metadata?.progress !== undefined
-                  const progressDelta = hasProgress && entry.metadata?.previousProgress !== undefined
-                    ? entry.metadata.progress - entry.metadata.previousProgress
-                    : null
+                {filteredPolicies.map((policy, i) => {
+                  const dept = defaultDepartments.find(d => d.id === policy.department)
+                  const milestones = policy.milestones || []
+                  const completedMilestones = milestones.filter(m => m.completed).length
+                  const hasMilestones = milestones.length > 0
                   return (
-                    <div key={entry.id} className={`flex items-center gap-4 px-5 py-3 border-b border-[#21262d] hover:bg-[#21262d]/50 transition-colors ${hasProgress ? 'bg-[#3fb950]/5' : ''}`}>
-                      <div className="flex items-center gap-2 min-w-[32px]">
-                        {dept && <span className="text-base">{dept.icon}</span>}
-                        {!dept && <div className={`w-1.5 h-1.5 rounded-full ${hasProgress ? 'bg-[#3fb950]' : 'bg-[#00d4ff]'}`} />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm text-[#f0f6fc]">{entry.details}</p>
-                          {hasProgress && (
-                            <div className="flex items-center gap-1.5">
-                              <span className="px-2 py-0.5 bg-[#3fb950]/10 border border-[#3fb950]/30 rounded text-[10px] font-mono font-bold text-[#3fb950]">
-                                {entry.metadata.progress}%
+                    <Reveal key={policy.id} delay={i * 30}>
+                      <div className="bg-white/5 border border-gray-800 rounded-xl p-6 hover:bg-white/[0.07] transition-all">
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className="text-lg font-semibold text-white">{policy.title}</h3>
+                              <span className={`px-2 py-0.5 rounded text-xs font-mono ${
+                                policy.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                                policy.status === 'in_progress' ? 'bg-yellow-500/20 text-yellow-400' :
+                                'bg-gray-500/20 text-gray-400'
+                              }`}>
+                                {policy.status?.replace('_', ' ').toUpperCase()}
                               </span>
-                              {progressDelta !== null && (
-                                <span className={`text-[10px] font-mono font-semibold ${progressDelta > 0 ? 'text-[#3fb950]' : progressDelta < 0 ? 'text-[#f85149]' : 'text-[#6e7681]'}`}>
-                                  {progressDelta > 0 ? '+' : ''}{progressDelta}%
+                              {policy.priority === 'high' && (
+                                <span className="px-2 py-0.5 rounded text-xs font-mono bg-red-500/20 text-red-400">
+                                  HIGH
                                 </span>
                               )}
                             </div>
-                          )}
+                            <p className="text-sm text-gray-400 mb-3 line-clamp-2">{policy.description}</p>
+                            <div className="flex items-center gap-4 text-xs text-gray-500">
+                              <span>{dept?.name || policy.department}</span>
+                              {hasMilestones && (
+                                <span>{completedMilestones}/{milestones.length} milestones</span>
+                              )}
+                              <span>Updated {formatDate(policy.lastUpdated)}</span>
+                            </div>
+                          </div>
+                          <div className="text-right ml-6">
+                            <p className="text-3xl font-mono font-bold text-white">{policy.progress}%</p>
+                            <p className="text-xs text-gray-500">Progress</p>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className={`px-1.5 py-0.5 rounded text-[8px] font-mono uppercase tracking-wide ${
-                            dept ? 'bg-[#00d4ff]/10 text-[#00d4ff]' : 'bg-[#21262d] text-[#6e7681]'
-                          }`}>
-                            {dept ? dept.name : entry.category}
-                          </span>
-                          <span className="text-[9px] font-mono text-[#6e7681] uppercase">{entry.action}</span>
+
+                        {/* Milestones Preview */}
+                        {hasMilestones && (
+                          <div className="mb-4 p-3 bg-black/30 rounded-lg">
+                            <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                              <span>Milestones</span>
+                              <span>{completedMilestones} of {milestones.length} complete</span>
+                            </div>
+                            <div className="flex gap-1">
+                              {milestones.slice(0, 10).map((m, idx) => (
+                                <div
+                                  key={m.id || idx}
+                                  className={`flex-1 h-2 rounded ${
+                                    m.completed ? 'bg-green-500' : 'bg-gray-700'
+                                  }`}
+                                  title={m.title}
+                                />
+                              ))}
+                              {milestones.length > 10 && (
+                                <span className="text-xs text-gray-600 ml-1">+{milestones.length - 10}</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="flex items-center gap-4">
+                          <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-white rounded-full transition-all"
+                              style={{ width: `${policy.progress}%` }}
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => { setEditingPolicy(policy); setShowPolicyModal(true) }}
+                              className="px-3 py-1.5 bg-white/10 border border-gray-700 rounded text-xs text-white hover:bg-white/20 transition-all"
+                            >
+                              Edit
+                            </button>
+                            {!hasMilestones && (
+                              <button
+                                onClick={() => {
+                                  const newProgress = Math.min(100, policy.progress + 10)
+                                  logPolicyProgress(policy.id, newProgress, `Progress updated to ${newProgress}%`)
+                                }}
+                                className="px-3 py-1.5 bg-green-500/20 border border-green-500/30 rounded text-xs text-green-400 hover:bg-green-500/30 transition-all"
+                              >
+                                +10%
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
-                      <span className="text-[10px] font-mono text-[#6e7681] whitespace-nowrap">{formatTime(entry.timestamp)}</span>
-                    </div>
+                    </Reveal>
                   )
                 })}
-                {activityLog.length === 0 && (
-                  <div className="p-12 text-center text-[#6e7681] text-sm">No activity recorded yet</div>
+                {filteredPolicies.length === 0 && (
+                  <div className="text-center py-16 text-gray-500">
+                    <p className="mb-4">No policies found</p>
+                    <button
+                      onClick={() => { setEditingPolicy(null); setShowPolicyModal(true) }}
+                      className="text-white hover:text-gray-300 transition-colors"
+                    >
+                      Create your first policy
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* SETTINGS */}
-        {activeTab === 'settings' && (
-          <div className="space-y-8">
+          {/* ==========================================
+              BUDGET & FUNDING TAB
+          ========================================== */}
+          {activeTab === 'budget' && (
             <div>
-              <div className="flex items-center gap-3 mb-2">
-                <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Configuration</span>
-              </div>
-              <h2 className="text-3xl font-semibold text-[#f0f6fc] tracking-tight">Settings</h2>
-              <p className="text-[#8b949e] mt-1">Data management and backup</p>
-            </div>
+              <Reveal>
+                <div className="mb-8">
+                  <h1 className="text-4xl font-bold mb-4">Budget & Funding</h1>
+                  <p className="text-gray-400 text-lg">Manage funding requests, allocations, and financial transparency.</p>
+                </div>
+              </Reveal>
 
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-[#f0f6fc] mb-2">Backup & Restore</h3>
-              <p className="text-[#8b949e] mb-6">Export your data for backup or import a previous backup.</p>
-              <div className="flex gap-3">
-                <Button onClick={handleExport}>Export Data</Button>
-                <label className="px-5 py-2.5 rounded-lg font-medium text-sm bg-[#21262d] text-[#8b949e] border border-[#30363d] hover:text-[#f0f6fc] hover:bg-[#30363d] hover:border-[#8b949e] cursor-pointer transition-all">
-                  Import Data
-                  <input type="file" accept=".json" onChange={handleImport} className="hidden" />
-                </label>
-              </div>
-            </div>
-
-            <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-6">
-              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[#30363d]">
-                <span className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest">Storage</span>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[
-                  { label: 'Policies', value: policies.length },
-                  { label: 'Announcements', value: announcements.length },
-                  { label: 'Feedback', value: feedback.length },
-                  { label: 'Activity Log', value: activityLog.length },
-                ].map(item => (
-                  <div key={item.label} className="bg-[#0d1117] border border-[#30363d] rounded-lg p-4">
-                    <p className="text-2xl font-mono font-semibold text-[#00d4ff]">{item.value}</p>
-                    <p className="text-[10px] font-semibold text-[#6e7681] uppercase tracking-widest mt-2">{item.label}</p>
+              {/* Budget Overview */}
+              <div className="grid md:grid-cols-4 gap-4 mb-12">
+                <Reveal delay={50}>
+                  <div className="bg-white/5 border border-gray-800 rounded-xl p-6">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Total Budget</p>
+                    <p className="text-3xl font-mono font-bold text-white">${budgetData.total?.toLocaleString()}</p>
                   </div>
+                </Reveal>
+                <Reveal delay={100}>
+                  <div className="bg-white/5 border border-gray-800 rounded-xl p-6">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Spent</p>
+                    <p className="text-3xl font-mono font-bold text-white">${budgetData.spent?.toLocaleString()}</p>
+                  </div>
+                </Reveal>
+                <Reveal delay={150}>
+                  <div className="bg-white/5 border border-gray-800 rounded-xl p-6">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Remaining</p>
+                    <p className="text-3xl font-mono font-bold text-white">${(budgetData.total - budgetData.spent)?.toLocaleString()}</p>
+                  </div>
+                </Reveal>
+                <Reveal delay={200}>
+                  <div className="bg-white/5 border border-gray-800 rounded-xl p-6">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Pending Requests</p>
+                    <p className="text-3xl font-mono font-bold text-white">{pendingRequests.length}</p>
+                  </div>
+                </Reveal>
+              </div>
+
+              {/* Pending Funding Requests */}
+              <Reveal>
+                <h2 className="text-xl font-semibold mb-6">Pending Funding Requests</h2>
+              </Reveal>
+
+              {pendingRequests.length === 0 ? (
+                <Reveal>
+                  <div className="bg-white/5 border border-gray-800 rounded-xl p-12 text-center">
+                    <p className="text-gray-400">No pending funding requests</p>
+                  </div>
+                </Reveal>
+              ) : (
+                <div className="space-y-4">
+                  {pendingRequests.map((request, i) => {
+                    const cat = BUDGET_CATEGORIES.find(c => c.id === request.category)
+                    return (
+                      <Reveal key={request.id} delay={i * 50}>
+                        <div className="bg-white/5 border border-gray-800 rounded-xl p-6">
+                          <div className="flex items-start justify-between mb-4">
+                            <div>
+                              <div className="flex items-center gap-3 mb-2">
+                                <h3 className="font-semibold text-white">{request.orgName}</h3>
+                                <span className="px-2 py-0.5 rounded text-xs font-mono bg-white/10 text-gray-400">
+                                  {cat?.name || request.category}
+                                </span>
+                              </div>
+                              <p className="text-sm text-gray-400 mb-2">{request.description}</p>
+                              <p className="text-xs text-gray-500">Submitted {formatRelativeTime(request.submittedAt)}</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-2xl font-mono font-bold text-white">${request.amount?.toLocaleString()}</p>
+                              {request.contextCheck && (
+                                <span className={`px-2 py-0.5 rounded text-xs font-mono mt-2 inline-block ${
+                                  request.contextCheck.flag === 'PASS'
+                                    ? 'bg-green-500/20 text-green-400'
+                                    : 'bg-yellow-500/20 text-yellow-400'
+                                }`}>
+                                  {request.contextCheck.flag === 'PASS' ? 'Realistic' : 'Review'}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {request.justification && (
+                            <div className="bg-black/30 rounded-lg p-4 mb-4">
+                              <p className="text-xs text-gray-500 uppercase mb-1">Justification</p>
+                              <p className="text-sm text-gray-300">{request.justification}</p>
+                            </div>
+                          )}
+
+                          {request.contextCheck?.note && (
+                            <p className="text-xs text-gray-500 mb-4">Context: {request.contextCheck.note}</p>
+                          )}
+
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => approveFundingRequest(request.id, request.amount)}
+                              className="px-4 py-2 bg-green-500/20 border border-green-500/30 rounded-lg text-sm text-green-400 hover:bg-green-500/30 transition-all"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => {
+                                const note = prompt('Reason for denial (optional):')
+                                denyFundingRequest(request.id, note || '')
+                              }}
+                              className="px-4 py-2 bg-red-500/20 border border-red-500/30 rounded-lg text-sm text-red-400 hover:bg-red-500/30 transition-all"
+                            >
+                              Deny
+                            </button>
+                          </div>
+                        </div>
+                      </Reveal>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* Export Options */}
+              <Reveal>
+                <div className="mt-12 pt-8 border-t border-gray-800">
+                  <h3 className="text-lg font-semibold mb-4">Export Financial Data</h3>
+                  <div className="flex gap-4">
+                    <button
+                      onClick={() => {
+                        const csv = exportLineItemsToCSV(budgetLineItems.length ? budgetLineItems : [])
+                        const blob = new Blob([csv], { type: 'text/csv' })
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement('a')
+                        a.href = url
+                        a.download = `budget-line-items-${new Date().toISOString().split('T')[0]}.csv`
+                        a.click()
+                      }}
+                      className="px-4 py-2 bg-white/10 border border-gray-700 rounded-lg text-sm text-white hover:bg-white/20 transition-all"
+                    >
+                      Export Line Items CSV
+                    </button>
+                    <button
+                      onClick={() => {
+                        const csv = exportFundingRequestsToCSV(fundingRequests)
+                        const blob = new Blob([csv], { type: 'text/csv' })
+                        const url = URL.createObjectURL(blob)
+                        const a = document.createElement('a')
+                        a.href = url
+                        a.download = `funding-requests-${new Date().toISOString().split('T')[0]}.csv`
+                        a.click()
+                      }}
+                      className="px-4 py-2 bg-white/10 border border-gray-700 rounded-lg text-sm text-white hover:bg-white/20 transition-all"
+                    >
+                      Export Requests CSV
+                    </button>
+                  </div>
+                </div>
+              </Reveal>
+            </div>
+          )}
+
+          {/* ==========================================
+              CONTENT TAB
+          ========================================== */}
+          {activeTab === 'content' && (
+            <div>
+              <Reveal>
+                <div className="mb-8">
+                  <h1 className="text-4xl font-bold mb-4">Content Management</h1>
+                  <p className="text-gray-400 text-lg">Manage announcements and site-wide content.</p>
+                </div>
+              </Reveal>
+
+              {/* Announcements */}
+              <Reveal>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-semibold">Announcements</h2>
+                  <button
+                    onClick={() => { setEditingAnnouncement(null); setShowAnnouncementModal(true) }}
+                    className="px-4 py-2 bg-white text-black font-medium rounded-lg hover:bg-gray-200 transition-all text-sm"
+                  >
+                    + New Announcement
+                  </button>
+                </div>
+              </Reveal>
+
+              <div className="space-y-4 mb-12">
+                {announcements.map((ann, i) => (
+                  <Reveal key={ann.id} delay={i * 50}>
+                    <div className="bg-white/5 border border-gray-800 rounded-xl p-6">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h3 className="font-semibold text-white mb-1">{ann.title}</h3>
+                          <p className="text-sm text-gray-400">{ann.content}</p>
+                        </div>
+                        <div className="flex gap-2 ml-4">
+                          <button
+                            onClick={() => { setEditingAnnouncement(ann); setShowAnnouncementModal(true) }}
+                            className="px-3 py-1.5 bg-white/10 border border-gray-700 rounded text-xs text-white hover:bg-white/20 transition-all"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm('Delete this announcement?')) {
+                                deleteAnnouncement(ann.id)
+                              }
+                            }}
+                            className="px-3 py-1.5 bg-red-500/20 border border-red-500/30 rounded text-xs text-red-400 hover:bg-red-500/30 transition-all"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs text-gray-500">
+                        <span>{ann.category || 'General'}</span>
+                        <span>{formatDate(ann.createdAt)}</span>
+                        {ann.pinned && <span className="text-yellow-400">Pinned</span>}
+                      </div>
+                    </div>
+                  </Reveal>
                 ))}
+                {announcements.length === 0 && (
+                  <div className="bg-white/5 border border-gray-800 rounded-xl p-12 text-center">
+                    <p className="text-gray-400">No announcements yet</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Site Content */}
+              <Reveal>
+                <div className="pt-8 border-t border-gray-800">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h2 className="text-xl font-semibold">Site Content Overrides</h2>
+                      <p className="text-sm text-gray-500 mt-1">Custom content set via inline editing</p>
+                    </div>
+                    {Object.keys(siteContent).length > 0 && (
+                      <button
+                        onClick={() => {
+                          if (confirm('Reset all content to defaults? This cannot be undone.')) {
+                            resetAllSiteContent()
+                          }
+                        }}
+                        className="px-4 py-2 bg-red-500/20 border border-red-500/30 rounded-lg text-sm text-red-400 hover:bg-red-500/30 transition-all"
+                      >
+                        Reset All to Default
+                      </button>
+                    )}
+                  </div>
+                  <div className="bg-white/5 border border-gray-800 rounded-xl p-6">
+                    {Object.keys(siteContent).length === 0 ? (
+                      <p className="text-gray-500 text-center py-4">No content overrides. Use edit mode on pages to customize text.</p>
+                    ) : (
+                      <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                        {Object.entries(siteContent).map(([key, value]) => (
+                          <div key={key} className="flex items-center justify-between p-3 bg-black/30 rounded-lg">
+                            <div className="flex-1 min-w-0 mr-4">
+                              <p className="text-xs text-gray-500 font-mono truncate">{key}</p>
+                              <p className="text-sm text-white truncate">{String(value)}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Reveal>
+            </div>
+          )}
+
+          {/* ==========================================
+              FEEDBACK TAB
+          ========================================== */}
+          {activeTab === 'feedback' && (
+            <div>
+              <Reveal>
+                <div className="mb-8">
+                  <h1 className="text-4xl font-bold mb-4">Student Feedback</h1>
+                  <p className="text-gray-400 text-lg">Review and respond to feedback from students.</p>
+                </div>
+              </Reveal>
+
+              {/* Feedback Stats */}
+              <div className="grid md:grid-cols-4 gap-4 mb-12">
+                <Reveal delay={50}>
+                  <div className="bg-white/5 border border-gray-800 rounded-xl p-6">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Total</p>
+                    <p className="text-3xl font-mono font-bold text-white">{feedback.length}</p>
+                  </div>
+                </Reveal>
+                <Reveal delay={100}>
+                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-6">
+                    <p className="text-xs text-yellow-400 uppercase tracking-wider mb-2">New</p>
+                    <p className="text-3xl font-mono font-bold text-yellow-400">{feedback.filter(f => f.status === 'new').length}</p>
+                  </div>
+                </Reveal>
+                <Reveal delay={150}>
+                  <div className="bg-white/5 border border-gray-800 rounded-xl p-6">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">In Review</p>
+                    <p className="text-3xl font-mono font-bold text-white">{feedback.filter(f => f.status === 'in_review').length}</p>
+                  </div>
+                </Reveal>
+                <Reveal delay={200}>
+                  <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-6">
+                    <p className="text-xs text-green-400 uppercase tracking-wider mb-2">Resolved</p>
+                    <p className="text-3xl font-mono font-bold text-green-400">{feedback.filter(f => f.status === 'resolved').length}</p>
+                  </div>
+                </Reveal>
+              </div>
+
+              {/* Feedback List */}
+              <div className="space-y-4">
+                {feedback.map((item, i) => (
+                  <Reveal key={item.id} delay={i * 30}>
+                    <div className={`bg-white/5 border rounded-xl p-6 ${
+                      item.status === 'new' ? 'border-yellow-500/30' : 'border-gray-800'
+                    }`}>
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className={`px-2 py-0.5 rounded text-xs font-mono ${
+                              item.status === 'new' ? 'bg-yellow-500/20 text-yellow-400' :
+                              item.status === 'in_review' ? 'bg-blue-500/20 text-blue-400' :
+                              item.status === 'resolved' ? 'bg-green-500/20 text-green-400' :
+                              'bg-gray-500/20 text-gray-400'
+                            }`}>
+                              {item.status?.toUpperCase()}
+                            </span>
+                            <span className="text-xs text-gray-500">{item.category || 'General'}</span>
+                          </div>
+                          <p className="text-white mb-2">{item.message}</p>
+                          <p className="text-xs text-gray-500">{formatRelativeTime(item.submittedAt)}</p>
+                        </div>
+                      </div>
+                      {item.status !== 'resolved' && (
+                        <div className="flex gap-2 mt-4 pt-4 border-t border-gray-800">
+                          {item.status === 'new' && (
+                            <button
+                              onClick={() => updateFeedbackStatus(item.id, 'in_review')}
+                              className="px-3 py-1.5 bg-blue-500/20 border border-blue-500/30 rounded text-xs text-blue-400 hover:bg-blue-500/30 transition-all"
+                            >
+                              Mark In Review
+                            </button>
+                          )}
+                          <button
+                            onClick={() => {
+                              const note = prompt('Resolution note (optional):')
+                              updateFeedbackStatus(item.id, 'resolved', note || '')
+                            }}
+                            className="px-3 py-1.5 bg-green-500/20 border border-green-500/30 rounded text-xs text-green-400 hover:bg-green-500/30 transition-all"
+                          >
+                            Mark Resolved
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </Reveal>
+                ))}
+                {feedback.length === 0 && (
+                  <div className="bg-white/5 border border-gray-800 rounded-xl p-12 text-center">
+                    <p className="text-gray-400">No feedback submissions yet</p>
+                  </div>
+                )}
               </div>
             </div>
+          )}
 
-            <div className="bg-[#f85149]/5 border border-[#f85149]/30 rounded-lg p-6">
-              <h3 className="text-lg font-semibold text-[#f85149] mb-2">Danger Zone</h3>
-              <p className="text-[#8b949e] mb-6">This action cannot be undone. All data will be reset to initial state.</p>
-              <Button variant="danger" onClick={() => { if(confirm('Reset ALL data?')) { if(confirm('Are you sure?')) { resetAllData(); notify('Data reset') }}}}>Reset All Data</Button>
+          {/* ==========================================
+              SETTINGS TAB
+          ========================================== */}
+          {activeTab === 'settings' && (
+            <div>
+              <Reveal>
+                <div className="mb-8">
+                  <h1 className="text-4xl font-bold mb-4">Settings</h1>
+                  <p className="text-gray-400 text-lg">Manage platform data, backups, and system settings.</p>
+                </div>
+              </Reveal>
+
+              <div className="grid lg:grid-cols-2 gap-8">
+                {/* Data Management */}
+                <Reveal>
+                  <div className="bg-white/5 border border-gray-800 rounded-xl p-8">
+                    <h2 className="text-xl font-semibold mb-6">Data Management</h2>
+
+                    <div className="space-y-4">
+                      <div className="p-4 bg-black/30 rounded-lg">
+                        <h3 className="font-medium text-white mb-2">Export All Data</h3>
+                        <p className="text-sm text-gray-400 mb-4">Download a complete backup of all platform data including policies, budget, feedback, and settings.</p>
+                        <button
+                          onClick={handleExportAll}
+                          className="px-4 py-2 bg-white text-black font-medium rounded-lg hover:bg-gray-200 transition-all text-sm"
+                        >
+                          Download Backup
+                        </button>
+                      </div>
+
+                      <div className="p-4 bg-black/30 rounded-lg">
+                        <h3 className="font-medium text-white mb-2">Import Data</h3>
+                        <p className="text-sm text-gray-400 mb-4">Restore from a previous backup or import data from another platform.</p>
+                        <label className="px-4 py-2 bg-white/10 border border-gray-700 rounded-lg text-sm text-white hover:bg-white/20 transition-all cursor-pointer inline-block">
+                          Choose File
+                          <input
+                            type="file"
+                            accept=".json"
+                            onChange={handleImport}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </Reveal>
+
+                {/* Danger Zone */}
+                <Reveal delay={100}>
+                  <div className="bg-red-500/5 border border-red-500/30 rounded-xl p-8">
+                    <h2 className="text-xl font-semibold text-red-400 mb-6">Danger Zone</h2>
+
+                    <div className="space-y-4">
+                      <div className="p-4 bg-black/30 rounded-lg">
+                        <h3 className="font-medium text-white mb-2">Reset All Data</h3>
+                        <p className="text-sm text-gray-400 mb-4">Permanently delete all data and start fresh. This action cannot be undone.</p>
+                        {!showConfirmReset ? (
+                          <button
+                            onClick={() => setShowConfirmReset(true)}
+                            className="px-4 py-2 bg-red-500/20 border border-red-500/30 rounded-lg text-sm text-red-400 hover:bg-red-500/30 transition-all"
+                          >
+                            Reset Platform
+                          </button>
+                        ) : (
+                          <div className="space-y-3">
+                            <p className="text-sm text-red-400 font-medium">Are you absolutely sure? This will delete everything.</p>
+                            <div className="flex gap-3">
+                              <button
+                                onClick={() => {
+                                  resetAllData()
+                                  setShowConfirmReset(false)
+                                  alert('Platform has been reset.')
+                                }}
+                                className="px-4 py-2 bg-red-500 text-white font-medium rounded-lg hover:bg-red-600 transition-all text-sm"
+                              >
+                                Yes, Delete Everything
+                              </button>
+                              <button
+                                onClick={() => setShowConfirmReset(false)}
+                                className="px-4 py-2 bg-white/10 border border-gray-700 rounded-lg text-sm text-white hover:bg-white/20 transition-all"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </Reveal>
+
+                {/* Platform Info */}
+                <Reveal delay={150}>
+                  <div className="bg-white/5 border border-gray-800 rounded-xl p-8">
+                    <h2 className="text-xl font-semibold mb-6">Platform Statistics</h2>
+                    <div className="space-y-3">
+                      <div className="flex justify-between py-2 border-b border-gray-800">
+                        <span className="text-gray-400">Total Policies</span>
+                        <span className="font-mono text-white">{policies.length}</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b border-gray-800">
+                        <span className="text-gray-400">Announcements</span>
+                        <span className="font-mono text-white">{announcements.length}</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b border-gray-800">
+                        <span className="text-gray-400">Feedback Submissions</span>
+                        <span className="font-mono text-white">{feedback.length}</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b border-gray-800">
+                        <span className="text-gray-400">Funding Requests</span>
+                        <span className="font-mono text-white">{fundingRequests.length}</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b border-gray-800">
+                        <span className="text-gray-400">Activity Log Entries</span>
+                        <span className="font-mono text-white">{activityLog.length}</span>
+                      </div>
+                      <div className="flex justify-between py-2">
+                        <span className="text-gray-400">Content Overrides</span>
+                        <span className="font-mono text-white">{Object.keys(siteContent).length}</span>
+                      </div>
+                    </div>
+                  </div>
+                </Reveal>
+
+                {/* Quick Links */}
+                <Reveal delay={200}>
+                  <div className="bg-white/5 border border-gray-800 rounded-xl p-8">
+                    <h2 className="text-xl font-semibold mb-6">Quick Links</h2>
+                    <div className="space-y-3">
+                      <Link
+                        href="/"
+                        className="flex items-center justify-between p-3 bg-black/30 rounded-lg hover:bg-black/50 transition-all"
+                      >
+                        <span className="text-white">View Public Site</span>
+                        <span className="text-gray-500">→</span>
+                      </Link>
+                      <Link
+                        href="/budget"
+                        className="flex items-center justify-between p-3 bg-black/30 rounded-lg hover:bg-black/50 transition-all"
+                      >
+                        <span className="text-white">Budget Page</span>
+                        <span className="text-gray-500">→</span>
+                      </Link>
+                      <Link
+                        href="/admin/scroll"
+                        className="flex items-center justify-between p-3 bg-black/30 rounded-lg hover:bg-black/50 transition-all"
+                      >
+                        <span className="text-white">The Scroll</span>
+                        <span className="text-gray-500">→</span>
+                      </Link>
+                      <Link
+                        href="/setup"
+                        className="flex items-center justify-between p-3 bg-black/30 rounded-lg hover:bg-black/50 transition-all"
+                      >
+                        <span className="text-white">Setup Guide</span>
+                        <span className="text-gray-500">→</span>
+                      </Link>
+                    </div>
+                  </div>
+                </Reveal>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+
+      {/* ==========================================
+          POLICY MODAL
+      ========================================== */}
+      {showPolicyModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0a0a0a] border border-gray-800 rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-8">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-2xl font-bold">{editingPolicy ? 'Edit Policy' : 'New Policy'}</h2>
+                <button
+                  onClick={() => setShowPolicyModal(false)}
+                  className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center hover:bg-white/20 transition-all"
+                >
+                  ×
+                </button>
+              </div>
+
+              <PolicyForm
+                policy={editingPolicy}
+                onSave={(data) => {
+                  if (editingPolicy) {
+                    updatePolicy(editingPolicy.id, data)
+                  } else {
+                    addPolicy(data)
+                  }
+                  setShowPolicyModal(false)
+                }}
+                onDelete={editingPolicy ? () => {
+                  if (confirm(`Delete "${editingPolicy.title}"? This cannot be undone.`)) {
+                    deletePolicy(editingPolicy.id)
+                    setShowPolicyModal(false)
+                  }
+                } : null}
+                onCancel={() => setShowPolicyModal(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================
+          ANNOUNCEMENT MODAL
+      ========================================== */}
+      {showAnnouncementModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0a0a0a] border border-gray-800 rounded-2xl max-w-xl w-full">
+            <div className="p-8">
+              <div className="flex items-center justify-between mb-8">
+                <h2 className="text-2xl font-bold">{editingAnnouncement ? 'Edit Announcement' : 'New Announcement'}</h2>
+                <button
+                  onClick={() => setShowAnnouncementModal(false)}
+                  className="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center hover:bg-white/20 transition-all"
+                >
+                  ×
+                </button>
+              </div>
+
+              <AnnouncementForm
+                announcement={editingAnnouncement}
+                onSave={(data) => {
+                  if (editingAnnouncement) {
+                    updateAnnouncement(editingAnnouncement.id, data)
+                  } else {
+                    addAnnouncement(data)
+                  }
+                  setShowAnnouncementModal(false)
+                }}
+                onCancel={() => setShowAnnouncementModal(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ==========================================
+// POLICY FORM COMPONENT WITH MILESTONES
+// ==========================================
+function PolicyForm({ policy, onSave, onDelete, onCancel }) {
+  const [form, setForm] = useState({
+    title: policy?.title || '',
+    description: policy?.description || '',
+    department: policy?.department || 'wellness',
+    status: policy?.status || 'planned',
+    priority: policy?.priority || 'medium',
+    milestones: policy?.milestones || [],
+  })
+  const [showTemplates, setShowTemplates] = useState(false)
+  const [newMilestone, setNewMilestone] = useState('')
+
+  // Calculate progress from milestones
+  const calculatedProgress = useMemo(() => {
+    if (form.milestones.length === 0) return policy?.progress || 0
+    const totalWeight = form.milestones.reduce((sum, m) => sum + (m.weight || 1), 0)
+    const completedWeight = form.milestones.reduce((sum, m) => m.completed ? sum + (m.weight || 1) : sum, 0)
+    return totalWeight > 0 ? Math.round((completedWeight / totalWeight) * 100) : 0
+  }, [form.milestones, policy?.progress])
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (!form.title) return alert('Title is required')
+    onSave({
+      ...form,
+      progress: calculatedProgress,
+    })
+  }
+
+  const applyTemplate = (templateId) => {
+    const template = MILESTONE_TEMPLATES[templateId]
+    if (template) {
+      setForm({
+        ...form,
+        milestones: template.milestones.map((m, i) => ({
+          id: `ms-${Date.now()}-${i}`,
+          title: m.title,
+          weight: m.weight,
+          completed: false,
+        }))
+      })
+      setShowTemplates(false)
+    }
+  }
+
+  const addMilestone = () => {
+    if (!newMilestone.trim()) return
+    setForm({
+      ...form,
+      milestones: [
+        ...form.milestones,
+        {
+          id: `ms-${Date.now()}`,
+          title: newMilestone.trim(),
+          weight: 10,
+          completed: false,
+        }
+      ]
+    })
+    setNewMilestone('')
+  }
+
+  const updateMilestone = (id, updates) => {
+    setForm({
+      ...form,
+      milestones: form.milestones.map(m => m.id === id ? { ...m, ...updates } : m)
+    })
+  }
+
+  const deleteMilestone = (id) => {
+    setForm({
+      ...form,
+      milestones: form.milestones.filter(m => m.id !== id)
+    })
+  }
+
+  const moveMilestone = (index, direction) => {
+    const newMilestones = [...form.milestones]
+    const newIndex = index + direction
+    if (newIndex < 0 || newIndex >= newMilestones.length) return
+    [newMilestones[index], newMilestones[newIndex]] = [newMilestones[newIndex], newMilestones[index]]
+    setForm({ ...form, milestones: newMilestones })
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div>
+        <label className="block text-sm text-gray-400 mb-2">Policy Title *</label>
+        <input
+          type="text"
+          value={form.title}
+          onChange={(e) => setForm({ ...form, title: e.target.value })}
+          className="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:border-white focus:outline-none"
+          placeholder="Enter policy title"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm text-gray-400 mb-2">Description</label>
+        <textarea
+          value={form.description}
+          onChange={(e) => setForm({ ...form, description: e.target.value })}
+          rows={3}
+          className="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:border-white focus:outline-none resize-none"
+          placeholder="Describe the policy..."
+        />
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className="block text-sm text-gray-400 mb-2">Department</label>
+          <select
+            value={form.department}
+            onChange={(e) => setForm({ ...form, department: e.target.value })}
+            className="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg text-white focus:border-white focus:outline-none"
+          >
+            {defaultDepartments.map(dept => (
+              <option key={dept.id} value={dept.id}>{dept.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm text-gray-400 mb-2">Status</label>
+          <select
+            value={form.status}
+            onChange={(e) => setForm({ ...form, status: e.target.value })}
+            className="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg text-white focus:border-white focus:outline-none"
+          >
+            <option value="planned">Planned</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm text-gray-400 mb-2">Priority</label>
+          <select
+            value={form.priority}
+            onChange={(e) => setForm({ ...form, priority: e.target.value })}
+            className="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg text-white focus:border-white focus:outline-none"
+          >
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Milestones Section */}
+      <div className="pt-4 border-t border-gray-800">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <label className="block text-sm text-gray-400">Progress Milestones</label>
+            <p className="text-xs text-gray-600">Track progress with checkable milestones</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-2xl font-mono font-bold text-white">{calculatedProgress}%</span>
+            <button
+              type="button"
+              onClick={() => setShowTemplates(!showTemplates)}
+              className="px-3 py-1.5 bg-white/10 border border-gray-700 rounded text-xs text-white hover:bg-white/20 transition-all"
+            >
+              {showTemplates ? 'Hide Templates' : 'Use Template'}
+            </button>
+          </div>
+        </div>
+
+        {/* Template Selection */}
+        {showTemplates && (
+          <div className="mb-4 p-4 bg-black/50 border border-gray-800 rounded-lg">
+            <p className="text-xs text-gray-500 mb-3">Choose a predefined template:</p>
+            <div className="grid grid-cols-2 gap-2">
+              {Object.entries(MILESTONE_TEMPLATES).map(([id, template]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => applyTemplate(id)}
+                  className="p-3 bg-white/5 border border-gray-700 rounded-lg text-left hover:bg-white/10 transition-all"
+                >
+                  <p className="text-sm text-white">{template.name}</p>
+                  <p className="text-xs text-gray-500">{template.milestones.length} milestones</p>
+                </button>
+              ))}
             </div>
           </div>
         )}
-      </main>
-    </div>
+
+        {/* Milestones List */}
+        <div className="space-y-2 mb-4 max-h-[300px] overflow-y-auto">
+          {form.milestones.map((milestone, index) => (
+            <div
+              key={milestone.id}
+              className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${
+                milestone.completed
+                  ? 'bg-green-500/10 border-green-500/30'
+                  : 'bg-black/30 border-gray-800'
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={milestone.completed}
+                onChange={(e) => updateMilestone(milestone.id, { completed: e.target.checked })}
+                className="w-5 h-5 rounded border-gray-600 bg-black text-green-500 focus:ring-green-500"
+              />
+              <input
+                type="text"
+                value={milestone.title}
+                onChange={(e) => updateMilestone(milestone.id, { title: e.target.value })}
+                className={`flex-1 bg-transparent border-none text-sm focus:outline-none ${
+                  milestone.completed ? 'text-gray-500 line-through' : 'text-white'
+                }`}
+              />
+              <div className="flex items-center gap-1">
+                <input
+                  type="number"
+                  value={milestone.weight}
+                  onChange={(e) => updateMilestone(milestone.id, { weight: parseInt(e.target.value) || 1 })}
+                  className="w-12 px-2 py-1 bg-black/50 border border-gray-700 rounded text-xs text-center text-gray-400 focus:outline-none focus:border-white"
+                  min="1"
+                  max="100"
+                  title="Weight (importance)"
+                />
+                <span className="text-xs text-gray-600">wt</span>
+              </div>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => moveMilestone(index, -1)}
+                  disabled={index === 0}
+                  className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  onClick={() => moveMilestone(index, 1)}
+                  disabled={index === form.milestones.length - 1}
+                  className="w-6 h-6 flex items-center justify-center text-gray-500 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  onClick={() => deleteMilestone(milestone.id)}
+                  className="w-6 h-6 flex items-center justify-center text-red-400 hover:text-red-300"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          ))}
+          {form.milestones.length === 0 && (
+            <p className="text-center text-gray-600 py-4 text-sm">No milestones. Add one below or use a template.</p>
+          )}
+        </div>
+
+        {/* Add Milestone */}
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newMilestone}
+            onChange={(e) => setNewMilestone(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addMilestone())}
+            className="flex-1 px-4 py-2 bg-black border border-gray-800 rounded-lg text-sm text-white placeholder-gray-600 focus:border-white focus:outline-none"
+            placeholder="Add a new milestone..."
+          />
+          <button
+            type="button"
+            onClick={addMilestone}
+            className="px-4 py-2 bg-white/10 border border-gray-700 rounded-lg text-sm text-white hover:bg-white/20 transition-all"
+          >
+            Add
+          </button>
+        </div>
+      </div>
+
+      {/* Progress Bar Preview */}
+      <div>
+        <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+          <span>Overall Progress</span>
+          <span>{calculatedProgress}%</span>
+        </div>
+        <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-white rounded-full transition-all"
+            style={{ width: `${calculatedProgress}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-4 pt-4">
+        <button
+          type="submit"
+          className="flex-1 px-6 py-3 bg-white text-black font-medium rounded-lg hover:bg-gray-200 transition-all"
+        >
+          {policy ? 'Save Changes' : 'Create Policy'}
+        </button>
+        {onDelete && (
+          <button
+            type="button"
+            onClick={onDelete}
+            className="px-6 py-3 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 hover:bg-red-500/30 transition-all"
+          >
+            Delete
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-6 py-3 bg-white/10 border border-gray-700 rounded-lg text-white hover:bg-white/20 transition-all"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  )
+}
+
+// ==========================================
+// ANNOUNCEMENT FORM COMPONENT
+// ==========================================
+function AnnouncementForm({ announcement, onSave, onCancel }) {
+  const [form, setForm] = useState({
+    title: announcement?.title || '',
+    content: announcement?.content || '',
+    category: announcement?.category || 'general',
+    pinned: announcement?.pinned || false,
+  })
+
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (!form.title || !form.content) return alert('Title and content are required')
+    onSave(form)
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div>
+        <label className="block text-sm text-gray-400 mb-2">Title</label>
+        <input
+          type="text"
+          value={form.title}
+          onChange={(e) => setForm({ ...form, title: e.target.value })}
+          className="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:border-white focus:outline-none"
+          placeholder="Announcement title"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm text-gray-400 mb-2">Content</label>
+        <textarea
+          value={form.content}
+          onChange={(e) => setForm({ ...form, content: e.target.value })}
+          rows={4}
+          className="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:border-white focus:outline-none resize-none"
+          placeholder="Write your announcement..."
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm text-gray-400 mb-2">Category</label>
+        <select
+          value={form.category}
+          onChange={(e) => setForm({ ...form, category: e.target.value })}
+          className="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg text-white focus:border-white focus:outline-none"
+        >
+          <option value="general">General</option>
+          <option value="wellness">Wellness</option>
+          <option value="academic">Academic</option>
+          <option value="events">Events</option>
+          <option value="budget">Budget</option>
+          <option value="urgent">Urgent</option>
+        </select>
+      </div>
+
+      <label className="flex items-center gap-3 cursor-pointer">
+        <input
+          type="checkbox"
+          checked={form.pinned}
+          onChange={(e) => setForm({ ...form, pinned: e.target.checked })}
+          className="w-5 h-5 rounded border-gray-700 bg-black"
+        />
+        <span className="text-sm text-gray-400">Pin this announcement</span>
+      </label>
+
+      <div className="flex gap-4 pt-4">
+        <button
+          type="submit"
+          className="flex-1 px-6 py-3 bg-white text-black font-medium rounded-lg hover:bg-gray-200 transition-all"
+        >
+          {announcement ? 'Save Changes' : 'Post Announcement'}
+        </button>
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-6 py-3 bg-white/10 border border-gray-700 rounded-lg text-white hover:bg-white/20 transition-all"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
   )
 }
