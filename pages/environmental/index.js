@@ -1,12 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import Head from 'next/head'
 import Layout from '../../components/Layout'
-import { Input, Select, Textarea } from '../../components/FormInput'
 import { useApp } from '../../lib/store'
 import { departmentContacts, departmentFAQs, departmentAnnouncements, serviceGuides } from '../../lib/data'
 import { Editable, EditModeToggle } from '../../components/InlineEditor'
 import {
-  submitForm,
   calendarEvents,
   externalLinks,
 } from '../../lib/integrations'
@@ -59,9 +57,6 @@ export default function EnvironmentalPage() {
   const [activeTab, setActiveTab] = useState('overview')
   const [showAdoptModal, setShowAdoptModal] = useState(false)
   const [showDonateModal, setShowDonateModal] = useState(false)
-  const [adoptForm, setAdoptForm] = useState({ orgName: '', contact: '', email: '', space: '' })
-  const [donateForm, setDonateForm] = useState({ name: '', email: '', items: '', pickupDate: '' })
-  const [formSubmitted, setFormSubmitted] = useState(false)
   const { policies } = useApp()
 
   const deptPolicies = policies.filter(p => p.department === 'environmental')
@@ -83,67 +78,6 @@ export default function EnvironmentalPage() {
   const adoptGuide = serviceGuides['adopt-space']
   const tgtgGuide = serviceGuides['too-good-to-go']
   const [expandedFaq, setExpandedFaq] = useState(null)
-  const [feedbackForm, setFeedbackForm] = useState({ topic: '', message: '', email: '' })
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isAdoptSubmitting, setIsAdoptSubmitting] = useState(false)
-  const [isDonateSubmitting, setIsDonateSubmitting] = useState(false)
-
-  const handleFeedbackSubmit = async (e) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    try {
-      await submitForm('environmental-feedback', {
-        ...feedbackForm,
-        department: 'environmental',
-        timestamp: new Date().toISOString(),
-      })
-      setFeedbackSubmitted(true)
-      setFeedbackForm({ topic: '', message: '', email: '' })
-    } catch (error) {
-      console.error('Feedback submission error:', error)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const handleAdoptSubmit = async (e) => {
-    e.preventDefault()
-    setIsAdoptSubmitting(true)
-    try {
-      await submitForm('adopt-a-space', {
-        ...adoptForm,
-        department: 'environmental',
-        timestamp: new Date().toISOString(),
-      })
-      setFormSubmitted(true)
-      setShowAdoptModal(false)
-      setAdoptForm({ orgName: '', contact: '', email: '', space: '' })
-    } catch (error) {
-      console.error('Adopt submission error:', error)
-    } finally {
-      setIsAdoptSubmitting(false)
-    }
-  }
-
-  const handleDonateSubmit = async (e) => {
-    e.preventDefault()
-    setIsDonateSubmitting(true)
-    try {
-      await submitForm('donation-schedule', {
-        ...donateForm,
-        department: 'environmental',
-        timestamp: new Date().toISOString(),
-      })
-      setFormSubmitted(true)
-      setShowDonateModal(false)
-      setDonateForm({ name: '', email: '', items: '', pickupDate: '' })
-    } catch (error) {
-      console.error('Donation submission error:', error)
-    } finally {
-      setIsDonateSubmitting(false)
-    }
-  }
 
   const PolicyProgress = ({ policy }) => (
     <div className="card p-6 mb-8">
@@ -215,15 +149,6 @@ export default function EnvironmentalPage() {
 
       <main className="section-padding">
         <div className="max-w-[1600px] mx-auto px-6 lg:px-12">
-          {formSubmitted && (
-            <Reveal>
-              <div className="card-highlight p-6 mb-8">
-                <p className="text-white font-medium"><Editable k="environmental.form.submittedMessage">Your submission has been received! We'll be in touch soon.</Editable></p>
-                <button onClick={() => setFormSubmitted(false)} className="text-gray-400 text-sm font-medium mt-3 hover:text-white transition-colors"><Editable k="environmental.form.dismissButton">Dismiss</Editable></button>
-              </div>
-            </Reveal>
-          )}
-
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div>
@@ -610,29 +535,14 @@ export default function EnvironmentalPage() {
                     {showAdoptModal ? 'Close' : 'Adopt a Space'}
                   </button>
                   {showAdoptModal && (
-                    <div className="mt-6 pt-6 border-t border-gray-800 space-y-4">
-                      <form onSubmit={handleAdoptSubmit} className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <Input label="Organization Name" name="orgName" value={adoptForm.orgName} onChange={e => setAdoptForm({...adoptForm, orgName: e.target.value})} required />
-                          <Input label="Contact Name" name="contact" value={adoptForm.contact} onChange={e => setAdoptForm({...adoptForm, contact: e.target.value})} required />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <Input label="Email" type="email" name="email" value={adoptForm.email} onChange={e => setAdoptForm({...adoptForm, email: e.target.value})} required />
-                          <Select label="Preferred Space" name="space" value={adoptForm.space} onChange={e => setAdoptForm({...adoptForm, space: e.target.value})} required
-                            options={[
-                              { value: 'polk', label: 'Polk Place Quad' },
-                              { value: 'mccorkle', label: 'McCorkle Place' },
-                              { value: 'pit', label: 'The Pit Area' },
-                              { value: 'south', label: 'South Campus Walkways' },
-                              { value: 'stadium', label: 'Stadium Drive' },
-                              { value: 'kenan', label: 'Kenan Woods Trail' },
-                            ]}
-                          />
-                        </div>
-                        <button type="submit" disabled={isAdoptSubmitting} className="btn-primary w-full">
-                          {isAdoptSubmitting ? 'Submitting...' : 'Submit'}
-                        </button>
-                      </form>
+                    <div className="mt-6 pt-6 border-t border-gray-800">
+                      <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                      <iframe
+                        src="https://unc.qualtrics.com/jfe/form/SV_ENV_ADOPT"
+                        className="w-full rounded-lg border border-gray-800 bg-black"
+                        style={{ height: '500px' }}
+                        title="Adopt-a-Space Application"
+                      />
                     </div>
                   )}
                 </div>
@@ -811,18 +721,14 @@ export default function EnvironmentalPage() {
                       {showDonateModal ? 'Close' : 'Schedule Donation'}
                     </button>
                     {showDonateModal && (
-                      <div className="mt-6 pt-6 border-t border-gray-800 space-y-4">
-                        <form onSubmit={handleDonateSubmit} className="space-y-4">
-                          <div className="grid grid-cols-2 gap-4">
-                            <Input label="Name" name="name" value={donateForm.name} onChange={e => setDonateForm({...donateForm, name: e.target.value})} required />
-                            <Input label="Email" type="email" name="email" value={donateForm.email} onChange={e => setDonateForm({...donateForm, email: e.target.value})} required />
-                          </div>
-                          <Textarea label="Items to Donate" name="items" value={donateForm.items} onChange={e => setDonateForm({...donateForm, items: e.target.value})} required rows={2} />
-                          <Input label="Preferred Pickup Date" type="date" name="pickupDate" value={donateForm.pickupDate} onChange={e => setDonateForm({...donateForm, pickupDate: e.target.value})} required />
-                          <button type="submit" disabled={isDonateSubmitting} className="btn-primary w-full">
-                            {isDonateSubmitting ? 'Submitting...' : 'Submit'}
-                          </button>
-                        </form>
+                      <div className="mt-6 pt-6 border-t border-gray-800">
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                        <iframe
+                          src="https://unc.qualtrics.com/jfe/form/SV_ENV_DONATE"
+                          className="w-full rounded-lg border border-gray-800 bg-black"
+                          style={{ height: '500px' }}
+                          title="Donation Scheduling"
+                        />
                       </div>
                     )}
                   </div>
@@ -890,37 +796,15 @@ export default function EnvironmentalPage() {
                   <Reveal delay={200}>
                     <div className="card p-8 mt-6">
                       <h3 className="font-semibold text-white text-lg mb-6"><Editable k="environmental.faq.feedbackTitle">Send Feedback</Editable></h3>
-                      {feedbackSubmitted ? (
-                        <div className="text-center py-6">
-                          <div className="w-14 h-14 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <span className="text-3xl text-white">&#10003;</span>
-                          </div>
-                          <p className="text-white font-medium"><Editable k="environmental.faq.feedbackThanks">Thanks for your feedback!</Editable></p>
-                          <button onClick={() => setFeedbackSubmitted(false)} className="text-gray-400 text-sm mt-3 hover:text-white transition-colors"><Editable k="environmental.faq.sendAnother">Send another</Editable></button>
-                        </div>
-                      ) : (
-                        <form onSubmit={handleFeedbackSubmit} className="space-y-5">
-                          <Select label="Topic" name="topic" value={feedbackForm.topic} onChange={e => setFeedbackForm({...feedbackForm, topic: e.target.value})} required
-                            options={[
-                              { value: 'sustain-week', label: 'Sustain Carolina Week' },
-                              { value: 'too-good-to-go', label: 'Too Good To Go' },
-                              { value: 'adopt-a-space', label: 'Adopt-a-Space' },
-                              { value: 'composting', label: 'Composting' },
-                              { value: 'moveout-shop', label: 'Move-Out Shop' },
-                              { value: 'other', label: 'Other' },
-                            ]}
-                          />
-                          <Textarea label="Message" name="message" value={feedbackForm.message} onChange={e => setFeedbackForm({...feedbackForm, message: e.target.value})} required rows={3} />
-                          <Input label="Email (optional)" type="email" name="email" value={feedbackForm.email} onChange={e => setFeedbackForm({...feedbackForm, email: e.target.value})} />
-                          <button
-                            type="submit"
-                            disabled={isSubmitting}
-                            className="btn-primary w-full"
-                          >
-                            {isSubmitting ? 'Submitting...' : <Editable k="environmental.faq.submitFeedbackButton">Submit Feedback</Editable>}
-                          </button>
-                        </form>
-                      )}
+                      <div className="mt-2">
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                        <iframe
+                          src="https://unc.qualtrics.com/jfe/form/SV_ENV_FEEDBACK"
+                          className="w-full rounded-lg border border-gray-800 bg-black"
+                          style={{ height: '500px' }}
+                          title="Environmental Feedback"
+                        />
+                      </div>
                     </div>
                   </Reveal>
                 </div>

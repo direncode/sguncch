@@ -142,14 +142,14 @@ export default function Home() {
               className="flex flex-wrap gap-4 opacity-0 animate-fade-in-up"
               style={{ animationDelay: '0.8s', animationFillMode: 'forwards' }}
             >
-              <Link href="/funding-request" className="btn-primary">
-                Submit Request
+              <Link href="/budget" className="btn-primary">
+                View Budget
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
               </Link>
-              <Link href="/budget" className="btn-secondary">
-                View Budget
+              <Link href="/wellness" className="btn-secondary">
+                Explore Resources
               </Link>
             </div>
           </div>
@@ -348,9 +348,32 @@ export default function Home() {
             </div>
           </Reveal>
 
+          {/* Budget request notice */}
+          <Reveal>
+            <div className="mb-8 p-6 bg-white/[0.02] border border-gray-900 rounded-xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-gray-600">Budget</span>
+                  <h3 className="text-white font-medium mt-2">Funding Requests</h3>
+                  <p className="text-sm text-gray-500 mt-1">To request funding for your student organization, submit through Heels Life.</p>
+                </div>
+                <a
+                  href="https://heelslife.unc.edu"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-secondary shrink-0"
+                >
+                  Go to Heels Life
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                </a>
+              </div>
+            </div>
+          </Reveal>
+
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
-              { href: '/funding-request', title: 'Funding Request', desc: 'Request funding for your student organization, event, or initiative.', cat: 'Budget' },
               { href: '/wellness', title: 'Safe Ride Request', desc: 'Request a free late-night ride home from campus safety services.', cat: 'Wellness' },
               { href: '/wellness', title: 'Volunteer Application', desc: 'Sign up to volunteer with campus wellness and peer support programs.', cat: 'Wellness' },
               { href: '/wellness', title: 'Safety Plan', desc: 'Create a personal safety plan with campus crisis resources.', cat: 'Wellness' },

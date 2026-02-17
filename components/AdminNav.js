@@ -16,7 +16,6 @@ const publicLinks = [
   { href: '/documents', label: 'Documents' },
   { href: '/scroll', label: 'Public Scroll' },
   { href: '/chat', label: 'Public Chat' },
-  { href: '/funding-request', label: 'Funding' },
 ]
 
 export default function AdminNav() {

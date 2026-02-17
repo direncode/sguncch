@@ -230,7 +230,6 @@ export default function BudgetPage() {
     { id: 'overview', label: 'Overview' },
     { id: 'allocations', label: 'Allocations' },
     { id: 'request', label: 'Request Funding' },
-    { id: 'pending', label: 'Pending Requests' },
     { id: 'transparency', label: 'Transparency' },
   ]
 
@@ -512,189 +511,65 @@ export default function BudgetPage() {
             </div>
           )}
 
-          {/* REQUEST FUNDING TAB */}
+          {/* REQUEST FUNDING TAB - Redirects to Heels Life */}
           {activeTab === 'request' && (
             <div>
               <Reveal>
-                <h2 className="section-title mb-2">
-                  <Editable k="budget.request.title">Request Funding</Editable>
-                </h2>
+                <h2 className="section-title mb-2">Request Funding</h2>
                 <p className="body-large text-gray-400 mb-8">
-                  <Editable k="budget.request.subtitle">Submit a funding request for your registered student organization.</Editable>
+                  Funding requests are submitted through Heels Life, UNC&apos;s official student engagement platform.
                 </p>
               </Reveal>
 
               <div className="grid lg:grid-cols-2 gap-12">
-                {/* Form */}
                 <Reveal>
-                  <div className="card p-8">
-                    {submissionResult ? (
-                      <div className="text-center py-8">
-                        <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                          <span className="text-3xl text-white">$</span>
+                  <div className="card-highlight p-8">
+                    <h3 className="text-xl font-semibold text-white mb-4">How to Request Funding</h3>
+                    <div className="space-y-4 mb-8">
+                      {[
+                        { step: 1, text: 'Log into Heels Life with your UNC ONYEN' },
+                        { step: 2, text: 'Navigate to your student organization page' },
+                        { step: 3, text: 'Use the Finance tab to submit your request' },
+                        { step: 4, text: 'Track your request status in Heels Life' },
+                      ].map(item => (
+                        <div key={item.step} className="flex gap-4">
+                          <div className="w-8 h-8 bg-white text-black rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">
+                            {item.step}
+                          </div>
+                          <p className="text-sm text-gray-400 pt-1">{item.text}</p>
                         </div>
-                        <h3 className="text-xl font-bold text-white mb-3"><Editable k="budget.request.success.title">Request Submitted!</Editable></h3>
-                        <p className="text-gray-400 mb-6">Your request for ${submissionResult.amount?.toLocaleString()} has been submitted.</p>
-
-                        {/* Context Check Display */}
-                        {submissionResult.contextCheck && (
-                          <div className="card p-6 mb-8 text-left">
-                            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Context Check</p>
-                            <div className="flex items-center justify-between mb-3">
-                              <span className={`px-3 py-1 rounded text-xs font-mono ${
-                                submissionResult.contextCheck.flag === 'PASS'
-                                  ? 'bg-green-500/20 text-green-400'
-                                  : 'bg-yellow-500/20 text-yellow-400'
-                              }`}>
-                                {submissionResult.contextCheck.flag === 'PASS' ? 'Realistic' : 'Needs Review'}
-                              </span>
-                            </div>
-                            {submissionResult.contextCheck.note && (
-                              <p className="text-sm text-gray-400">{submissionResult.contextCheck.note}</p>
-                            )}
-                            {submissionResult.contextCheck.marketContext && (
-                              <p className="text-sm text-gray-500 mt-2 italic">{submissionResult.contextCheck.marketContext}</p>
-                            )}
-                          </div>
-                        )}
-
-                        <button
-                          onClick={handleNewRequest}
-                          className="btn-primary"
-                        >
-                          <Editable k="budget.request.success.button">Submit Another Request</Editable>
-                        </button>
-                      </div>
-                    ) : (
-                      <form onSubmit={handleSubmitRequest} className="space-y-5">
-                        {error && (
-                          <div className="bg-red-500/10 border border-red-500/30 rounded p-4 text-red-400 text-sm">
-                            {error}
-                          </div>
-                        )}
-
-                        <Input
-                          label="Organization Name"
-                          required
-                          value={form.orgName}
-                          onChange={e => setForm({ ...form, orgName: e.target.value })}
-                          placeholder="e.g., Carolina Esports"
-                        />
-
-                        <Select
-                          label="Category"
-                          required
-                          value={form.category}
-                          onChange={e => setForm({ ...form, category: e.target.value })}
-                          options={BUDGET_CATEGORIES.map(cat => ({ value: cat.id, label: cat.name }))}
-                        />
-
-                        <Input
-                          label="Amount Requested ($)"
-                          type="number"
-                          required
-                          value={form.amount}
-                          onChange={e => setForm({ ...form, amount: e.target.value })}
-                          placeholder="0.00"
-                        />
-
-                        <Input
-                          label="Brief Description"
-                          required
-                          value={form.description}
-                          onChange={e => setForm({ ...form, description: e.target.value })}
-                          placeholder="What is this funding for?"
-                        />
-
-                        <Textarea
-                          label="Justification"
-                          required
-                          rows={3}
-                          value={form.justification}
-                          onChange={e => setForm({ ...form, justification: e.target.value })}
-                          placeholder="Explain the impact and why this funding is needed..."
-                        />
-
-                        <Input
-                          label="Students Impacted (estimate)"
-                          type="number"
-                          value={form.studentsImpacted}
-                          onChange={e => setForm({ ...form, studentsImpacted: e.target.value })}
-                          placeholder="0"
-                        />
-
-                        <Input
-                          label="Contact Email"
-                          type="email"
-                          value={form.contactEmail}
-                          onChange={e => setForm({ ...form, contactEmail: e.target.value })}
-                          placeholder="your@email.unc.edu"
-                        />
-
-                        <button
-                          type="submit"
-                          disabled={isSubmitting}
-                          className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          {isSubmitting ? 'Submitting...' : <Editable k="budget.request.form.submit">Submit Funding Request</Editable>}
-                        </button>
-                      </form>
-                    )}
+                      ))}
+                    </div>
+                    <a
+                      href="https://heelslife.unc.edu"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-primary w-full text-center block"
+                    >
+                      Go to Heels Life
+                    </a>
+                    <p className="text-xs text-gray-600 text-center mt-4">
+                      Questions? Contact sg-finance@unc.edu
+                    </p>
                   </div>
                 </Reveal>
 
-                {/* Budget Info Sidebar */}
-                <div className="space-y-6">
-                  <Reveal delay={100}>
-                    <div className="card-highlight p-8">
-                      <h3 className="text-lg font-semibold text-white mb-6"><Editable k="budget.request.sidebar.title">Category Budget</Editable></h3>
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="w-3 h-3 rounded-full bg-white" />
-                        <span className="text-white">{selectedCategoryStats.name || 'Events'}</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 text-center">
-                        <div className="card p-4">
-                          <p className="text-2xl font-mono font-bold text-white">
-                            ${(selectedCategoryStats.allocated || 0).toLocaleString()}
-                          </p>
-                          <p className="text-xs text-gray-500 uppercase mt-1"><Editable k="budget.request.sidebar.allocated">Allocated</Editable></p>
-                        </div>
-                        <div className="card p-4">
-                          <p className="text-2xl font-mono font-bold text-white">
-                            ${categoryAvailable.toLocaleString()}
-                          </p>
-                          <p className="text-xs text-gray-500 uppercase mt-1"><Editable k="budget.request.sidebar.available">Available</Editable></p>
-                        </div>
-                      </div>
-                    </div>
-                  </Reveal>
-
-                  <Reveal delay={150}>
-                    <div className="card p-8">
-                      <h3 className="text-lg font-semibold text-white mb-6"><Editable k="budget.request.howItWorks.title">How It Works</Editable></h3>
-                      <div className="space-y-4">
-                        {[
-                          { step: 1, text: 'Submit your funding request with justification' },
-                          { step: 2, text: 'AI scores your request based on impact and budget' },
-                          { step: 3, text: 'Request goes to admin review queue' },
-                          { step: 4, text: 'Decision within 3-5 business days' },
-                        ].map(item => (
-                          <div key={item.step} className="flex gap-4">
-                            <div className="w-8 h-8 bg-white text-black rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0">
-                              {item.step}
-                            </div>
-                            <p className="text-sm text-gray-400 pt-1"><Editable k={`budget.request.howItWorks.step${item.step}`}>{item.text}</Editable></p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </Reveal>
-                </div>
+                <Reveal delay={100}>
+                  <div className="card p-8">
+                    <h3 className="text-lg font-semibold text-white mb-6">Public Budget Ledger</h3>
+                    <p className="text-sm text-gray-400 mb-6">
+                      View all approved budget allocations, spending, and line items on our transparency page. The public ledger is maintained by Student Government admin.
+                    </p>
+                    <a href="/budget-transparency" className="btn-secondary w-full text-center block">
+                      View Full Transparency Report
+                    </a>
+                  </div>
+                </Reveal>
               </div>
             </div>
           )}
 
-          {/* PENDING REQUESTS TAB */}
+          {/* PENDING REQUESTS TAB - view-only for admin */}
           {activeTab === 'pending' && (
             <div>
               <div className="flex items-center justify-between mb-8">
