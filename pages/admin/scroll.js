@@ -172,6 +172,8 @@ export default function ScrollAdmin() {
   const [dbConnString, setDbConnString] = useState('')
   const [dbSetupLoading, setDbSetupLoading] = useState(false)
   const [dbSetupResult, setDbSetupResult] = useState(null)
+  const [dbSqlVisible, setDbSqlVisible] = useState(false)
+  const [dbSqlCopied, setDbSqlCopied] = useState(false)
 
   // Reject modal
   const [rejectingId, setRejectingId] = useState(null)
@@ -206,6 +208,8 @@ export default function ScrollAdmin() {
 
   const authHeaders = getAuthHeaders()
 
+  const [dbMigrationSQL, setDbMigrationSQL] = useState(null)
+
   const handleDbSetup = async () => {
     if (!dbConnString.trim()) return notify('Paste your Supabase connection string')
     setDbSetupLoading(true)
@@ -221,15 +225,70 @@ export default function ScrollAdmin() {
         setDbSetupResult({ ok: true, message: data.message })
         setDbSetupNeeded(false)
         setDbConnString('')
-        // Reload documents now that tables exist
         setTimeout(() => loadDocuments(), 1000)
       } else {
         setDbSetupResult({ ok: false, message: data.message })
+        if (data.sql) setDbMigrationSQL(data.sql)
       }
     } catch {
       setDbSetupResult({ ok: false, message: 'Connection failed. Check your connection string and try again.' })
     }
     setDbSetupLoading(false)
+  }
+
+  const handleCopySQL = async () => {
+    // Fetch SQL from server if we don't have it yet
+    let sql = dbMigrationSQL
+    if (!sql) {
+      try {
+        const res = await fetch('/api/setup/init-db', {
+          method: 'POST',
+          headers: authHeaders,
+          body: JSON.stringify({}),
+        })
+        const data = await res.json()
+        sql = data.sql
+        if (sql) setDbMigrationSQL(sql)
+      } catch { /* ignore */ }
+    }
+    if (sql) {
+      await navigator.clipboard.writeText(sql)
+      setDbSqlCopied(true)
+      notify('SQL copied — paste it into Supabase SQL Editor and click Run')
+      setTimeout(() => setDbSqlCopied(false), 3000)
+    } else {
+      notify('Could not fetch SQL')
+    }
+  }
+
+  const handleDbCheckAfterManualSQL = async () => {
+    setDbSetupLoading(true)
+    setDbSetupResult(null)
+    try {
+      const res = await fetch('/api/setup/db-status')
+      const data = await res.json()
+      if (data.tablesExist) {
+        setDbSetupResult({ ok: true, message: 'Tables detected. Supabase is now active for permanent storage.' })
+        setDbSetupNeeded(false)
+        resetCodexCacheOnServer()
+        setTimeout(() => loadDocuments(), 1000)
+      } else {
+        setDbSetupResult({ ok: false, message: 'Tables not found yet. Make sure you ran the SQL in Supabase SQL Editor.' })
+      }
+    } catch {
+      setDbSetupResult({ ok: false, message: 'Check failed.' })
+    }
+    setDbSetupLoading(false)
+  }
+
+  const resetCodexCacheOnServer = async () => {
+    try {
+      await fetch('/api/setup/init-db', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({}),
+      })
+    } catch { /* ignore */ }
   }
 
   const loadDocuments = async () => {
@@ -523,28 +582,63 @@ export default function ScrollAdmin() {
                 <h3 className="text-yellow-400 font-semibold mb-1">Database Setup Required</h3>
                 <p className="text-sm text-gray-400 mb-4">
                   Your Supabase tables don&apos;t exist yet. Documents uploaded now will be lost on redeploy.
-                  Paste your connection string to create all tables automatically.
                 </p>
-                <p className="text-xs text-gray-500 mb-4">
-                  <strong className="text-gray-400">Supabase Dashboard</strong> &rarr; Connect &rarr; Connection string &rarr; select <strong className="text-gray-400">Session pooler</strong> &rarr; copy the URI
-                </p>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="password"
-                    value={dbConnString}
-                    onChange={(e) => setDbConnString(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleDbSetup()}
-                    placeholder="postgresql://postgres.xxxxx:[YOUR-PASSWORD]@aws-0-region.pooler.supabase.com:5432/postgres"
-                    className="flex-1 px-4 py-2.5 bg-black border border-gray-800 rounded-lg text-sm text-white placeholder-gray-600 focus:border-yellow-500/50 focus:outline-none font-mono"
-                  />
-                  <button
-                    onClick={handleDbSetup}
-                    disabled={dbSetupLoading || !dbConnString.trim()}
-                    className="px-5 py-2.5 text-sm font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded-lg hover:bg-yellow-500/30 transition disabled:opacity-50 whitespace-nowrap"
-                  >
-                    {dbSetupLoading ? 'Creating tables...' : 'Initialize Database'}
-                  </button>
+
+                {/* Option A: Copy SQL (recommended) */}
+                <div className="bg-black/40 border border-gray-800 rounded-lg p-4 mb-4">
+                  <p className="text-xs text-gray-400 font-medium mb-2">Option 1 — Run SQL in Supabase (recommended)</p>
+                  <ol className="text-xs text-gray-500 space-y-1 mb-3 list-decimal list-inside">
+                    <li>Click <strong className="text-gray-300">Copy SQL</strong> below</li>
+                    <li>Open <strong className="text-gray-300">Supabase Dashboard</strong> &rarr; SQL Editor</li>
+                    <li>Paste and click <strong className="text-gray-300">Run</strong></li>
+                    <li>Come back here and click <strong className="text-gray-300">Verify Tables</strong></li>
+                  </ol>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={handleCopySQL}
+                      className="px-5 py-2.5 text-sm font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded-lg hover:bg-yellow-500/30 transition whitespace-nowrap"
+                    >
+                      {dbSqlCopied ? 'Copied!' : 'Copy SQL'}
+                    </button>
+                    <button
+                      onClick={handleDbCheckAfterManualSQL}
+                      disabled={dbSetupLoading}
+                      className="px-5 py-2.5 text-sm font-medium bg-green-500/10 text-green-400 border border-green-500/30 rounded-lg hover:bg-green-500/20 transition disabled:opacity-50 whitespace-nowrap"
+                    >
+                      {dbSetupLoading ? 'Checking...' : 'Verify Tables'}
+                    </button>
+                  </div>
                 </div>
+
+                {/* Option B: Connection string */}
+                <details className="group">
+                  <summary className="text-xs text-gray-600 cursor-pointer hover:text-gray-400 transition">
+                    Option 2 — Auto-create via connection string
+                  </summary>
+                  <div className="mt-3">
+                    <p className="text-xs text-gray-500 mb-3">
+                      <strong className="text-gray-400">Supabase Dashboard</strong> &rarr; Connect &rarr; Session pooler &rarr; copy the URI
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="password"
+                        value={dbConnString}
+                        onChange={(e) => setDbConnString(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleDbSetup()}
+                        placeholder="postgresql://postgres.xxxxx:[YOUR-PASSWORD]@aws-0-region.pooler.supabase.com:5432/postgres"
+                        className="flex-1 px-4 py-2.5 bg-black border border-gray-800 rounded-lg text-sm text-white placeholder-gray-600 focus:border-yellow-500/50 focus:outline-none font-mono"
+                      />
+                      <button
+                        onClick={handleDbSetup}
+                        disabled={dbSetupLoading || !dbConnString.trim()}
+                        className="px-5 py-2.5 text-sm font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded-lg hover:bg-yellow-500/30 transition disabled:opacity-50 whitespace-nowrap"
+                      >
+                        {dbSetupLoading ? 'Creating...' : 'Initialize'}
+                      </button>
+                    </div>
+                  </div>
+                </details>
+
                 {dbSetupResult && (
                   <div className={`mt-3 p-3 rounded-lg border text-sm ${
                     dbSetupResult.ok
