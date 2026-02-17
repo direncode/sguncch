@@ -4,6 +4,7 @@ import Head from 'next/head'
 import Link from 'next/link'
 import { useApp } from '../../lib/store'
 import { getAdminToken, getAuthHeaders } from '../../lib/adminSession'
+import AdminNav from '../../components/AdminNav'
 
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
 const formatTime = (d) => d ? new Date(d).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''
@@ -30,7 +31,7 @@ export default function CodexAdmin() {
   const [loading, setLoading] = useState(false)
 
   // Upload form state
-  const [uploadForm, setUploadForm] = useState({ title: '', version: '1.0', source_url: '' })
+  const [uploadForm, setUploadForm] = useState({ title: '', version: '1.0' })
   const [selectedFile, setSelectedFile] = useState(null)
   const [previewText, setPreviewText] = useState('')
 
@@ -111,7 +112,6 @@ export default function CodexAdmin() {
       let body = {
         title: uploadForm.title,
         version: uploadForm.version,
-        source_url: uploadForm.source_url,
         file_name: selectedFile?.name,
         file_size: selectedFile?.size,
       }
@@ -126,7 +126,7 @@ export default function CodexAdmin() {
       const data = await res.json()
       if (res.ok) {
         notify('Document uploaded for review')
-        setUploadForm({ title: '', version: '1.0', source_url: '' })
+        setUploadForm({ title: '', version: '1.0' })
         setSelectedFile(null)
         setPreviewText('')
         setActiveTab('pending')
@@ -270,15 +270,9 @@ export default function CodexAdmin() {
                 <input type="text" value={uploadForm.title} onChange={(e) => setUploadForm(f => ({ ...f, title: e.target.value }))}
                   placeholder="e.g. Student Code of Conduct" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="caption block mb-2">Version</label>
-                  <input type="text" value={uploadForm.version} onChange={(e) => setUploadForm(f => ({ ...f, version: e.target.value }))} placeholder="1.0" />
-                </div>
-                <div>
-                  <label className="caption block mb-2">Source URL</label>
-                  <input type="url" value={uploadForm.source_url} onChange={(e) => setUploadForm(f => ({ ...f, source_url: e.target.value }))} placeholder="https://..." />
-                </div>
+              <div>
+                <label className="caption block mb-2">Version</label>
+                <input type="text" value={uploadForm.version} onChange={(e) => setUploadForm(f => ({ ...f, version: e.target.value }))} placeholder="1.0" />
               </div>
               <div>
                 <label className="caption block mb-2">Document File</label>
@@ -455,6 +449,8 @@ export default function CodexAdmin() {
           </div>
         )}
       </main>
+      <AdminNav />
+      <div className="h-12" />
     </div>
   )
 }

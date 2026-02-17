@@ -30,7 +30,6 @@ function findScrollMatch(doc, scrollDocs) {
 // .txt upload panel for a specific PDF document (admin only)
 function TxtUploadPanel({ doc, onUploaded, onClose }) {
   const [file, setFile] = useState(null)
-  const [pdfUrl, setPdfUrl] = useState(doc.defaultPdfUrl || '')
   const [uploading, setUploading] = useState(false)
   const [result, setResult] = useState(null)
   const fileRef = useRef(null)
@@ -48,10 +47,6 @@ function TxtUploadPanel({ doc, onUploaded, onClose }) {
 
   const handleUpload = async () => {
     if (!file) return
-    if (!pdfUrl.trim()) {
-      setResult({ ok: false, message: 'PDF link is required. Paste the direct URL to the PDF.' })
-      return
-    }
     setUploading(true)
     setResult(null)
     try {
@@ -74,13 +69,13 @@ function TxtUploadPanel({ doc, onUploaded, onClose }) {
             version: doc.version || '1.0',
             file_name: file.name,
             file_size: file.size,
-            source_url: pdfUrl.trim(),
+            source_url: doc.defaultPdfUrl || '',
           }],
         }),
       })
       const data = await res.json()
       if (res.ok && data.succeeded > 0) {
-        setResult({ ok: true, message: `Added to The Scroll — ${data.results[0]?.chunk_count || 0} chunks indexed. PDF link saved.` })
+        setResult({ ok: true, message: `Added to The Scroll — ${data.results[0]?.chunk_count || 0} chunks indexed.` })
         setFile(null)
         onUploaded()
       } else {
@@ -102,22 +97,6 @@ function TxtUploadPanel({ doc, onUploaded, onClose }) {
         <button onClick={onClose} className="text-xs text-gray-500 hover:text-white transition">Close</button>
       </div>
 
-      <p className="text-xs text-gray-500 mb-3">
-        Upload the .txt version of this PDF and set the direct PDF link for users.
-      </p>
-
-      <div className="mb-3">
-        <label className="caption block mb-1.5">PDF Link (required)</label>
-        <input
-          type="url"
-          value={pdfUrl}
-          onChange={(e) => setPdfUrl(e.target.value)}
-          placeholder="https://policies.unc.edu/files/..."
-          className="w-full px-4 py-3 bg-black border border-gray-800 rounded text-sm text-white placeholder-gray-600 focus:border-gray-600 focus:outline-none"
-        />
-        <p className="text-xs text-gray-600 mt-1">This URL becomes the "Open PDF" link users see.</p>
-      </div>
-
       <div className="flex items-center gap-3">
         <button
           onClick={() => fileRef.current?.click()}
@@ -132,7 +111,7 @@ function TxtUploadPanel({ doc, onUploaded, onClose }) {
             <span className="text-xs text-gray-600 font-mono">{(file.size / 1024).toFixed(1)} KB</span>
             <button
               onClick={handleUpload}
-              disabled={uploading || !pdfUrl.trim()}
+              disabled={uploading}
               className="btn-primary text-xs py-2 px-4 disabled:opacity-50"
             >
               {uploading ? 'Uploading...' : 'Add to Scroll'}
@@ -216,7 +195,7 @@ export default function Documents() {
           <h1 className="section-title mb-3">Document Catalogue</h1>
           <p className="body-text text-gray-400 max-w-2xl">
             Official UNC governance documents, university policies, student government codes, and conduct procedures.
-            {isAdmin ? ' Upload .txt versions and set PDF links to add them to The Scroll for Grok RAG.' : ''}
+            {isAdmin ? ' Upload .txt versions to add them to The Scroll for Grok RAG.' : ''}
           </p>
         </div>
       </section>
@@ -363,7 +342,7 @@ export default function Documents() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               {[
                 { step: '01', title: 'Browse', desc: 'Find the governance document you need from the catalogue above.' },
-                { step: '02', title: 'Admin Adds', desc: 'Admin uploads the .txt version and sets the PDF link for each document.' },
+                { step: '02', title: 'Admin Adds', desc: 'Admin uploads the .txt version of each document to The Scroll.' },
                 { step: '03', title: 'Grok Indexes', desc: 'The document is chunked, embedded, and instantly available in The Scroll for Grok.' },
                 { step: '04', title: 'Ask Questions', desc: 'Go to Grok chat to ask questions — it sources from The Scroll and UNC news.' },
               ].map(item => (

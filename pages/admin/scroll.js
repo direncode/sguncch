@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useApp } from '../../lib/store'
 import { getAdminToken, getAuthHeaders } from '../../lib/adminSession'
 import { SEED_DOCUMENTS } from '../../lib/scrollRegistry'
+import AdminNav from '../../components/AdminNav'
 
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
 const formatSize = (bytes) => bytes > 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`
@@ -48,81 +49,9 @@ function isAcceptedFile(file) {
   return ACCEPTED_EXTENSIONS.includes(ext)
 }
 
-// Inline link setter for the Documents tab — sets the PDF URL for a document
-function DocLinkSetter({ seed, authHeaders, onSaved, notify }) {
-  const [pdfUrl, setPdfUrl] = useState(seed.pdfUrl || '')
-  const [saving, setSaving] = useState(false)
-  const [result, setResult] = useState(null)
-
-  const handleSave = async () => {
-    if (!pdfUrl.trim()) {
-      setResult({ ok: false, message: 'Enter a valid PDF URL.' })
-      return
-    }
-    setSaving(true)
-    setResult(null)
-    try {
-      // Create a minimal document entry with just the link (no text content needed)
-      const res = await fetch('/api/codex/batch-upload', {
-        method: 'POST',
-        headers: authHeaders,
-        body: JSON.stringify({
-          files: [{
-            title: seed.title,
-            text_content: `[PDF Link] ${seed.title} — ${pdfUrl.trim()}`,
-            version: seed.version || '1.0',
-            source_url: pdfUrl.trim(),
-          }],
-        }),
-      })
-      const data = await res.json()
-      if (res.ok && data.succeeded > 0) {
-        setResult({ ok: true, message: 'PDF link saved. Users can now open this document.' })
-        notify(`Link set for ${seed.title}`)
-        setTimeout(() => onSaved(), 1000)
-      } else {
-        setResult({ ok: false, message: data.results?.[0]?.error || data.error || 'Failed to save' })
-      }
-    } catch {
-      setResult({ ok: false, message: 'Failed to save link.' })
-    }
-    setSaving(false)
-  }
-
-  return (
-    <div className="mt-4 pt-4 border-t border-gray-800">
-      <p className="text-xs text-gray-500 mb-3">
-        Set the direct PDF URL for <strong className="text-gray-400">{seed.title}</strong>. Users will see this as the "Open PDF" link.
-      </p>
-      <div className="flex items-center gap-3">
-        <input
-          type="url"
-          value={pdfUrl}
-          onChange={(e) => setPdfUrl(e.target.value)}
-          placeholder="https://policies.unc.edu/files/..."
-          className="flex-1 px-3 py-2 bg-black border border-gray-800 rounded text-xs text-white placeholder-gray-600 focus:border-blue-500/50 focus:outline-none"
-        />
-        <button
-          onClick={handleSave}
-          disabled={saving || !pdfUrl.trim()}
-          className="px-4 py-2 text-xs font-medium bg-blue-500 text-black rounded hover:bg-blue-400 transition disabled:opacity-50 shrink-0"
-        >
-          {saving ? 'Saving...' : 'Save Link'}
-        </button>
-      </div>
-      {result && (
-        <div className={`mt-3 p-3 rounded border text-xs ${
-          result.ok ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-red-500/10 border-red-500/30 text-red-400'
-        }`}>{result.message}</div>
-      )}
-    </div>
-  )
-}
-
-// Inline .txt uploader for the Documents tab — uploads a .txt + optional PDF link
+// Inline .txt uploader for the Documents tab
 function DocTxtUploader({ seed, authHeaders, onUploaded, notify }) {
   const [file, setFile] = useState(null)
-  const [pdfUrl, setPdfUrl] = useState(seed.pdfUrl || '')
   const [uploading, setUploading] = useState(false)
   const [result, setResult] = useState(null)
   const fileRef = useRef(null)
@@ -159,7 +88,7 @@ function DocTxtUploader({ seed, authHeaders, onUploaded, notify }) {
             version: seed.version || '1.0',
             file_name: file.name,
             file_size: file.size,
-            source_url: pdfUrl.trim() || null,
+            source_url: seed.pdfUrl || null,
           }],
         }),
       })
@@ -183,18 +112,6 @@ function DocTxtUploader({ seed, authHeaders, onUploaded, notify }) {
       <p className="text-xs text-gray-500 mb-3">
         Upload the .txt version of <strong className="text-gray-400">{seed.title}</strong> for Grok RAG indexing.
       </p>
-
-      {/* Optional PDF URL */}
-      <div className="mb-3">
-        <label className="text-[10px] text-gray-500 uppercase tracking-wider block mb-1.5">PDF Link (optional — set via Add Link if not here)</label>
-        <input
-          type="url"
-          value={pdfUrl}
-          onChange={(e) => setPdfUrl(e.target.value)}
-          placeholder="https://policies.unc.edu/files/..."
-          className="w-full px-3 py-2 bg-black border border-gray-800 rounded text-xs text-white placeholder-gray-600 focus:border-blue-500/50 focus:outline-none"
-        />
-      </div>
 
       <div className="flex items-center gap-3">
         <button
@@ -251,6 +168,14 @@ export default function ScrollAdmin() {
   const [classifications, setClassifications] = useState({})
   const [classifyingId, setClassifyingId] = useState(null)
 
+  // Database setup
+  const [dbSetupNeeded, setDbSetupNeeded] = useState(null) // null=checking, true=needed, false=ok
+  const [dbConnString, setDbConnString] = useState('')
+  const [dbSetupLoading, setDbSetupLoading] = useState(false)
+  const [dbSetupResult, setDbSetupResult] = useState(null)
+  const [dbSqlVisible, setDbSqlVisible] = useState(false)
+  const [dbSqlCopied, setDbSqlCopied] = useState(false)
+
   // Reject modal
   const [rejectingId, setRejectingId] = useState(null)
   const [rejectReason, setRejectReason] = useState('')
@@ -261,7 +186,20 @@ export default function ScrollAdmin() {
   }, [isLoaded, isAdmin, router])
 
   useEffect(() => {
-    if (isAdmin) loadDocuments()
+    if (isAdmin) {
+      loadDocuments()
+      // Check if database tables exist
+      fetch('/api/setup/db-status')
+        .then(r => r.json())
+        .then(data => {
+          if (data.supabaseConfigured && !data.tablesExist) {
+            setDbSetupNeeded(true)
+          } else {
+            setDbSetupNeeded(false)
+          }
+        })
+        .catch(() => setDbSetupNeeded(false))
+    }
   }, [isAdmin])
 
   const notify = (msg) => {
@@ -270,6 +208,89 @@ export default function ScrollAdmin() {
   }
 
   const authHeaders = getAuthHeaders()
+
+  const [dbMigrationSQL, setDbMigrationSQL] = useState(null)
+
+  const handleDbSetup = async () => {
+    if (!dbConnString.trim()) return notify('Paste your Supabase connection string')
+    setDbSetupLoading(true)
+    setDbSetupResult(null)
+    try {
+      const res = await fetch('/api/setup/init-db', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ connectionString: dbConnString }),
+      })
+      const data = await res.json()
+      if (data.status === 'migrated' || data.status === 'already_configured') {
+        setDbSetupResult({ ok: true, message: data.message })
+        setDbSetupNeeded(false)
+        setDbConnString('')
+        setTimeout(() => loadDocuments(), 1000)
+      } else {
+        setDbSetupResult({ ok: false, message: data.message })
+        if (data.sql) setDbMigrationSQL(data.sql)
+      }
+    } catch {
+      setDbSetupResult({ ok: false, message: 'Connection failed. Check your connection string and try again.' })
+    }
+    setDbSetupLoading(false)
+  }
+
+  const handleCopySQL = async () => {
+    // Fetch SQL from server if we don't have it yet
+    let sql = dbMigrationSQL
+    if (!sql) {
+      try {
+        const res = await fetch('/api/setup/init-db', {
+          method: 'POST',
+          headers: authHeaders,
+          body: JSON.stringify({}),
+        })
+        const data = await res.json()
+        sql = data.sql
+        if (sql) setDbMigrationSQL(sql)
+      } catch { /* ignore */ }
+    }
+    if (sql) {
+      await navigator.clipboard.writeText(sql)
+      setDbSqlCopied(true)
+      notify('SQL copied — paste it into Supabase SQL Editor and click Run')
+      setTimeout(() => setDbSqlCopied(false), 3000)
+    } else {
+      notify('Could not fetch SQL')
+    }
+  }
+
+  const handleDbCheckAfterManualSQL = async () => {
+    setDbSetupLoading(true)
+    setDbSetupResult(null)
+    try {
+      const res = await fetch('/api/setup/db-status')
+      const data = await res.json()
+      if (data.tablesExist) {
+        setDbSetupResult({ ok: true, message: 'Tables detected. Supabase is now active for permanent storage.' })
+        setDbSetupNeeded(false)
+        resetCodexCacheOnServer()
+        setTimeout(() => loadDocuments(), 1000)
+      } else {
+        setDbSetupResult({ ok: false, message: 'Tables not found yet. Make sure you ran the SQL in Supabase SQL Editor.' })
+      }
+    } catch {
+      setDbSetupResult({ ok: false, message: 'Check failed.' })
+    }
+    setDbSetupLoading(false)
+  }
+
+  const resetCodexCacheOnServer = async () => {
+    try {
+      await fetch('/api/setup/init-db', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({}),
+      })
+    } catch { /* ignore */ }
+  }
 
   const loadDocuments = async () => {
     setLoadingDocs(true)
@@ -552,6 +573,88 @@ export default function ScrollAdmin() {
         </div>
       </nav>
 
+      {/* Database Setup Banner */}
+      {dbSetupNeeded && (
+        <div className="max-w-[1400px] mx-auto px-6 lg:px-12 pt-6">
+          <div className="bg-yellow-500/5 border border-yellow-500/30 rounded-xl p-6">
+            <div className="flex items-start gap-4">
+              <span className="text-2xl">&#9888;</span>
+              <div className="flex-1">
+                <h3 className="text-yellow-400 font-semibold mb-1">Database Setup Required</h3>
+                <p className="text-sm text-gray-400 mb-4">
+                  Your Supabase tables don&apos;t exist yet. Documents uploaded now will be lost on redeploy.
+                </p>
+
+                {/* Option A: Copy SQL (recommended) */}
+                <div className="bg-black/40 border border-gray-800 rounded-lg p-4 mb-4">
+                  <p className="text-xs text-gray-400 font-medium mb-2">Option 1 — Run SQL in Supabase (recommended)</p>
+                  <ol className="text-xs text-gray-500 space-y-1 mb-3 list-decimal list-inside">
+                    <li>Click <strong className="text-gray-300">Copy SQL</strong> below</li>
+                    <li>Open <strong className="text-gray-300">Supabase Dashboard</strong> &rarr; SQL Editor</li>
+                    <li>Paste and click <strong className="text-gray-300">Run</strong></li>
+                    <li>Come back here and click <strong className="text-gray-300">Verify Tables</strong></li>
+                  </ol>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={handleCopySQL}
+                      className="px-5 py-2.5 text-sm font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded-lg hover:bg-yellow-500/30 transition whitespace-nowrap"
+                    >
+                      {dbSqlCopied ? 'Copied!' : 'Copy SQL'}
+                    </button>
+                    <button
+                      onClick={handleDbCheckAfterManualSQL}
+                      disabled={dbSetupLoading}
+                      className="px-5 py-2.5 text-sm font-medium bg-green-500/10 text-green-400 border border-green-500/30 rounded-lg hover:bg-green-500/20 transition disabled:opacity-50 whitespace-nowrap"
+                    >
+                      {dbSetupLoading ? 'Checking...' : 'Verify Tables'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Option B: Connection string */}
+                <details className="group">
+                  <summary className="text-xs text-gray-600 cursor-pointer hover:text-gray-400 transition">
+                    Option 2 — Auto-create via connection string
+                  </summary>
+                  <div className="mt-3">
+                    <p className="text-xs text-gray-500 mb-3">
+                      <strong className="text-gray-400">Supabase Dashboard</strong> &rarr; Connect &rarr; Session pooler &rarr; copy the URI
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="password"
+                        value={dbConnString}
+                        onChange={(e) => setDbConnString(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleDbSetup()}
+                        placeholder="postgresql://postgres.xxxxx:[YOUR-PASSWORD]@aws-0-region.pooler.supabase.com:5432/postgres"
+                        className="flex-1 px-4 py-2.5 bg-black border border-gray-800 rounded-lg text-sm text-white placeholder-gray-600 focus:border-yellow-500/50 focus:outline-none font-mono"
+                      />
+                      <button
+                        onClick={handleDbSetup}
+                        disabled={dbSetupLoading || !dbConnString.trim()}
+                        className="px-5 py-2.5 text-sm font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded-lg hover:bg-yellow-500/30 transition disabled:opacity-50 whitespace-nowrap"
+                      >
+                        {dbSetupLoading ? 'Creating...' : 'Initialize'}
+                      </button>
+                    </div>
+                  </div>
+                </details>
+
+                {dbSetupResult && (
+                  <div className={`mt-3 p-3 rounded-lg border text-sm ${
+                    dbSetupResult.ok
+                      ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                      : 'bg-red-500/10 border-red-500/30 text-red-400'
+                  }`}>
+                    {dbSetupResult.message}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <main className="max-w-[1400px] mx-auto px-6 lg:px-12 py-12">
 
         {/* OVERVIEW */}
@@ -637,7 +740,7 @@ export default function ScrollAdmin() {
                   {!allSeeded && (
                     <button onClick={() => setActiveTab('documents')}
                       className="mt-4 w-full py-3 bg-white/10 border border-gray-700 rounded-lg text-sm text-white font-medium hover:bg-white/20 transition">
-                      Go to Documents tab to add .txt &amp; links
+                      Go to Documents tab to add .txt files
                     </button>
                   )}
                 </div>
@@ -800,41 +903,19 @@ export default function ScrollAdmin() {
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             {!seed.uploaded && (
-                              <>
-                                <button
-                                  onClick={() => setExpandedDoc(expandedDoc === `link-${seed.key}` ? null : `link-${seed.key}`)}
-                                  className={`px-4 py-2 text-xs font-medium rounded-lg transition ${
-                                    expandedDoc === `link-${seed.key}`
-                                      ? 'bg-blue-500 text-black'
-                                      : 'bg-blue-500/10 text-blue-400 border border-blue-500/30 hover:bg-blue-500/20'
-                                  }`}
-                                >
-                                  {expandedDoc === `link-${seed.key}` ? 'Close' : 'Add Link'}
-                                </button>
-                                <button
-                                  onClick={() => setExpandedDoc(expandedDoc === `txt-${seed.key}` ? null : `txt-${seed.key}`)}
-                                  className={`px-4 py-2 text-xs font-medium rounded-lg transition ${
-                                    expandedDoc === `txt-${seed.key}`
-                                      ? 'bg-green-500 text-black'
-                                      : 'bg-green-500/10 text-green-400 border border-green-500/30 hover:bg-green-500/20'
-                                  }`}
-                                >
-                                  {expandedDoc === `txt-${seed.key}` ? 'Close' : 'Add .txt'}
-                                </button>
-                              </>
+                              <button
+                                onClick={() => setExpandedDoc(expandedDoc === `txt-${seed.key}` ? null : `txt-${seed.key}`)}
+                                className={`px-4 py-2 text-xs font-medium rounded-lg transition ${
+                                  expandedDoc === `txt-${seed.key}`
+                                    ? 'bg-green-500 text-black'
+                                    : 'bg-green-500/10 text-green-400 border border-green-500/30 hover:bg-green-500/20'
+                                }`}
+                              >
+                                {expandedDoc === `txt-${seed.key}` ? 'Close' : 'Add .txt'}
+                              </button>
                             )}
                           </div>
                         </div>
-
-                        {/* Add Link panel */}
-                        {!seed.uploaded && expandedDoc === `link-${seed.key}` && (
-                          <DocLinkSetter
-                            seed={seed}
-                            authHeaders={authHeaders}
-                            onSaved={() => { loadDocuments(); setExpandedDoc(null) }}
-                            notify={notify}
-                          />
-                        )}
 
                         {/* Add .txt panel */}
                         {!seed.uploaded && expandedDoc === `txt-${seed.key}` && (
@@ -856,11 +937,9 @@ export default function ScrollAdmin() {
             <div className="bg-white/[0.02] border border-gray-900 rounded-xl p-6 mt-4">
               <h3 className="text-sm font-semibold text-white mb-2">How to add documents to The Scroll</h3>
               <ol className="text-xs text-gray-500 space-y-1.5 list-decimal list-inside leading-relaxed">
-                <li>Click <strong className="text-gray-400">Add Link</strong> to set the direct PDF URL for users to access</li>
                 <li>Click <strong className="text-gray-400">Add .txt</strong> to upload the text version for Grok RAG indexing</li>
-                <li>The .txt upload also requires a PDF link — both can be set together</li>
                 <li>The document is instantly chunked, embedded, and available to Grok</li>
-                <li>Users see "Open PDF" only after a link is set via the Scroll</li>
+                <li>PDF links are automatically pulled from the document registry</li>
               </ol>
             </div>
           </div>
@@ -1154,6 +1233,8 @@ export default function ScrollAdmin() {
         )}
 
       </main>
+      <AdminNav />
+      <div className="h-12" />
     </div>
   )
 }

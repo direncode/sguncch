@@ -1,12 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import Head from 'next/head'
 import Layout from '../../components/Layout'
-import { Input, Select, Textarea } from '../../components/FormInput'
 import { useApp } from '../../lib/store'
 import { departmentContacts, departmentFAQs, departmentAnnouncements, serviceGuides } from '../../lib/data'
 import { Editable, EditModeToggle } from '../../components/InlineEditor'
 import {
-  submitForm,
   calendarEvents,
   templates,
   externalLinks,
@@ -61,10 +59,6 @@ export default function BasicNeedsPage() {
   const [activeTab, setActiveTab] = useState('overview')
   const [showShuttleReservation, setShowShuttleReservation] = useState(false)
   const [showSwipeShare, setShowSwipeShare] = useState(false)
-  const [submitted, setSubmitted] = useState(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [shuttleFormData, setShuttleFormData] = useState({ name: '', email: '', day: '', time: '' })
-  const [swipeFormData, setSwipeFormData] = useState({ action: '', name: '', email: '', swipes: '', message: '' })
   const { policies } = useApp()
 
   const deptPolicies = policies.filter(p => p.department === 'basic-needs')
@@ -85,50 +79,7 @@ export default function BasicNeedsPage() {
   const announcements = departmentAnnouncements['basic-needs']
   const shuttleGuide = serviceGuides['grocery-shuttle']
   const [expandedFaq, setExpandedFaq] = useState(null)
-  const [feedbackForm, setFeedbackForm] = useState({ topic: '', message: '', email: '' })
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
-
-  const handleFeedbackSubmit = async (e) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    try {
-      await submitForm('basicneeds-feedback', {
-        ...feedbackForm,
-        department: 'basic-needs',
-        timestamp: new Date().toISOString(),
-      })
-      setFeedbackSubmitted(true)
-      setFeedbackForm({ topic: '', message: '', email: '' })
-    } catch (error) {
-      console.error('Feedback submission error:', error)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const handleFormSubmit = (type, formData) => async (e) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    try {
-      const result = await submitForm(`basicneeds-${type}`, {
-        ...formData,
-        formType: type,
-        department: 'basic-needs',
-        timestamp: new Date().toISOString(),
-      })
-      if (result.success) {
-        setSubmitted(type)
-        setShowShuttleReservation(false)
-        setShowSwipeShare(false)
-        if (type === 'shuttle') setShuttleFormData({ name: '', email: '', day: '', time: '' })
-        if (type === 'swipe') setSwipeFormData({ action: '', name: '', email: '', swipes: '', message: '' })
-      }
-    } catch (error) {
-      console.error('Form submission error:', error)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false)
 
   // Download templates
   const downloadRoommateAgreement = () => {
@@ -242,20 +193,6 @@ export default function BasicNeedsPage() {
 
       <main className="section-padding">
         <div className="max-w-[1600px] mx-auto px-6 lg:px-12">
-          {submitted && (
-            <Reveal>
-              <div className="card-highlight p-6 mb-8">
-                <p className="text-white font-medium">
-                  {submitted === 'shuttle' && <Editable k="basicneeds.submitted.shuttle" multiline>Your shuttle reservation has been confirmed! Check your email for details.</Editable>}
-                  {submitted === 'swipe' && <Editable k="basicneeds.submitted.swipe" multiline>Thank you! Your meal swipe share has been registered.</Editable>}
-                </p>
-                <button onClick={() => setSubmitted(null)} className="text-gray-400 text-sm font-medium mt-3 hover:text-white transition-colors">
-                  <Editable k="basicneeds.submitted.dismiss">Dismiss</Editable>
-                </button>
-              </div>
-            </Reveal>
-          )}
-
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div>
@@ -437,9 +374,20 @@ export default function BasicNeedsPage() {
                       </div>
                     </div>
 
-                    <button onClick={() => setShowSwipeShare(true)} className="btn-primary w-full">
-                      <Editable k="basicneeds.hub.swipesharing.button">Share or Request Swipes</Editable>
+                    <button onClick={() => setShowSwipeShare(!showSwipeShare)} className="btn-primary w-full">
+                      {showSwipeShare ? 'Close' : 'Share or Request Swipes'}
                     </button>
+                    {showSwipeShare && (
+                      <div className="mt-6 pt-6 border-t border-gray-800">
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                        <iframe
+                          src="https://unc.qualtrics.com/jfe/form/SV_BASICNEEDS_SWIPE"
+                          className="w-full rounded-lg border border-gray-800 bg-black"
+                          style={{ height: '500px' }}
+                          title="Meal Swipe Exchange"
+                        />
+                      </div>
+                    )}
                   </div>
                 </Reveal>
 
@@ -489,34 +437,6 @@ export default function BasicNeedsPage() {
                 ))}
               </div>
 
-              {/* Swipe Share Modal */}
-              {showSwipeShare && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                  <div className="card max-w-md w-full p-8">
-                    <h3 className="text-2xl font-bold text-white mb-8"><Editable k="basicneeds.hub.modal.title">Meal Swipe Exchange</Editable></h3>
-                    <form onSubmit={handleFormSubmit('swipe', swipeFormData)} className="space-y-5">
-                      <Select label="I want to..." required value={swipeFormData.action} onChange={e => setSwipeFormData({...swipeFormData, action: e.target.value})}
-                        options={[
-                          { value: 'share', label: 'Share my extra swipes' },
-                          { value: 'request', label: 'Request meal swipes' },
-                        ]}
-                      />
-                      <Input label="Your Name" required value={swipeFormData.name} onChange={e => setSwipeFormData({...swipeFormData, name: e.target.value})} />
-                      <Input label="Email" type="email" required value={swipeFormData.email} onChange={e => setSwipeFormData({...swipeFormData, email: e.target.value})} />
-                      <Input label="Number of Swipes" type="number" required value={swipeFormData.swipes} onChange={e => setSwipeFormData({...swipeFormData, swipes: e.target.value})} />
-                      <Textarea label="Message (optional)" rows={2} value={swipeFormData.message} onChange={e => setSwipeFormData({...swipeFormData, message: e.target.value})} />
-                      <div className="flex gap-4 pt-4">
-                        <button type="submit" disabled={isSubmitting} className="btn-primary flex-1">
-                          {isSubmitting ? 'Submitting...' : <Editable k="basicneeds.hub.modal.submit">Submit</Editable>}
-                        </button>
-                        <button type="button" onClick={() => setShowSwipeShare(false)} className="btn-secondary">
-                          <Editable k="basicneeds.hub.modal.cancel">Cancel</Editable>
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
@@ -650,9 +570,20 @@ export default function BasicNeedsPage() {
                       ))}
                     </div>
 
-                    <button onClick={() => setShowShuttleReservation(true)} className="btn-primary w-full">
-                      <Editable k="basicneeds.shuttle.reserve.button">Reserve a Spot</Editable>
+                    <button onClick={() => setShowShuttleReservation(!showShuttleReservation)} className="btn-primary w-full">
+                      {showShuttleReservation ? 'Close' : 'Reserve a Spot'}
                     </button>
+                    {showShuttleReservation && (
+                      <div className="mt-6 pt-6 border-t border-gray-800">
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                        <iframe
+                          src="https://unc.qualtrics.com/jfe/form/SV_BASICNEEDS_SHUTTLE"
+                          className="w-full rounded-lg border border-gray-800 bg-black"
+                          style={{ height: '500px' }}
+                          title="Shuttle Reservation"
+                        />
+                      </div>
+                    )}
                   </div>
                 </Reveal>
               </div>
@@ -679,39 +610,6 @@ export default function BasicNeedsPage() {
                 </Reveal>
               )}
 
-              {/* Shuttle Reservation Modal */}
-              {showShuttleReservation && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                  <div className="card max-w-md w-full p-8">
-                    <h3 className="text-2xl font-bold text-white mb-8"><Editable k="basicneeds.shuttle.modal.title">Reserve Shuttle Spot</Editable></h3>
-                    <form onSubmit={handleFormSubmit('shuttle', shuttleFormData)} className="space-y-5">
-                      <Input label="Your Name" required value={shuttleFormData.name} onChange={e => setShuttleFormData({...shuttleFormData, name: e.target.value})} />
-                      <Input label="Email" type="email" required value={shuttleFormData.email} onChange={e => setShuttleFormData({...shuttleFormData, email: e.target.value})} />
-                      <Select label="Select Day" required value={shuttleFormData.day} onChange={e => setShuttleFormData({...shuttleFormData, day: e.target.value})}
-                        options={[
-                          { value: 'saturday', label: 'Saturday (Trader Joe\'s & Harris Teeter)' },
-                          { value: 'sunday', label: 'Sunday (Walmart & Aldi)' },
-                        ]}
-                      />
-                      <Select label="Departure Time" required value={shuttleFormData.time} onChange={e => setShuttleFormData({...shuttleFormData, time: e.target.value})}
-                        options={[
-                          { value: '10am', label: '10:00 AM' },
-                          { value: '12pm', label: '12:00 PM' },
-                          { value: '2pm', label: '2:00 PM' },
-                        ]}
-                      />
-                      <div className="flex gap-4 pt-4">
-                        <button type="submit" disabled={isSubmitting} className="btn-primary flex-1">
-                          {isSubmitting ? 'Reserving...' : <Editable k="basicneeds.shuttle.modal.confirm">Confirm Reservation</Editable>}
-                        </button>
-                        <button type="button" onClick={() => setShowShuttleReservation(false)} className="btn-secondary">
-                          <Editable k="basicneeds.shuttle.modal.cancel">Cancel</Editable>
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
@@ -861,30 +759,19 @@ export default function BasicNeedsPage() {
                   <Reveal delay={200}>
                     <div className="card p-8 mt-6">
                       <h3 className="font-semibold text-white text-lg mb-6"><Editable k="basicneeds.faq.feedbacktitle">Send Feedback</Editable></h3>
-                      {feedbackSubmitted ? (
-                        <div className="text-center py-6">
-                          <div className="w-14 h-14 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <span className="text-3xl text-white">✓</span>
-                          </div>
-                          <p className="text-white font-medium"><Editable k="basicneeds.faq.feedbackthanks">Thanks for your feedback!</Editable></p>
-                          <button onClick={() => setFeedbackSubmitted(false)} className="text-gray-400 text-sm mt-3 hover:text-white transition-colors"><Editable k="basicneeds.faq.sendanother">Send another</Editable></button>
-                        </div>
-                      ) : (
-                        <form onSubmit={handleFeedbackSubmit} className="space-y-5">
-                          <Select label="Topic" value={feedbackForm.topic} onChange={e => setFeedbackForm({...feedbackForm, topic: e.target.value})} required
-                            options={[
-                              { value: 'suggestion', label: 'Suggestion' },
-                              { value: 'question', label: 'Question' },
-                              { value: 'concern', label: 'Concern' },
-                              { value: 'compliment', label: 'Compliment' },
-                            ]}
+                      <button onClick={() => setShowFeedbackForm(!showFeedbackForm)} className="btn-primary w-full">
+                        {showFeedbackForm ? 'Close' : <Editable k="basicneeds.faq.submitfeedback">Submit Feedback</Editable>}
+                      </button>
+                      {showFeedbackForm && (
+                        <div className="mt-6 pt-6 border-t border-gray-800">
+                          <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                          <iframe
+                            src="https://unc.qualtrics.com/jfe/form/SV_BASICNEEDS_FEEDBACK"
+                            className="w-full rounded-lg border border-gray-800 bg-black"
+                            style={{ height: '500px' }}
+                            title="Basic Needs Feedback"
                           />
-                          <Textarea label="Message" value={feedbackForm.message} onChange={e => setFeedbackForm({...feedbackForm, message: e.target.value})} required rows={3} />
-                          <Input label="Email (optional)" type="email" value={feedbackForm.email} onChange={e => setFeedbackForm({...feedbackForm, email: e.target.value})} />
-                          <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
-                            {isSubmitting ? 'Submitting...' : <Editable k="basicneeds.faq.submitfeedback">Submit Feedback</Editable>}
-                          </button>
-                        </form>
+                        </div>
                       )}
                     </div>
                   </Reveal>

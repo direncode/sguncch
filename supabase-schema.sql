@@ -524,3 +524,67 @@ BEGIN
   LIMIT match_count;
 END;
 $$ LANGUAGE plpgsql;
+
+-- ============================================
+-- FORM SUBMISSIONS TABLE (All resource forms)
+-- ============================================
+CREATE TABLE IF NOT EXISTS form_submissions (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  form_type TEXT NOT NULL,
+  data JSONB NOT NULL DEFAULT '{}',
+  status TEXT DEFAULT 'new' CHECK (status IN ('new', 'reviewed', 'resolved', 'archived')),
+  admin_note TEXT,
+  submitted_at TIMESTAMPTZ DEFAULT NOW(),
+  reviewed_at TIMESTAMPTZ
+);
+
+ALTER TABLE form_submissions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can submit forms" ON form_submissions
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Admins can read form submissions" ON form_submissions
+  FOR SELECT USING (true);
+
+CREATE POLICY "Admins can update form submissions" ON form_submissions
+  FOR UPDATE USING (true);
+
+CREATE INDEX IF NOT EXISTS idx_form_submissions_type ON form_submissions(form_type);
+CREATE INDEX IF NOT EXISTS idx_form_submissions_status ON form_submissions(status);
+CREATE INDEX IF NOT EXISTS idx_form_submissions_submitted ON form_submissions(submitted_at DESC);
+
+-- ============================================
+-- FUNDING REQUESTS TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS funding_requests (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  org_name TEXT NOT NULL,
+  category TEXT NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  description TEXT,
+  justification TEXT,
+  students_impacted INTEGER DEFAULT 0,
+  contact_email TEXT,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'denied', 'needs-info', 'amendment-requested')),
+  approved_amount DECIMAL(10,2),
+  reviewer_notes TEXT,
+  context_check JSONB DEFAULT '{}',
+  amendment JSONB,
+  amendment_history JSONB DEFAULT '[]',
+  submitted_at TIMESTAMPTZ DEFAULT NOW(),
+  reviewed_at TIMESTAMPTZ
+);
+
+ALTER TABLE funding_requests ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can submit funding requests" ON funding_requests
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Anyone can read funding requests" ON funding_requests
+  FOR SELECT USING (true);
+
+CREATE POLICY "Admins can update funding requests" ON funding_requests
+  FOR UPDATE USING (true);
+
+CREATE INDEX IF NOT EXISTS idx_funding_requests_status ON funding_requests(status);
+CREATE INDEX IF NOT EXISTS idx_funding_requests_submitted ON funding_requests(submitted_at DESC);

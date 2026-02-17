@@ -63,6 +63,10 @@ GROQ_API_KEY=your-groq-api-key
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 
+# Database connection for auto-migration (creates tables automatically)
+# Get from: Supabase Dashboard → Settings → Database → Connection String → URI
+DATABASE_URL=postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
+
 # ============================================
 # OPTIONAL: Form Submissions (Web3Forms)
 # ============================================
@@ -110,16 +114,16 @@ NEXT_PUBLIC_WEB3FORMS_KEY=your-web3forms-key`
       name: 'Persistent Database (Supabase)',
       required: false,
       configured: configStatus.supabase,
-      description: 'Store budget data permanently instead of local browser storage',
+      description: 'Permanent storage for documents, forms, budget, and all platform data',
       steps: [
         'Create account at supabase.com (FREE tier available)',
         'Create a new project',
-        'Go to Settings > API',
-        'Copy Project URL → NEXT_PUBLIC_SUPABASE_URL',
-        'Copy anon public key → NEXT_PUBLIC_SUPABASE_ANON_KEY',
-        'Run the schema from supabase-schema.sql',
+        'Go to Settings → API → Copy Project URL and anon key',
+        'Go to Settings → Database → Copy Connection String (URI)',
+        'Set NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, and DATABASE_URL',
+        'Tables are auto-created on first request — no manual SQL needed',
       ],
-      envVar: 'NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY',
+      envVar: 'NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, DATABASE_URL',
       link: 'https://supabase.com',
     },
     {

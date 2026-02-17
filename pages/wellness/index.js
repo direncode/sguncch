@@ -1,11 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import Head from 'next/head'
 import Layout from '../../components/Layout'
-import { Input, Select, Textarea } from '../../components/FormInput'
 import { useApp } from '../../lib/store'
 import { wellnessResources, departmentContacts, departmentFAQs, departmentAnnouncements, serviceGuides } from '../../lib/data'
 import {
-  submitForm,
   phoneNumbers,
   calendarEvents,
   templates,
@@ -74,11 +72,6 @@ export default function WellnessPage() {
   const [showRideForm, setShowRideForm] = useState(false)
   const [showSafetyPlanForm, setShowSafetyPlanForm] = useState(false)
   const [showVolunteerForm, setShowVolunteerForm] = useState(false)
-  const [submitted, setSubmitted] = useState(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [rideFormData, setRideFormData] = useState({ name: '', phone: '', pickup: '', destination: '', passengers: '1' })
-  const [volunteerFormData, setVolunteerFormData] = useState({ name: '', email: '', pid: '', hasCar: '', reason: '' })
-  const [safetyFormData, setSafetyFormData] = useState({ org: '', event: '', date: '', location: '', attendance: '', transport: '', contacts: '', additional: '' })
   const {
     policies,
     isAdmin,
@@ -109,52 +102,6 @@ export default function WellnessPage() {
   const capsGuide = serviceGuides['caps-dropin']
   const rideGuide = serviceGuides['safe-ride']
   const [expandedFaq, setExpandedFaq] = useState(null)
-  const [feedbackForm, setFeedbackForm] = useState({ topic: '', message: '', email: '' })
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
-
-  const handleFeedbackSubmit = async (e) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    try {
-      await submitForm('wellness-feedback', {
-        ...feedbackForm,
-        department: 'wellness',
-        timestamp: new Date().toISOString(),
-      })
-      setFeedbackSubmitted(true)
-      setFeedbackForm({ topic: '', message: '', email: '' })
-    } catch (error) {
-      console.error('Feedback submission error:', error)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  const handleFormSubmit = (type, formData) => async (e) => {
-    e.preventDefault()
-    setIsSubmitting(true)
-    try {
-      const result = await submitForm(`wellness-${type}`, {
-        ...formData,
-        formType: type,
-        department: 'wellness',
-        timestamp: new Date().toISOString(),
-      })
-      if (result.success) {
-        setSubmitted(type)
-        setShowRideForm(false)
-        setShowSafetyPlanForm(false)
-        setShowVolunteerForm(false)
-        if (type === 'ride') setRideFormData({ name: '', phone: '', pickup: '', destination: '', passengers: '1' })
-        if (type === 'volunteer') setVolunteerFormData({ name: '', email: '', pid: '', hasCar: '', reason: '' })
-        if (type === 'safetyplan') setSafetyFormData({ org: '', event: '', date: '', location: '', attendance: '', transport: '', contacts: '', additional: '' })
-      }
-    } catch (error) {
-      console.error('Form submission error:', error)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
 
   const downloadSafetyTemplate = () => {
     const templateContent = templates.safetyPlanTemplate()
@@ -264,21 +211,6 @@ export default function WellnessPage() {
 
       <main className="section-padding">
         <div className="max-w-[1600px] mx-auto px-6 lg:px-12">
-          {submitted && (
-            <Reveal>
-              <div className="card-highlight p-6 mb-8">
-                <p className="text-white font-medium">
-                  {submitted === 'ride' && 'Your ride request has been submitted! You will receive a confirmation shortly.'}
-                  {submitted === 'safetyplan' && 'Your event safety plan has been submitted for review. We will contact you within 2 business days.'}
-                  {submitted === 'volunteer' && 'Thank you for volunteering! We will reach out with training information.'}
-                </p>
-                <button onClick={() => setSubmitted(null)} className="text-gray-400 text-sm font-medium mt-3 hover:text-white transition-colors">
-                  Dismiss
-                </button>
-              </div>
-            </Reveal>
-          )}
-
           {/* Overview Tab */}
           {activeTab === 'overview' && (
             <div>
@@ -459,9 +391,20 @@ export default function WellnessPage() {
                       </div>
                     </div>
 
-                    <button onClick={() => setShowRideForm(true)} className="btn-primary w-full">
-                      Request a Ride
+                    <button onClick={() => setShowRideForm(!showRideForm)} className="btn-primary w-full">
+                      {showRideForm ? 'Close' : 'Request a Ride'}
                     </button>
+                    {showRideForm && (
+                      <div className="mt-6 pt-6 border-t border-gray-800">
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                        <iframe
+                          src="https://unc.qualtrics.com/jfe/form/SV_WELLNESS_RIDE"
+                          className="w-full rounded-lg border border-gray-800 bg-black"
+                          style={{ height: '500px' }}
+                          title="Safe Ride Request"
+                        />
+                      </div>
+                    )}
                   </div>
                 </Reveal>
 
@@ -485,9 +428,20 @@ export default function WellnessPage() {
                       </li>
                     </ul>
 
-                    <button onClick={() => setShowVolunteerForm(true)} className="btn-secondary w-full">
-                      Apply to Volunteer
+                    <button onClick={() => setShowVolunteerForm(!showVolunteerForm)} className="btn-secondary w-full">
+                      {showVolunteerForm ? 'Close' : 'Apply to Volunteer'}
                     </button>
+                    {showVolunteerForm && (
+                      <div className="mt-6 pt-6 border-t border-gray-800">
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                        <iframe
+                          src="https://unc.qualtrics.com/jfe/form/SV_WELLNESS_VOLUNTEER"
+                          className="w-full rounded-lg border border-gray-800 bg-black"
+                          style={{ height: '500px' }}
+                          title="Volunteer Application"
+                        />
+                      </div>
+                    )}
                   </div>
                 </Reveal>
               </div>
@@ -513,64 +467,6 @@ export default function WellnessPage() {
                 </Reveal>
               )}
 
-              {/* Modals */}
-              {showRideForm && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                  <div className="card max-w-md w-full p-8">
-                    <h3 className="text-2xl font-bold text-white mb-8">Request a Ride</h3>
-                    <form onSubmit={handleFormSubmit('ride', rideFormData)} className="space-y-5">
-                      <Input label="Your Name" required value={rideFormData.name} onChange={e => setRideFormData({...rideFormData, name: e.target.value})} />
-                      <Input label="Phone Number" type="tel" required value={rideFormData.phone} onChange={e => setRideFormData({...rideFormData, phone: e.target.value})} />
-                      <Input label="Pickup Address" required placeholder="e.g., 123 Franklin St" value={rideFormData.pickup} onChange={e => setRideFormData({...rideFormData, pickup: e.target.value})} />
-                      <Input label="Destination" required placeholder="e.g., Granville Towers" value={rideFormData.destination} onChange={e => setRideFormData({...rideFormData, destination: e.target.value})} />
-                      <Select label="Number of Passengers" required value={rideFormData.passengers} onChange={e => setRideFormData({...rideFormData, passengers: e.target.value})}
-                        options={[
-                          { value: '1', label: '1 person' },
-                          { value: '2', label: '2 people' },
-                          { value: '3', label: '3 people' },
-                          { value: '4', label: '4 people' },
-                        ]}
-                      />
-                      <div className="flex gap-4 pt-4">
-                        <button type="submit" disabled={isSubmitting} className="btn-primary flex-1">
-                          {isSubmitting ? 'Submitting...' : 'Request Ride'}
-                        </button>
-                        <button type="button" onClick={() => setShowRideForm(false)} className="btn-secondary">
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              )}
-
-              {showVolunteerForm && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                  <div className="card max-w-md w-full p-8">
-                    <h3 className="text-2xl font-bold text-white mb-8">Volunteer Application</h3>
-                    <form onSubmit={handleFormSubmit('volunteer', volunteerFormData)} className="space-y-5">
-                      <Input label="Full Name" required value={volunteerFormData.name} onChange={e => setVolunteerFormData({...volunteerFormData, name: e.target.value})} />
-                      <Input label="Email" type="email" required value={volunteerFormData.email} onChange={e => setVolunteerFormData({...volunteerFormData, email: e.target.value})} />
-                      <Input label="PID" required value={volunteerFormData.pid} onChange={e => setVolunteerFormData({...volunteerFormData, pid: e.target.value})} />
-                      <Select label="Do you have a car?" required value={volunteerFormData.hasCar} onChange={e => setVolunteerFormData({...volunteerFormData, hasCar: e.target.value})}
-                        options={[
-                          { value: 'yes', label: 'Yes' },
-                          { value: 'no', label: 'No (can still volunteer as navigator)' },
-                        ]}
-                      />
-                      <Textarea label="Why do you want to volunteer?" rows={3} value={volunteerFormData.reason} onChange={e => setVolunteerFormData({...volunteerFormData, reason: e.target.value})} />
-                      <div className="flex gap-4 pt-4">
-                        <button type="submit" disabled={isSubmitting} className="btn-primary flex-1">
-                          {isSubmitting ? 'Submitting...' : 'Submit Application'}
-                        </button>
-                        <button type="button" onClick={() => setShowVolunteerForm(false)} className="btn-secondary">
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
@@ -702,9 +598,20 @@ export default function WellnessPage() {
                         ))}
                       </div>
 
-                      <button onClick={() => setShowSafetyPlanForm(true)} className="btn-primary w-full">
-                        Start Safety Plan
+                      <button onClick={() => setShowSafetyPlanForm(!showSafetyPlanForm)} className="btn-primary w-full">
+                        {showSafetyPlanForm ? 'Close' : 'Start Safety Plan'}
                       </button>
+                      {showSafetyPlanForm && (
+                        <div className="mt-6 pt-6 border-t border-gray-800">
+                          <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                          <iframe
+                            src="https://unc.qualtrics.com/jfe/form/SV_WELLNESS_SAFETY"
+                            className="w-full rounded-lg border border-gray-800 bg-black"
+                            style={{ height: '500px' }}
+                            title="Event Safety Plan"
+                          />
+                        </div>
+                      )}
                     </div>
                   </Reveal>
                 </div>
@@ -756,32 +663,6 @@ export default function WellnessPage() {
                 </div>
               </div>
 
-              {/* Safety Plan Modal */}
-              {showSafetyPlanForm && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                  <div className="card max-w-lg w-full p-8 max-h-[90vh] overflow-y-auto">
-                    <h3 className="text-2xl font-bold text-white mb-8">Submit Event Safety Plan</h3>
-                    <form onSubmit={handleFormSubmit('safetyplan', safetyFormData)} className="space-y-5">
-                      <Input label="Organization Name" required value={safetyFormData.org} onChange={e => setSafetyFormData({...safetyFormData, org: e.target.value})} />
-                      <Input label="Event Name" required value={safetyFormData.event} onChange={e => setSafetyFormData({...safetyFormData, event: e.target.value})} />
-                      <Input label="Event Date" type="date" required value={safetyFormData.date} onChange={e => setSafetyFormData({...safetyFormData, date: e.target.value})} />
-                      <Input label="Event Location" required value={safetyFormData.location} onChange={e => setSafetyFormData({...safetyFormData, location: e.target.value})} />
-                      <Input label="Expected Attendance" type="number" required value={safetyFormData.attendance} onChange={e => setSafetyFormData({...safetyFormData, attendance: e.target.value})} />
-                      <Textarea label="Transportation Plan" required rows={2} placeholder="How will attendees get to/from the event?" value={safetyFormData.transport} onChange={e => setSafetyFormData({...safetyFormData, transport: e.target.value})} />
-                      <Textarea label="Emergency Contacts" required rows={2} placeholder="List 2-3 sober contacts with phone numbers" value={safetyFormData.contacts} onChange={e => setSafetyFormData({...safetyFormData, contacts: e.target.value})} />
-                      <Textarea label="Additional Safety Measures" rows={2} value={safetyFormData.additional} onChange={e => setSafetyFormData({...safetyFormData, additional: e.target.value})} />
-                      <div className="flex gap-4 pt-4">
-                        <button type="submit" disabled={isSubmitting} className="btn-primary flex-1">
-                          {isSubmitting ? 'Submitting...' : 'Submit Plan'}
-                        </button>
-                        <button type="button" onClick={() => setShowSafetyPlanForm(false)} className="btn-secondary">
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
@@ -959,31 +840,15 @@ export default function WellnessPage() {
                   <Reveal delay={200}>
                     <div className="card p-8 mt-6">
                       <h3 className="font-semibold text-white text-lg mb-6">Send Feedback</h3>
-                      {feedbackSubmitted ? (
-                        <div className="text-center py-6">
-                          <div className="w-14 h-14 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <span className="text-3xl text-white">✓</span>
-                          </div>
-                          <p className="text-white font-medium">Thanks for your feedback!</p>
-                          <button onClick={() => setFeedbackSubmitted(false)} className="text-gray-400 text-sm mt-3 hover:text-white transition-colors">Send another</button>
-                        </div>
-                      ) : (
-                        <form onSubmit={handleFeedbackSubmit} className="space-y-5">
-                          <Select label="Topic" value={feedbackForm.topic} onChange={e => setFeedbackForm({...feedbackForm, topic: e.target.value})} required
-                            options={[
-                              { value: 'suggestion', label: 'Suggestion' },
-                              { value: 'question', label: 'Question' },
-                              { value: 'concern', label: 'Concern' },
-                              { value: 'compliment', label: 'Compliment' },
-                            ]}
-                          />
-                          <Textarea label="Message" value={feedbackForm.message} onChange={e => setFeedbackForm({...feedbackForm, message: e.target.value})} required rows={3} />
-                          <Input label="Email (optional)" type="email" value={feedbackForm.email} onChange={e => setFeedbackForm({...feedbackForm, email: e.target.value})} />
-                          <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
-                            {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
-                          </button>
-                        </form>
-                      )}
+                      <div className="mt-2">
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                        <iframe
+                          src="https://unc.qualtrics.com/jfe/form/SV_WELLNESS_FEEDBACK"
+                          className="w-full rounded-lg border border-gray-800 bg-black"
+                          style={{ height: '500px' }}
+                          title="Wellness Feedback"
+                        />
+                      </div>
                     </div>
                   </Reveal>
                 </div>

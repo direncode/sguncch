@@ -4,6 +4,7 @@ import Head from 'next/head'
 import Link from 'next/link'
 import { useApp } from '../../lib/store'
 import { departments as defaultDepartments, getOverallProgress, getStatusCounts } from '../../lib/data'
+import AdminNav from '../../components/AdminNav'
 import {
   BUDGET_CATEGORIES,
   exportLineItemsToCSV,
@@ -294,6 +295,8 @@ export default function AdminConsole() {
     { id: 'platform', label: 'Platform Builder' },
     { id: 'budget', label: 'Budget & Funding' },
     { id: 'scroll', label: 'The Scroll', href: '/admin/scroll' },
+    { id: 'ai', label: 'Grok AI', href: '/admin/ai' },
+    { id: 'submissions', label: 'Submissions', href: '/admin/submissions' },
     { id: 'content', label: 'Content' },
     { id: 'feedback', label: 'Feedback', badge: newFeedback.length },
     { id: 'settings', label: 'Settings' },
@@ -516,10 +519,24 @@ export default function AdminConsole() {
                       </button>
                       <Link
                         href="/admin/scroll"
-                        className="p-4 bg-white/5 border border-gray-700 rounded-lg hover:bg-white/10 transition-all text-left block col-span-2"
+                        className="p-4 bg-white/5 border border-gray-700 rounded-lg hover:bg-white/10 transition-all text-left block"
                       >
                         <p className="text-sm font-medium text-white">The Scroll</p>
-                        <p className="text-xs text-gray-500 mt-1">Manage knowledge base, approve submissions, upload documents</p>
+                        <p className="text-xs text-gray-500 mt-1">Knowledge base &amp; documents</p>
+                      </Link>
+                      <Link
+                        href="/admin/ai"
+                        className="p-4 bg-white/5 border border-gray-700 rounded-lg hover:bg-white/10 transition-all text-left block"
+                      >
+                        <p className="text-sm font-medium text-white">Grok AI</p>
+                        <p className="text-xs text-gray-500 mt-1">Admin AI assistant</p>
+                      </Link>
+                      <Link
+                        href="/admin/submissions"
+                        className="p-4 bg-white/5 border border-gray-700 rounded-lg hover:bg-white/10 transition-all text-left block"
+                      >
+                        <p className="text-sm font-medium text-white">Submissions</p>
+                        <p className="text-xs text-gray-500 mt-1">View all form submissions</p>
                       </Link>
                     </div>
                   </div>
@@ -1198,6 +1215,20 @@ export default function AdminConsole() {
                         <span className="text-gray-500">→</span>
                       </Link>
                       <Link
+                        href="/admin/ai"
+                        className="flex items-center justify-between p-3 bg-black/30 rounded-lg hover:bg-black/50 transition-all"
+                      >
+                        <span className="text-white">Grok AI</span>
+                        <span className="text-gray-500">→</span>
+                      </Link>
+                      <Link
+                        href="/admin/submissions"
+                        className="flex items-center justify-between p-3 bg-black/30 rounded-lg hover:bg-black/50 transition-all"
+                      >
+                        <span className="text-white">Submissions</span>
+                        <span className="text-gray-500">→</span>
+                      </Link>
+                      <Link
                         href="/setup"
                         className="flex items-center justify-between p-3 bg-black/30 rounded-lg hover:bg-black/50 transition-all"
                       >
@@ -1286,6 +1317,8 @@ export default function AdminConsole() {
           </div>
         </div>
       )}
+      <AdminNav />
+      <div className="h-12" />
     </div>
   )
 }
