@@ -39,19 +39,28 @@ export default async function handler(req, res) {
 
   try {
     let documents = []
+    let usedSupabase = false
 
     if (supabase) {
-      const { data, error } = await supabase
-        .from('governance_documents')
-        .select('id, title, version, text_full, file_name, file_size, status, approved_by, approved_at, created_at')
-        .eq('status', 'approved')
-        .order('approved_at', { ascending: false })
+      try {
+        const { data, error } = await supabase
+          .from('governance_documents')
+          .select('id, title, version, text_full, file_name, file_size, status, approved_by, approved_at, created_at')
+          .eq('status', 'approved')
+          .order('approved_at', { ascending: false })
 
-      if (error) {
-        return res.status(500).json({ error: error.message })
+        if (!error) {
+          documents = data || []
+          usedSupabase = true
+        } else {
+          console.warn('Supabase governance_documents query failed, using file fallback:', error.message)
+        }
+      } catch (e) {
+        console.warn('Supabase governance_documents unavailable, using file fallback:', e.message)
       }
-      documents = data || []
-    } else {
+    }
+
+    if (!usedSupabase) {
       const fs = require('fs')
       const path = require('path')
       const dataDir = (() => {
