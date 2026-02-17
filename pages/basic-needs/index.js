@@ -437,9 +437,24 @@ export default function BasicNeedsPage() {
                       </div>
                     </div>
 
-                    <button onClick={() => setShowSwipeShare(true)} className="btn-primary w-full">
-                      <Editable k="basicneeds.hub.swipesharing.button">Share or Request Swipes</Editable>
+                    <button onClick={() => setShowSwipeShare(!showSwipeShare)} className="btn-primary w-full">
+                      {showSwipeShare ? 'Close' : 'Share or Request Swipes'}
                     </button>
+                    {showSwipeShare && (
+                      <form onSubmit={handleFormSubmit('swipe', swipeFormData)} className="mt-6 pt-6 border-t border-gray-800 space-y-4">
+                        <Select label="I want to..." required value={swipeFormData.action} onChange={e => setSwipeFormData({...swipeFormData, action: e.target.value})}
+                          options={[{ value: 'share', label: 'Share extra swipes' }, { value: 'request', label: 'Request swipes' }]}
+                        />
+                        <div className="grid grid-cols-2 gap-4">
+                          <Input label="Name" required value={swipeFormData.name} onChange={e => setSwipeFormData({...swipeFormData, name: e.target.value})} />
+                          <Input label="Email" type="email" required value={swipeFormData.email} onChange={e => setSwipeFormData({...swipeFormData, email: e.target.value})} />
+                        </div>
+                        <Input label="Number of Swipes" type="number" required value={swipeFormData.swipes} onChange={e => setSwipeFormData({...swipeFormData, swipes: e.target.value})} />
+                        <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
+                          {isSubmitting ? 'Submitting...' : 'Submit'}
+                        </button>
+                      </form>
+                    )}
                   </div>
                 </Reveal>
 
@@ -489,34 +504,6 @@ export default function BasicNeedsPage() {
                 ))}
               </div>
 
-              {/* Swipe Share Modal */}
-              {showSwipeShare && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                  <div className="card max-w-md w-full p-8">
-                    <h3 className="text-2xl font-bold text-white mb-8"><Editable k="basicneeds.hub.modal.title">Meal Swipe Exchange</Editable></h3>
-                    <form onSubmit={handleFormSubmit('swipe', swipeFormData)} className="space-y-5">
-                      <Select label="I want to..." required value={swipeFormData.action} onChange={e => setSwipeFormData({...swipeFormData, action: e.target.value})}
-                        options={[
-                          { value: 'share', label: 'Share my extra swipes' },
-                          { value: 'request', label: 'Request meal swipes' },
-                        ]}
-                      />
-                      <Input label="Your Name" required value={swipeFormData.name} onChange={e => setSwipeFormData({...swipeFormData, name: e.target.value})} />
-                      <Input label="Email" type="email" required value={swipeFormData.email} onChange={e => setSwipeFormData({...swipeFormData, email: e.target.value})} />
-                      <Input label="Number of Swipes" type="number" required value={swipeFormData.swipes} onChange={e => setSwipeFormData({...swipeFormData, swipes: e.target.value})} />
-                      <Textarea label="Message (optional)" rows={2} value={swipeFormData.message} onChange={e => setSwipeFormData({...swipeFormData, message: e.target.value})} />
-                      <div className="flex gap-4 pt-4">
-                        <button type="submit" disabled={isSubmitting} className="btn-primary flex-1">
-                          {isSubmitting ? 'Submitting...' : <Editable k="basicneeds.hub.modal.submit">Submit</Editable>}
-                        </button>
-                        <button type="button" onClick={() => setShowSwipeShare(false)} className="btn-secondary">
-                          <Editable k="basicneeds.hub.modal.cancel">Cancel</Editable>
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
@@ -650,9 +637,28 @@ export default function BasicNeedsPage() {
                       ))}
                     </div>
 
-                    <button onClick={() => setShowShuttleReservation(true)} className="btn-primary w-full">
-                      <Editable k="basicneeds.shuttle.reserve.button">Reserve a Spot</Editable>
+                    <button onClick={() => setShowShuttleReservation(!showShuttleReservation)} className="btn-primary w-full">
+                      {showShuttleReservation ? 'Close' : 'Reserve a Spot'}
                     </button>
+                    {showShuttleReservation && (
+                      <form onSubmit={handleFormSubmit('shuttle', shuttleFormData)} className="mt-6 pt-6 border-t border-gray-800 space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <Input label="Name" required value={shuttleFormData.name} onChange={e => setShuttleFormData({...shuttleFormData, name: e.target.value})} />
+                          <Input label="Email" type="email" required value={shuttleFormData.email} onChange={e => setShuttleFormData({...shuttleFormData, email: e.target.value})} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <Select label="Day" required value={shuttleFormData.day} onChange={e => setShuttleFormData({...shuttleFormData, day: e.target.value})}
+                            options={[{ value: 'friday', label: 'Friday' }, { value: 'saturday', label: 'Saturday' }, { value: 'sunday', label: 'Sunday' }]}
+                          />
+                          <Select label="Time" required value={shuttleFormData.time} onChange={e => setShuttleFormData({...shuttleFormData, time: e.target.value})}
+                            options={[{ value: '6pm', label: '6:00 PM' }, { value: '7pm', label: '7:00 PM' }, { value: '8pm', label: '8:00 PM' }, { value: '9pm', label: '9:00 PM' }]}
+                          />
+                        </div>
+                        <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
+                          {isSubmitting ? 'Submitting...' : 'Reserve'}
+                        </button>
+                      </form>
+                    )}
                   </div>
                 </Reveal>
               </div>
@@ -679,39 +685,6 @@ export default function BasicNeedsPage() {
                 </Reveal>
               )}
 
-              {/* Shuttle Reservation Modal */}
-              {showShuttleReservation && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                  <div className="card max-w-md w-full p-8">
-                    <h3 className="text-2xl font-bold text-white mb-8"><Editable k="basicneeds.shuttle.modal.title">Reserve Shuttle Spot</Editable></h3>
-                    <form onSubmit={handleFormSubmit('shuttle', shuttleFormData)} className="space-y-5">
-                      <Input label="Your Name" required value={shuttleFormData.name} onChange={e => setShuttleFormData({...shuttleFormData, name: e.target.value})} />
-                      <Input label="Email" type="email" required value={shuttleFormData.email} onChange={e => setShuttleFormData({...shuttleFormData, email: e.target.value})} />
-                      <Select label="Select Day" required value={shuttleFormData.day} onChange={e => setShuttleFormData({...shuttleFormData, day: e.target.value})}
-                        options={[
-                          { value: 'saturday', label: 'Saturday (Trader Joe\'s & Harris Teeter)' },
-                          { value: 'sunday', label: 'Sunday (Walmart & Aldi)' },
-                        ]}
-                      />
-                      <Select label="Departure Time" required value={shuttleFormData.time} onChange={e => setShuttleFormData({...shuttleFormData, time: e.target.value})}
-                        options={[
-                          { value: '10am', label: '10:00 AM' },
-                          { value: '12pm', label: '12:00 PM' },
-                          { value: '2pm', label: '2:00 PM' },
-                        ]}
-                      />
-                      <div className="flex gap-4 pt-4">
-                        <button type="submit" disabled={isSubmitting} className="btn-primary flex-1">
-                          {isSubmitting ? 'Reserving...' : <Editable k="basicneeds.shuttle.modal.confirm">Confirm Reservation</Editable>}
-                        </button>
-                        <button type="button" onClick={() => setShowShuttleReservation(false)} className="btn-secondary">
-                          <Editable k="basicneeds.shuttle.modal.cancel">Cancel</Editable>
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 

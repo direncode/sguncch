@@ -604,11 +604,37 @@ export default function EnvironmentalPage() {
                     <Editable k="environmental.adoptSpace.registerDescription">Adopt a space and commit to regular cleanup events. Earn service hours and leaderboard recognition!</Editable>
                   </p>
                   <button
-                    onClick={() => setShowAdoptModal(true)}
+                    onClick={() => setShowAdoptModal(!showAdoptModal)}
                     className="btn-primary"
                   >
-                    <Editable k="environmental.adoptSpace.adoptButton">Adopt a Space</Editable>
+                    {showAdoptModal ? 'Close' : 'Adopt a Space'}
                   </button>
+                  {showAdoptModal && (
+                    <div className="mt-6 pt-6 border-t border-gray-800 space-y-4">
+                      <form onSubmit={handleAdoptSubmit} className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <Input label="Organization Name" name="orgName" value={adoptForm.orgName} onChange={e => setAdoptForm({...adoptForm, orgName: e.target.value})} required />
+                          <Input label="Contact Name" name="contact" value={adoptForm.contact} onChange={e => setAdoptForm({...adoptForm, contact: e.target.value})} required />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <Input label="Email" type="email" name="email" value={adoptForm.email} onChange={e => setAdoptForm({...adoptForm, email: e.target.value})} required />
+                          <Select label="Preferred Space" name="space" value={adoptForm.space} onChange={e => setAdoptForm({...adoptForm, space: e.target.value})} required
+                            options={[
+                              { value: 'polk', label: 'Polk Place Quad' },
+                              { value: 'mccorkle', label: 'McCorkle Place' },
+                              { value: 'pit', label: 'The Pit Area' },
+                              { value: 'south', label: 'South Campus Walkways' },
+                              { value: 'stadium', label: 'Stadium Drive' },
+                              { value: 'kenan', label: 'Kenan Woods Trail' },
+                            ]}
+                          />
+                        </div>
+                        <button type="submit" disabled={isAdoptSubmitting} className="btn-primary w-full">
+                          {isAdoptSubmitting ? 'Submitting...' : 'Submit'}
+                        </button>
+                      </form>
+                    </div>
+                  )}
                 </div>
               </Reveal>
             </div>
@@ -779,11 +805,26 @@ export default function EnvironmentalPage() {
                       <Editable k="environmental.moveout.donateDescription">Moving out? Schedule a pickup or drop off items at designated locations during finals week.</Editable>
                     </p>
                     <button
-                      onClick={() => setShowDonateModal(true)}
+                      onClick={() => setShowDonateModal(!showDonateModal)}
                       className="btn-primary"
                     >
-                      <Editable k="environmental.moveout.scheduleDonationButton">Schedule Donation</Editable>
+                      {showDonateModal ? 'Close' : 'Schedule Donation'}
                     </button>
+                    {showDonateModal && (
+                      <div className="mt-6 pt-6 border-t border-gray-800 space-y-4">
+                        <form onSubmit={handleDonateSubmit} className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <Input label="Name" name="name" value={donateForm.name} onChange={e => setDonateForm({...donateForm, name: e.target.value})} required />
+                            <Input label="Email" type="email" name="email" value={donateForm.email} onChange={e => setDonateForm({...donateForm, email: e.target.value})} required />
+                          </div>
+                          <Textarea label="Items to Donate" name="items" value={donateForm.items} onChange={e => setDonateForm({...donateForm, items: e.target.value})} required rows={2} />
+                          <Input label="Preferred Pickup Date" type="date" name="pickupDate" value={donateForm.pickupDate} onChange={e => setDonateForm({...donateForm, pickupDate: e.target.value})} required />
+                          <button type="submit" disabled={isDonateSubmitting} className="btn-primary w-full">
+                            {isDonateSubmitting ? 'Submitting...' : 'Submit'}
+                          </button>
+                        </form>
+                      </div>
+                    )}
                   </div>
                 </Reveal>
 
@@ -943,78 +984,6 @@ export default function EnvironmentalPage() {
         </div>
       </main>
 
-      {/* Adopt-a-Space Modal */}
-      {showAdoptModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="card max-w-md w-full p-8 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-2xl font-bold text-white mb-8"><Editable k="environmental.adoptModal.title">Adopt a Campus Space</Editable></h3>
-            <form onSubmit={handleAdoptSubmit} className="space-y-5">
-              <Input label="Organization Name" name="orgName" value={adoptForm.orgName} onChange={e => setAdoptForm({...adoptForm, orgName: e.target.value})} required />
-              <Input label="Contact Person" name="contact" value={adoptForm.contact} onChange={e => setAdoptForm({...adoptForm, contact: e.target.value})} required />
-              <Input label="Email" type="email" name="email" value={adoptForm.email} onChange={e => setAdoptForm({...adoptForm, email: e.target.value})} required />
-              <Select label="Preferred Space" name="space" value={adoptForm.space} onChange={e => setAdoptForm({...adoptForm, space: e.target.value})} required
-                options={[
-                  { value: 'polk', label: 'Polk Place Quad' },
-                  { value: 'mccorkle', label: 'McCorkle Place' },
-                  { value: 'pit', label: 'The Pit Area' },
-                  { value: 'south', label: 'South Campus Walkways' },
-                  { value: 'stadium', label: 'Stadium Drive' },
-                  { value: 'kenan', label: 'Kenan Woods Trail' },
-                ]}
-              />
-              <div className="flex gap-4 pt-4">
-                <button
-                  type="submit"
-                  disabled={isAdoptSubmitting}
-                  className="btn-primary flex-1"
-                >
-                  {isAdoptSubmitting ? 'Submitting...' : <Editable k="environmental.adoptModal.registerButton">Register</Editable>}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowAdoptModal(false)}
-                  disabled={isAdoptSubmitting}
-                  className="btn-secondary"
-                >
-                  <Editable k="environmental.adoptModal.cancelButton">Cancel</Editable>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Donate Items Modal */}
-      {showDonateModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="card max-w-md w-full p-8 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-2xl font-bold text-white mb-8"><Editable k="environmental.donateModal.title">Schedule a Donation</Editable></h3>
-            <form onSubmit={handleDonateSubmit} className="space-y-5">
-              <Input label="Your Name" name="name" value={donateForm.name} onChange={e => setDonateForm({...donateForm, name: e.target.value})} required />
-              <Input label="Email" type="email" name="email" value={donateForm.email} onChange={e => setDonateForm({...donateForm, email: e.target.value})} required />
-              <Textarea label="Items to Donate" name="items" value={donateForm.items} onChange={e => setDonateForm({...donateForm, items: e.target.value})} required rows={3} placeholder="List the items you'd like to donate..." />
-              <Input label="Preferred Pickup Date" type="date" name="pickupDate" value={donateForm.pickupDate} onChange={e => setDonateForm({...donateForm, pickupDate: e.target.value})} required />
-              <div className="flex gap-4 pt-4">
-                <button
-                  type="submit"
-                  disabled={isDonateSubmitting}
-                  className="btn-primary flex-1"
-                >
-                  {isDonateSubmitting ? 'Submitting...' : <Editable k="environmental.donateModal.scheduleButton">Schedule</Editable>}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowDonateModal(false)}
-                  disabled={isDonateSubmitting}
-                  className="btn-secondary"
-                >
-                  <Editable k="environmental.donateModal.cancelButton">Cancel</Editable>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
       <EditModeToggle />
     </Layout>
   )

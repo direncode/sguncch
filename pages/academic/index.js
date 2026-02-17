@@ -310,12 +310,23 @@ export default function AcademicPage() {
                   <div className="card-highlight p-6">
                     <h3 className="font-semibold text-white text-lg mb-2"><Editable k="academic.mentorship.findMentor.title">Find a Mentor</Editable></h3>
                     <p className="text-sm text-gray-400 mb-4"><Editable k="academic.mentorship.findMentor.description" multiline>Connect with trained peer mentors across all subjects. Get personalized guidance and support for your academic journey.</Editable></p>
-                    <a
-                      href={emailTemplates.mentorRequest}
+                    <button
+                      onClick={() => setShowMentorModal(!showMentorModal)}
                       className="btn-primary inline-block"
                     >
                       <Editable k="academic.mentorship.findMentor.button">Request a Mentor</Editable>
-                    </a>
+                    </button>
+                    {showMentorModal && (
+                      <form onSubmit={handleMentorSubmit} className="mt-6 pt-6 border-t border-gray-800 space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <Input label="Name" name="name" value={mentorForm.name} onChange={e => setMentorForm({...mentorForm, name: e.target.value})} required />
+                          <Input label="Email" type="email" name="email" value={mentorForm.email} onChange={e => setMentorForm({...mentorForm, email: e.target.value})} required />
+                        </div>
+                        <Input label="Subject" name="subject" value={mentorForm.subject} onChange={e => setMentorForm({...mentorForm, subject: e.target.value})} required />
+                        <Textarea label="Description" name="description" value={mentorForm.description} onChange={e => setMentorForm({...mentorForm, description: e.target.value})} required rows={2} />
+                        <button type="submit" className="btn-primary w-full">Submit Request</button>
+                      </form>
+                    )}
                   </div>
                 </Reveal>
 
@@ -508,11 +519,41 @@ export default function AcademicPage() {
                         ))}
                       </div>
                       <button
-                        onClick={() => setShowCenterModal(true)}
+                        onClick={() => setShowCenterModal(!showCenterModal)}
                         className="btn-secondary mt-4"
                       >
                         <Editable k="academic.stemCenters.reserveButton">Reserve Space</Editable>
                       </button>
+                      {showCenterModal && (
+                        <form onSubmit={handleCenterSubmit} className="mt-6 pt-6 border-t border-gray-800 space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <Select label="Center" name="center" value={centerForm.center} onChange={e => setCenterForm({...centerForm, center: e.target.value})} required
+                              options={[
+                                { value: 'chemistry', label: 'Chemistry Study Center' },
+                                { value: 'physics', label: 'Physics Study Center' },
+                                { value: 'math', label: 'Math Study Center' },
+                                { value: 'biology', label: 'Biology Study Center' },
+                              ]}
+                            />
+                            <Input label="Date" type="date" name="date" value={centerForm.date} onChange={e => setCenterForm({...centerForm, date: e.target.value})} required />
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            <Select label="Time" name="time" value={centerForm.time} onChange={e => setCenterForm({...centerForm, time: e.target.value})} required
+                              options={[
+                                { value: '9am', label: '9:00 AM - 11:00 AM' },
+                                { value: '11am', label: '11:00 AM - 1:00 PM' },
+                                { value: '1pm', label: '1:00 PM - 3:00 PM' },
+                                { value: '3pm', label: '3:00 PM - 5:00 PM' },
+                                { value: '5pm', label: '5:00 PM - 7:00 PM' },
+                                { value: '7pm', label: '7:00 PM - 9:00 PM' },
+                                { value: '9pm', label: '9:00 PM - 11:00 PM' },
+                              ]}
+                            />
+                            <Input label="Group Size" type="number" name="groupSize" value={centerForm.groupSize} onChange={e => setCenterForm({...centerForm, groupSize: e.target.value})} required />
+                          </div>
+                          <button type="submit" className="btn-primary w-full">Reserve Space</button>
+                        </form>
+                      )}
                     </div>
                   </Reveal>
                 ))}
@@ -900,93 +941,6 @@ export default function AcademicPage() {
         </div>
       </main>
 
-      {/* Mentor Request Modal */}
-      {showMentorModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="card max-w-md w-full p-8 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-2xl font-bold text-white mb-8"><Editable k="academic.modal.mentor.title">Request a Peer Mentor</Editable></h3>
-            <form onSubmit={handleMentorSubmit} className="space-y-5">
-              <Input label="Your Name" name="name" value={mentorForm.name} onChange={e => setMentorForm({...mentorForm, name: e.target.value})} required />
-              <Input label="Email" type="email" name="email" value={mentorForm.email} onChange={e => setMentorForm({...mentorForm, email: e.target.value})} required />
-              <Select label="Subject Area" name="subject" value={mentorForm.subject} onChange={e => setMentorForm({...mentorForm, subject: e.target.value})} required
-                options={[
-                  { value: 'stem', label: 'STEM' },
-                  { value: 'humanities', label: 'Humanities' },
-                  { value: 'social-sciences', label: 'Social Sciences' },
-                  { value: 'business', label: 'Business' },
-                  { value: 'health', label: 'Health Sciences' },
-                  { value: 'arts', label: 'Arts' },
-                  { value: 'other', label: 'Other' },
-                ]}
-              />
-              <Textarea label="What do you need help with?" name="description" value={mentorForm.description} onChange={e => setMentorForm({...mentorForm, description: e.target.value})} required rows={3} />
-              <div className="flex gap-4 pt-4">
-                <button type="submit" className="btn-primary flex-1">
-                  <Editable k="academic.modal.mentor.submit">Submit Request</Editable>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowMentorModal(false)}
-                  className="btn-secondary"
-                >
-                  <Editable k="academic.modal.mentor.cancel">Cancel</Editable>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Center Reservation Modal */}
-      {showCenterModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="card max-w-md w-full p-8 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-2xl font-bold text-white mb-8"><Editable k="academic.modal.center.title">Reserve Study Space</Editable></h3>
-            <form onSubmit={handleCenterSubmit} className="space-y-5">
-              <Select label="Study Center" name="center" value={centerForm.center} onChange={e => setCenterForm({...centerForm, center: e.target.value})} required
-                options={[
-                  { value: 'chemistry', label: 'Chemistry Study Center - Kenan Labs' },
-                  { value: 'physics', label: 'Physics Study Center - Phillips Hall' },
-                  { value: 'math', label: 'Math Study Center - Chapman Hall' },
-                  { value: 'biology', label: 'Biology Study Center - Coker Hall' },
-                ]}
-              />
-              <Input label="Date" type="date" name="date" value={centerForm.date} onChange={e => setCenterForm({...centerForm, date: e.target.value})} required />
-              <Select label="Time Slot" name="time" value={centerForm.time} onChange={e => setCenterForm({...centerForm, time: e.target.value})} required
-                options={[
-                  { value: '9am', label: '9:00 AM - 11:00 AM' },
-                  { value: '11am', label: '11:00 AM - 1:00 PM' },
-                  { value: '1pm', label: '1:00 PM - 3:00 PM' },
-                  { value: '3pm', label: '3:00 PM - 5:00 PM' },
-                  { value: '5pm', label: '5:00 PM - 7:00 PM' },
-                  { value: '7pm', label: '7:00 PM - 9:00 PM' },
-                  { value: '9pm', label: '9:00 PM - 11:00 PM' },
-                ]}
-              />
-              <Select label="Group Size" name="groupSize" value={centerForm.groupSize} onChange={e => setCenterForm({...centerForm, groupSize: e.target.value})} required
-                options={[
-                  { value: '1', label: 'Individual' },
-                  { value: '2-3', label: '2-3 people' },
-                  { value: '4-6', label: '4-6 people' },
-                  { value: '7+', label: '7+ people' },
-                ]}
-              />
-              <div className="flex gap-4 pt-4">
-                <button type="submit" className="btn-primary flex-1">
-                  <Editable k="academic.modal.center.submit">Reserve Space</Editable>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowCenterModal(false)}
-                  className="btn-secondary"
-                >
-                  <Editable k="academic.modal.center.cancel">Cancel</Editable>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
       <EditModeToggle />
     </Layout>
   )

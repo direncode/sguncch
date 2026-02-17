@@ -23,7 +23,7 @@ export default function AdminNav() {
   const isAdminPage = router.pathname.startsWith('/admin')
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[60] bg-black/95 backdrop-blur-xl border-t border-gray-800">
+    <div className="fixed bottom-0 left-0 right-0 z-40 bg-black/95 backdrop-blur-xl border-t border-gray-800">
       <div className="max-w-[1600px] mx-auto px-3 sm:px-6">
         <div className="flex items-center h-11 gap-1 overflow-x-auto">
           {/* Admin section */}

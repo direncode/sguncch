@@ -459,9 +459,27 @@ export default function WellnessPage() {
                       </div>
                     </div>
 
-                    <button onClick={() => setShowRideForm(true)} className="btn-primary w-full">
-                      Request a Ride
+                    <button onClick={() => setShowRideForm(!showRideForm)} className="btn-primary w-full">
+                      {showRideForm ? 'Close' : 'Request a Ride'}
                     </button>
+                    {showRideForm && (
+                      <form onSubmit={handleFormSubmit('ride', rideFormData)} className="mt-6 pt-6 border-t border-gray-800 space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <Input label="Your Name" required value={rideFormData.name} onChange={e => setRideFormData({...rideFormData, name: e.target.value})} />
+                          <Input label="Phone" type="tel" required value={rideFormData.phone} onChange={e => setRideFormData({...rideFormData, phone: e.target.value})} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <Input label="Pickup" required placeholder="e.g., 123 Franklin St" value={rideFormData.pickup} onChange={e => setRideFormData({...rideFormData, pickup: e.target.value})} />
+                          <Input label="Destination" required placeholder="e.g., Granville Towers" value={rideFormData.destination} onChange={e => setRideFormData({...rideFormData, destination: e.target.value})} />
+                        </div>
+                        <Select label="Passengers" required value={rideFormData.passengers} onChange={e => setRideFormData({...rideFormData, passengers: e.target.value})}
+                          options={[{ value: '1', label: '1' }, { value: '2', label: '2' }, { value: '3', label: '3' }, { value: '4', label: '4' }]}
+                        />
+                        <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
+                          {isSubmitting ? 'Submitting...' : 'Submit Request'}
+                        </button>
+                      </form>
+                    )}
                   </div>
                 </Reveal>
 
@@ -485,9 +503,27 @@ export default function WellnessPage() {
                       </li>
                     </ul>
 
-                    <button onClick={() => setShowVolunteerForm(true)} className="btn-secondary w-full">
-                      Apply to Volunteer
+                    <button onClick={() => setShowVolunteerForm(!showVolunteerForm)} className="btn-secondary w-full">
+                      {showVolunteerForm ? 'Close' : 'Apply to Volunteer'}
                     </button>
+                    {showVolunteerForm && (
+                      <form onSubmit={handleFormSubmit('volunteer', volunteerFormData)} className="mt-6 pt-6 border-t border-gray-800 space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <Input label="Full Name" required value={volunteerFormData.name} onChange={e => setVolunteerFormData({...volunteerFormData, name: e.target.value})} />
+                          <Input label="Email" type="email" required value={volunteerFormData.email} onChange={e => setVolunteerFormData({...volunteerFormData, email: e.target.value})} />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <Input label="PID" required value={volunteerFormData.pid} onChange={e => setVolunteerFormData({...volunteerFormData, pid: e.target.value})} />
+                          <Select label="Have a car?" required value={volunteerFormData.hasCar} onChange={e => setVolunteerFormData({...volunteerFormData, hasCar: e.target.value})}
+                            options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No (navigator)' }]}
+                          />
+                        </div>
+                        <Textarea label="Why volunteer?" rows={2} value={volunteerFormData.reason} onChange={e => setVolunteerFormData({...volunteerFormData, reason: e.target.value})} />
+                        <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
+                          {isSubmitting ? 'Submitting...' : 'Submit Application'}
+                        </button>
+                      </form>
+                    )}
                   </div>
                 </Reveal>
               </div>
@@ -513,62 +549,10 @@ export default function WellnessPage() {
                 </Reveal>
               )}
 
-              {/* Modals */}
-              {showRideForm && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                  <div className="card max-w-md w-full p-8">
-                    <h3 className="text-2xl font-bold text-white mb-8">Request a Ride</h3>
-                    <form onSubmit={handleFormSubmit('ride', rideFormData)} className="space-y-5">
-                      <Input label="Your Name" required value={rideFormData.name} onChange={e => setRideFormData({...rideFormData, name: e.target.value})} />
-                      <Input label="Phone Number" type="tel" required value={rideFormData.phone} onChange={e => setRideFormData({...rideFormData, phone: e.target.value})} />
-                      <Input label="Pickup Address" required placeholder="e.g., 123 Franklin St" value={rideFormData.pickup} onChange={e => setRideFormData({...rideFormData, pickup: e.target.value})} />
-                      <Input label="Destination" required placeholder="e.g., Granville Towers" value={rideFormData.destination} onChange={e => setRideFormData({...rideFormData, destination: e.target.value})} />
-                      <Select label="Number of Passengers" required value={rideFormData.passengers} onChange={e => setRideFormData({...rideFormData, passengers: e.target.value})}
-                        options={[
-                          { value: '1', label: '1 person' },
-                          { value: '2', label: '2 people' },
-                          { value: '3', label: '3 people' },
-                          { value: '4', label: '4 people' },
-                        ]}
-                      />
-                      <div className="flex gap-4 pt-4">
-                        <button type="submit" disabled={isSubmitting} className="btn-primary flex-1">
-                          {isSubmitting ? 'Submitting...' : 'Request Ride'}
-                        </button>
-                        <button type="button" onClick={() => setShowRideForm(false)} className="btn-secondary">
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              )}
-
-              {showVolunteerForm && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                  <div className="card max-w-md w-full p-8">
-                    <h3 className="text-2xl font-bold text-white mb-8">Volunteer Application</h3>
-                    <form onSubmit={handleFormSubmit('volunteer', volunteerFormData)} className="space-y-5">
-                      <Input label="Full Name" required value={volunteerFormData.name} onChange={e => setVolunteerFormData({...volunteerFormData, name: e.target.value})} />
-                      <Input label="Email" type="email" required value={volunteerFormData.email} onChange={e => setVolunteerFormData({...volunteerFormData, email: e.target.value})} />
-                      <Input label="PID" required value={volunteerFormData.pid} onChange={e => setVolunteerFormData({...volunteerFormData, pid: e.target.value})} />
-                      <Select label="Do you have a car?" required value={volunteerFormData.hasCar} onChange={e => setVolunteerFormData({...volunteerFormData, hasCar: e.target.value})}
-                        options={[
-                          { value: 'yes', label: 'Yes' },
-                          { value: 'no', label: 'No (can still volunteer as navigator)' },
-                        ]}
-                      />
-                      <Textarea label="Why do you want to volunteer?" rows={3} value={volunteerFormData.reason} onChange={e => setVolunteerFormData({...volunteerFormData, reason: e.target.value})} />
-                      <div className="flex gap-4 pt-4">
-                        <button type="submit" disabled={isSubmitting} className="btn-primary flex-1">
-                          {isSubmitting ? 'Submitting...' : 'Submit Application'}
-                        </button>
-                        <button type="button" onClick={() => setShowVolunteerForm(false)} className="btn-secondary">
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
-                  </div>
+              {/* Success notification */}
+              {submitted && (
+                <div className="card p-4 bg-green-500/5 border-green-500/20">
+                  <p className="text-green-400 text-sm">Submitted successfully. We&apos;ll be in touch shortly.</p>
                 </div>
               )}
             </div>
@@ -702,9 +686,27 @@ export default function WellnessPage() {
                         ))}
                       </div>
 
-                      <button onClick={() => setShowSafetyPlanForm(true)} className="btn-primary w-full">
-                        Start Safety Plan
+                      <button onClick={() => setShowSafetyPlanForm(!showSafetyPlanForm)} className="btn-primary w-full">
+                        {showSafetyPlanForm ? 'Close' : 'Start Safety Plan'}
                       </button>
+                      {showSafetyPlanForm && (
+                        <form onSubmit={handleFormSubmit('safetyplan', safetyFormData)} className="mt-6 pt-6 border-t border-gray-800 space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <Input label="Organization" required value={safetyFormData.org} onChange={e => setSafetyFormData({...safetyFormData, org: e.target.value})} />
+                            <Input label="Event Name" required value={safetyFormData.event} onChange={e => setSafetyFormData({...safetyFormData, event: e.target.value})} />
+                          </div>
+                          <div className="grid grid-cols-3 gap-4">
+                            <Input label="Date" type="date" required value={safetyFormData.date} onChange={e => setSafetyFormData({...safetyFormData, date: e.target.value})} />
+                            <Input label="Location" required value={safetyFormData.location} onChange={e => setSafetyFormData({...safetyFormData, location: e.target.value})} />
+                            <Input label="Attendance" type="number" required value={safetyFormData.attendance} onChange={e => setSafetyFormData({...safetyFormData, attendance: e.target.value})} />
+                          </div>
+                          <Textarea label="Transportation plan" rows={2} value={safetyFormData.transport} onChange={e => setSafetyFormData({...safetyFormData, transport: e.target.value})} />
+                          <Textarea label="Emergency contacts" rows={2} value={safetyFormData.contacts} onChange={e => setSafetyFormData({...safetyFormData, contacts: e.target.value})} />
+                          <button type="submit" disabled={isSubmitting} className="btn-primary w-full">
+                            {isSubmitting ? 'Submitting...' : 'Submit Safety Plan'}
+                          </button>
+                        </form>
+                      )}
                     </div>
                   </Reveal>
                 </div>
@@ -756,32 +758,6 @@ export default function WellnessPage() {
                 </div>
               </div>
 
-              {/* Safety Plan Modal */}
-              {showSafetyPlanForm && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                  <div className="card max-w-lg w-full p-8 max-h-[90vh] overflow-y-auto">
-                    <h3 className="text-2xl font-bold text-white mb-8">Submit Event Safety Plan</h3>
-                    <form onSubmit={handleFormSubmit('safetyplan', safetyFormData)} className="space-y-5">
-                      <Input label="Organization Name" required value={safetyFormData.org} onChange={e => setSafetyFormData({...safetyFormData, org: e.target.value})} />
-                      <Input label="Event Name" required value={safetyFormData.event} onChange={e => setSafetyFormData({...safetyFormData, event: e.target.value})} />
-                      <Input label="Event Date" type="date" required value={safetyFormData.date} onChange={e => setSafetyFormData({...safetyFormData, date: e.target.value})} />
-                      <Input label="Event Location" required value={safetyFormData.location} onChange={e => setSafetyFormData({...safetyFormData, location: e.target.value})} />
-                      <Input label="Expected Attendance" type="number" required value={safetyFormData.attendance} onChange={e => setSafetyFormData({...safetyFormData, attendance: e.target.value})} />
-                      <Textarea label="Transportation Plan" required rows={2} placeholder="How will attendees get to/from the event?" value={safetyFormData.transport} onChange={e => setSafetyFormData({...safetyFormData, transport: e.target.value})} />
-                      <Textarea label="Emergency Contacts" required rows={2} placeholder="List 2-3 sober contacts with phone numbers" value={safetyFormData.contacts} onChange={e => setSafetyFormData({...safetyFormData, contacts: e.target.value})} />
-                      <Textarea label="Additional Safety Measures" rows={2} value={safetyFormData.additional} onChange={e => setSafetyFormData({...safetyFormData, additional: e.target.value})} />
-                      <div className="flex gap-4 pt-4">
-                        <button type="submit" disabled={isSubmitting} className="btn-primary flex-1">
-                          {isSubmitting ? 'Submitting...' : 'Submit Plan'}
-                        </button>
-                        <button type="button" onClick={() => setShowSafetyPlanForm(false)} className="btn-secondary">
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              )}
             </div>
           )}
 
