@@ -1,6 +1,6 @@
 // The Scroll API — returns approved documents with text and auto-categorized buckets
 
-import { supabase } from '../../../lib/supabase'
+import { getDocuments } from '../../../lib/codex'
 
 const CATEGORIES = [
   { id: 'laws', label: 'Laws & Statutes', keywords: ['law', 'statute', 'code of conduct', 'act', 'legislation', 'legal', 'ordinance', 'regulation', 'compliance', 'ferpa', 'title ix', 'clery', 'judicial', 'enforcement'] },
@@ -38,46 +38,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    let documents = []
-    let usedSupabase = false
+    // Uses lib/codex.js which handles Supabase vs file-based fallback automatically
+    const { data: documents, error } = await getDocuments('approved', { includeText: true })
 
-    if (supabase) {
-      try {
-        const { data, error } = await supabase
-          .from('governance_documents')
-          .select('id, title, version, text_full, file_name, file_size, status, approved_by, approved_at, created_at')
-          .eq('status', 'approved')
-          .order('approved_at', { ascending: false })
-
-        if (!error) {
-          documents = data || []
-          usedSupabase = true
-        } else {
-          console.warn('Supabase governance_documents query failed, using file fallback:', error.message)
-        }
-      } catch (e) {
-        console.warn('Supabase governance_documents unavailable, using file fallback:', e.message)
-      }
-    }
-
-    if (!usedSupabase) {
-      const fs = require('fs')
-      const path = require('path')
-      const dataDir = (() => {
-        const primary = path.join(process.cwd(), '.data')
-        try { fs.mkdirSync(primary, { recursive: true }); return primary } catch { return path.join('/tmp', '.data') }
-      })()
-      const docsFile = path.join(dataDir, 'documents.json')
-      if (fs.existsSync(docsFile)) {
-        const all = JSON.parse(fs.readFileSync(docsFile, 'utf8'))
-        documents = all
-          .filter(d => d.status === 'approved')
-          .sort((a, b) => new Date(b.approved_at || b.created_at) - new Date(a.approved_at || a.created_at))
-      }
+    if (error) {
+      console.error('Scroll API - getDocuments error:', error)
+      return res.status(500).json({ error: 'Failed to load The Scroll' })
     }
 
     // Categorize each document
-    const categorized = documents.map(doc => {
+    const categorized = (documents || []).map(doc => {
       const preview = (doc.text_full || '').slice(0, 1000)
       return {
         id: doc.id,
