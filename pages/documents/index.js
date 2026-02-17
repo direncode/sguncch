@@ -169,6 +169,24 @@ export default function Documents() {
       .catch(() => {})
   }
 
+  const handleRemoveDoc = async (scrollDocId, docName) => {
+    if (!confirm(`Remove "${docName}" from The Scroll? You can re-upload it later.`)) return
+    try {
+      const res = await fetch(`/api/codex/document/${scrollDocId}/delete`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${getAdminToken()}` },
+      })
+      if (res.ok) {
+        loadScrollDocs()
+      } else {
+        const data = await res.json()
+        alert(data.error || 'Failed to remove document')
+      }
+    } catch {
+      alert('Failed to remove document')
+    }
+  }
+
   useEffect(() => { loadScrollDocs() }, [])
 
   const scrollCount = scrollDocs.length
@@ -273,6 +291,14 @@ export default function Documents() {
 
                     {/* Actions */}
                     <div className="flex items-center gap-2 shrink-0">
+                      {isAdmin && inScroll && (
+                        <button
+                          onClick={() => handleRemoveDoc(scrollMatch.id, doc.name)}
+                          className="px-3 py-1.5 text-xs font-medium rounded border text-red-400 border-red-500/30 hover:border-red-400 transition"
+                        >
+                          Remove
+                        </button>
+                      )}
                       {isAdmin && !inScroll && (
                         <button
                           onClick={() => setTxtUploadDoc(txtUploadDoc?.id === doc.id ? null : doc)}
