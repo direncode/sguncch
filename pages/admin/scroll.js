@@ -167,6 +167,12 @@ export default function ScrollAdmin() {
   const [classifications, setClassifications] = useState({})
   const [classifyingId, setClassifyingId] = useState(null)
 
+  // Database setup
+  const [dbSetupNeeded, setDbSetupNeeded] = useState(null) // null=checking, true=needed, false=ok
+  const [dbPassword, setDbPassword] = useState('')
+  const [dbSetupLoading, setDbSetupLoading] = useState(false)
+  const [dbSetupResult, setDbSetupResult] = useState(null)
+
   // Reject modal
   const [rejectingId, setRejectingId] = useState(null)
   const [rejectReason, setRejectReason] = useState('')
@@ -177,7 +183,20 @@ export default function ScrollAdmin() {
   }, [isLoaded, isAdmin, router])
 
   useEffect(() => {
-    if (isAdmin) loadDocuments()
+    if (isAdmin) {
+      loadDocuments()
+      // Check if database tables exist
+      fetch('/api/setup/db-status')
+        .then(r => r.json())
+        .then(data => {
+          if (data.supabaseConfigured && !data.tablesExist) {
+            setDbSetupNeeded(true)
+          } else {
+            setDbSetupNeeded(false)
+          }
+        })
+        .catch(() => setDbSetupNeeded(false))
+    }
   }, [isAdmin])
 
   const notify = (msg) => {
@@ -186,6 +205,32 @@ export default function ScrollAdmin() {
   }
 
   const authHeaders = getAuthHeaders()
+
+  const handleDbSetup = async () => {
+    if (!dbPassword.trim()) return notify('Enter your Supabase database password')
+    setDbSetupLoading(true)
+    setDbSetupResult(null)
+    try {
+      const res = await fetch('/api/setup/init-db', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({ password: dbPassword }),
+      })
+      const data = await res.json()
+      if (data.status === 'migrated' || data.status === 'already_configured') {
+        setDbSetupResult({ ok: true, message: data.message })
+        setDbSetupNeeded(false)
+        setDbPassword('')
+        // Reload documents now that tables exist
+        setTimeout(() => loadDocuments(), 1000)
+      } else {
+        setDbSetupResult({ ok: false, message: data.message })
+      }
+    } catch {
+      setDbSetupResult({ ok: false, message: 'Connection failed. Check your password and try again.' })
+    }
+    setDbSetupLoading(false)
+  }
 
   const loadDocuments = async () => {
     setLoadingDocs(true)
@@ -467,6 +512,53 @@ export default function ScrollAdmin() {
           </div>
         </div>
       </nav>
+
+      {/* Database Setup Banner */}
+      {dbSetupNeeded && (
+        <div className="max-w-[1400px] mx-auto px-6 lg:px-12 pt-6">
+          <div className="bg-yellow-500/5 border border-yellow-500/30 rounded-xl p-6">
+            <div className="flex items-start gap-4">
+              <span className="text-2xl">&#9888;</span>
+              <div className="flex-1">
+                <h3 className="text-yellow-400 font-semibold mb-1">Database Setup Required</h3>
+                <p className="text-sm text-gray-400 mb-4">
+                  Your Supabase tables don&apos;t exist yet. Documents uploaded now will be lost on redeploy.
+                  Enter your Supabase database password to create all tables automatically.
+                </p>
+                <p className="text-xs text-gray-500 mb-4">
+                  Find it at: <strong className="text-gray-400">Supabase Dashboard</strong> &rarr; Project Settings &rarr; Database &rarr; Database password
+                </p>
+                <div className="flex items-center gap-3 max-w-lg">
+                  <input
+                    type="password"
+                    value={dbPassword}
+                    onChange={(e) => setDbPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleDbSetup()}
+                    placeholder="Database password"
+                    className="flex-1 px-4 py-2.5 bg-black border border-gray-800 rounded-lg text-sm text-white placeholder-gray-600 focus:border-yellow-500/50 focus:outline-none"
+                  />
+                  <button
+                    onClick={handleDbSetup}
+                    disabled={dbSetupLoading || !dbPassword.trim()}
+                    className="px-5 py-2.5 text-sm font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded-lg hover:bg-yellow-500/30 transition disabled:opacity-50"
+                  >
+                    {dbSetupLoading ? 'Creating tables...' : 'Initialize Database'}
+                  </button>
+                </div>
+                {dbSetupResult && (
+                  <div className={`mt-3 p-3 rounded-lg border text-sm ${
+                    dbSetupResult.ok
+                      ? 'bg-green-500/10 border-green-500/30 text-green-400'
+                      : 'bg-red-500/10 border-red-500/30 text-red-400'
+                  }`}>
+                    {dbSetupResult.message}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="max-w-[1400px] mx-auto px-6 lg:px-12 py-12">
 
