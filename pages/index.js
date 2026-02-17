@@ -84,9 +84,16 @@ function Counter({ value, suffix = '' }) {
 export default function Home() {
   const { policies } = useApp()
   const [mounted, setMounted] = useState(false)
+  const [scrollY, setScrollY] = useState(0)
 
   useEffect(() => {
     setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    const onScroll = () => setScrollY(window.scrollY)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
   const completedCount = policies?.filter(p => p.status === 'completed').length || 0
@@ -148,8 +155,17 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Scroll indicator */}
-        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 opacity-0 animate-fade-in" style={{ animationDelay: '1.5s', animationFillMode: 'forwards' }}>
+        {/* Scroll indicator - moves down and fades out on scroll */}
+        <div
+          className="absolute bottom-12 left-1/2 -translate-x-1/2 opacity-0 animate-fade-in transition-all duration-500"
+          style={{
+            animationDelay: '1.5s',
+            animationFillMode: 'forwards',
+            transform: `translateX(-50%) translateY(${Math.min(scrollY * 0.5, 60)}px)`,
+            opacity: Math.max(0, 1 - scrollY / 120),
+            pointerEvents: scrollY > 60 ? 'none' : 'auto',
+          }}
+        >
           <div className="flex flex-col items-center gap-2 text-gray-500">
             <span className="text-xs tracking-widest uppercase">Scroll</span>
             <div className="w-px h-12 bg-gradient-to-b from-gray-500 to-transparent" />
@@ -319,28 +335,53 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* Student Forms & Services */}
       <section className="section-padding">
         <div className="max-w-[1600px] mx-auto px-6 lg:px-12">
           <Reveal>
-            <div className="card-highlight text-center py-20 lg:py-32">
-              <h2 className="section-title mb-6">
-                Ready to make an impact?
-              </h2>
-              <p className="body-large max-w-xl mx-auto mb-10">
-                Submit a funding request, explore our resources, or get involved
-                with student government today.
+            <div className="max-w-2xl mb-16">
+              <span className="caption mb-6 block">Get Involved</span>
+              <h2 className="section-title mb-6">Student Services</h2>
+              <p className="body-large">
+                Request resources, sign up for programs, and connect with campus services — all in one place.
               </p>
-              <div className="flex flex-wrap justify-center gap-4">
-                <Link href="/funding-request" className="btn-primary">
-                  Submit Funding Request
-                </Link>
-                <Link href="/admin" className="btn-secondary">
-                  Admin Portal
-                </Link>
-              </div>
             </div>
           </Reveal>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              { href: '/funding-request', title: 'Funding Request', desc: 'Request funding for your student organization, event, or initiative.', cat: 'Budget' },
+              { href: '/wellness', title: 'Safe Ride Request', desc: 'Request a free late-night ride home from campus safety services.', cat: 'Wellness' },
+              { href: '/wellness', title: 'Volunteer Application', desc: 'Sign up to volunteer with campus wellness and peer support programs.', cat: 'Wellness' },
+              { href: '/wellness', title: 'Safety Plan', desc: 'Create a personal safety plan with campus crisis resources.', cat: 'Wellness' },
+              { href: '/basic-needs', title: 'Meal Swipe Exchange', desc: 'Share or receive extra meal swipes with fellow students.', cat: 'Basic Needs' },
+              { href: '/basic-needs', title: 'Shuttle Reservation', desc: 'Reserve a spot on campus shuttles to grocery stores and essentials.', cat: 'Basic Needs' },
+              { href: '/academic', title: 'Mentor Request', desc: 'Get matched with an academic mentor in your field of study.', cat: 'Academic' },
+              { href: '/academic', title: 'Study Center Reservation', desc: 'Book a study room or space at campus academic centers.', cat: 'Academic' },
+              { href: '/communications', title: 'Story Submission', desc: 'Share your story for the student government newsletter or blog.', cat: 'Communications' },
+              { href: '/communications', title: 'Student Nomination', desc: 'Nominate a fellow student for recognition or leadership awards.', cat: 'Communications' },
+              { href: '/communications', title: 'Podcast Guest Application', desc: 'Apply to be a guest on the student government podcast.', cat: 'Communications' },
+              { href: '/communications', title: 'Talent Spotlight', desc: 'Showcase your talent or project to the campus community.', cat: 'Communications' },
+              { href: '/environmental', title: 'Adopt-a-Space', desc: 'Adopt a campus area to maintain and keep green.', cat: 'Environmental' },
+              { href: '/environmental', title: 'Donation Scheduling', desc: 'Schedule donations of supplies or materials for sustainability programs.', cat: 'Environmental' },
+            ].map((form, i) => (
+              <Reveal key={`${form.title}-${i}`} delay={i * 30}>
+                <Link
+                  href={form.href}
+                  className="group block p-6 bg-white/[0.02] border border-gray-900 rounded-xl hover:bg-white/[0.05] hover:border-gray-700 transition-all"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-gray-600">{form.cat}</span>
+                    <svg className="w-4 h-4 text-gray-700 group-hover:text-white group-hover:translate-x-1 transition-all" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                    </svg>
+                  </div>
+                  <h3 className="text-white font-medium mb-1.5 group-hover:text-gray-200 transition-colors">{form.title}</h3>
+                  <p className="text-sm text-gray-500 leading-relaxed">{form.desc}</p>
+                </Link>
+              </Reveal>
+            ))}
+          </div>
         </div>
       </section>
 
