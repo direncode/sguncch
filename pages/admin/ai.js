@@ -3,6 +3,7 @@ import { useRouter } from 'next/router'
 import Head from 'next/head'
 import Link from 'next/link'
 import { useApp } from '../../lib/store'
+import AdminNav from '../../components/AdminNav'
 
 function GrokIcon({ size = 24 }) {
   return (
@@ -311,6 +312,8 @@ export default function AdminAI() {
           </p>
         </div>
       </div>
+      <AdminNav />
+      <div className="h-12" />
     </div>
   )
 }

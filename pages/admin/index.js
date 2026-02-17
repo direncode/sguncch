@@ -4,6 +4,7 @@ import Head from 'next/head'
 import Link from 'next/link'
 import { useApp } from '../../lib/store'
 import { departments as defaultDepartments, getOverallProgress, getStatusCounts } from '../../lib/data'
+import AdminNav from '../../components/AdminNav'
 import {
   BUDGET_CATEGORIES,
   exportLineItemsToCSV,
@@ -1301,6 +1302,8 @@ export default function AdminConsole() {
           </div>
         </div>
       )}
+      <AdminNav />
+      <div className="h-12" />
     </div>
   )
 }

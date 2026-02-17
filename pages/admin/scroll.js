@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useApp } from '../../lib/store'
 import { getAdminToken, getAuthHeaders } from '../../lib/adminSession'
 import { SEED_DOCUMENTS } from '../../lib/scrollRegistry'
+import AdminNav from '../../components/AdminNav'
 
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
 const formatSize = (bytes) => bytes > 1048576 ? `${(bytes / 1048576).toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`
@@ -1232,6 +1233,8 @@ export default function ScrollAdmin() {
         )}
 
       </main>
+      <AdminNav />
+      <div className="h-12" />
     </div>
   )
 }

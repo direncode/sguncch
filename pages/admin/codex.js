@@ -4,6 +4,7 @@ import Head from 'next/head'
 import Link from 'next/link'
 import { useApp } from '../../lib/store'
 import { getAdminToken, getAuthHeaders } from '../../lib/adminSession'
+import AdminNav from '../../components/AdminNav'
 
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
 const formatTime = (d) => d ? new Date(d).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : ''
@@ -448,6 +449,8 @@ export default function CodexAdmin() {
           </div>
         )}
       </main>
+      <AdminNav />
+      <div className="h-12" />
     </div>
   )
 }

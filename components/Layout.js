@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
 import GridBackground from './GridBackground'
+import AdminNav from './AdminNav'
+import { useApp } from '../lib/store'
 
 const navigation = [
   { name: 'Budget', href: '/budget' },
@@ -16,6 +18,7 @@ const navigation = [
 
 export default function Layout({ children }) {
   const router = useRouter()
+  const { isAdmin } = useApp()
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -35,6 +38,9 @@ export default function Layout({ children }) {
   return (
     <div className="min-h-screen bg-black">
       <GridBackground />
+
+      {/* Admin Quick-Switch Bar */}
+      {isAdmin && <AdminNav />}
 
       {/* Navigation */}
       <header
