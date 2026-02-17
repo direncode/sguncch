@@ -1,4 +1,5 @@
 import { supabase } from '../../../lib/supabase'
+import { resetCodexCache } from '../../../lib/codex'
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -26,6 +27,8 @@ export default async function handler(req, res) {
       .limit(1)
 
     if (!error) {
+      // Tables found — reset the codex cache so it starts using Supabase
+      resetCodexCache()
       return res.status(200).json({
         supabaseConfigured: true,
         tablesExist: true,
