@@ -81,7 +81,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { question, platformData, isAdminMode } = req.body
+    const { question, platformData, isAdminMode, primaryDocumentContext } = req.body
 
     if (!question || !question.trim()) {
       return res.status(400).json({ error: 'Question is required' })
@@ -104,17 +104,6 @@ export default async function handler(req, res) {
       })
     }
 
-    // === Relevance gate ===
-    const isRelevant = await checkRelevance(question)
-    if (!isRelevant) {
-      return res.status(200).json({
-        answer: 'I can only answer questions related to UNC-Chapel Hill, student government, governance policies, campus operations, budget, and student services. If you have a question about any of those topics, I\'d be happy to help.',
-        sources: [],
-        model: 'grok-4',
-        filtered: true,
-      })
-    }
-
     // === Determine if web search is needed ===
     const useWebSearch = needsWebSearch(question)
 
@@ -123,6 +112,11 @@ export default async function handler(req, res) {
 
     let documentContext = ''
     const sourcesWithMeta = []
+
+    // Include pre-loaded primary document context if provided
+    if (primaryDocumentContext && typeof primaryDocumentContext === 'string') {
+      documentContext = `[PRIMARY REFERENCE DOCUMENT]\n${primaryDocumentContext}\n\n---\n\n`
+    }
 
     if (chunks && chunks.length > 0) {
       const docCache = {}
@@ -145,7 +139,7 @@ export default async function handler(req, res) {
         }
       }
 
-      documentContext = sourcesWithMeta.map((s, i) =>
+      documentContext += sourcesWithMeta.map((s, i) =>
         `[Source ${i + 1}: "${s.title}" v${s.version}, Section: ${s.section}, Approved: ${new Date(s.approved_at).toLocaleDateString()}]\n${s.chunk_text}`
       ).join('\n\n---\n\n')
     }
@@ -204,7 +198,7 @@ export default async function handler(req, res) {
         section: s.section,
         approved_at: s.approved_at,
       })),
-      model: 'grok-4',
+      model: 'grok-3-mini-fast',
       webSearchUsed: useWebSearch,
       platformContextIncluded: Boolean(platformContextStr),
     })

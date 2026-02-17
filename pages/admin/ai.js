@@ -49,10 +49,14 @@ export default function AdminAI() {
   const [messages, setMessages] = useState([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [loadingTime, setLoadingTime] = useState(0)
   const [error, setError] = useState(null)
   const [scrollStats, setScrollStats] = useState(null)
+  const [primaryDoc, setPrimaryDoc] = useState(null)
+  const [primaryDocContext, setPrimaryDocContext] = useState('')
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
+  const loadingTimerRef = useRef(null)
 
   useEffect(() => {
     if (isLoaded && !isAdmin) router.push('/admin/login')
@@ -62,16 +66,40 @@ export default function AdminAI() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // Track loading time for thinking indicator
+  useEffect(() => {
+    if (isLoading) {
+      setLoadingTime(0)
+      loadingTimerRef.current = setInterval(() => {
+        setLoadingTime(t => t + 1)
+      }, 1000)
+    } else {
+      if (loadingTimerRef.current) clearInterval(loadingTimerRef.current)
+      setLoadingTime(0)
+    }
+    return () => { if (loadingTimerRef.current) clearInterval(loadingTimerRef.current) }
+  }, [isLoading])
+
+  // Load scroll documents and identify primary document
   useEffect(() => {
     fetch('/api/codex/scroll')
       .then(r => r.json())
       .then(data => {
-        if (data.documents) {
+        if (data.documents && data.documents.length > 0) {
           setScrollStats({
             count: data.documents.length,
             categories: data.buckets?.length || 0,
             chars: data.documents.reduce((sum, d) => sum + (d.char_count || 0), 0),
           })
+
+          // Auto-identify the primary document (largest/most comprehensive)
+          const sorted = [...data.documents].sort((a, b) => (b.char_count || 0) - (a.char_count || 0))
+          const primary = sorted[0]
+          setPrimaryDoc({ id: primary.id, title: primary.title, chars: primary.char_count })
+          // Truncate to first 3000 chars for fast context injection
+          setPrimaryDocContext((primary.text_full || '').slice(0, 3000))
+        } else if (data.documents) {
+          setScrollStats({ count: 0, categories: 0, chars: 0 })
         }
       })
       .catch(() => {})
@@ -92,6 +120,7 @@ export default function AdminAI() {
           question,
           platformData: { policies, operationalData, budgetData, quickStats, announcements, feedback },
           isAdminMode: true,
+          primaryDocumentContext: primaryDocContext || undefined,
         }),
       })
       const data = await res.json()
@@ -116,11 +145,11 @@ export default function AdminAI() {
   }
 
   const suggestedQuestions = [
-    'Summarize all pending budget requests',
+    'Summarize the primary governance document',
     'What documents are in The Scroll knowledge base?',
     'Audit report: policy progress across departments',
     'Summarize recent student feedback and action items',
-    'What funding requests have been flagged?',
+    'Overview of current budget allocations and spending',
     'Which departments are behind on milestones?',
   ]
 
@@ -143,10 +172,16 @@ export default function AdminAI() {
               </div>
             </div>
             <div className="flex items-center gap-4 text-xs">
+              <span className="text-gray-600 font-mono">grok-3-mini-fast</span>
+              {primaryDoc && (
+                <span className="flex items-center gap-1.5 text-green-500 font-mono">
+                  <span className="w-1 h-1 bg-green-500 rounded-full" />
+                  doc loaded
+                </span>
+              )}
               {scrollStats && (
                 <div className="flex items-center gap-3 text-gray-600 font-mono">
                   <span>{scrollStats.count} docs</span>
-                  <span>{scrollStats.categories} categories</span>
                   <span>{(scrollStats.chars / 1000).toFixed(0)}K chars</span>
                 </div>
               )}
@@ -194,11 +229,21 @@ export default function AdminAI() {
               </p>
 
               {scrollStats && (
-                <div className="flex items-center gap-2 mb-6 px-4 py-2 bg-white/[0.02] border border-gray-900 rounded-full">
-                  <GrokIcon size={12} />
-                  <span className="text-[11px] text-gray-500">
-                    Sourcing from The Scroll: {scrollStats.count} documents across {scrollStats.categories} categories
-                  </span>
+                <div className="flex flex-col items-center gap-2 mb-6">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-white/[0.02] border border-gray-900 rounded-full">
+                    <GrokIcon size={12} />
+                    <span className="text-[11px] text-gray-500">
+                      Sourcing from The Scroll: {scrollStats.count} documents across {scrollStats.categories} categories
+                    </span>
+                  </div>
+                  {primaryDoc && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/[0.05] border border-green-500/20 rounded-full">
+                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+                      <span className="text-[10px] text-green-400 font-mono">
+                        Primary: {primaryDoc.title}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -256,10 +301,16 @@ export default function AdminAI() {
           {isLoading && (
             <div className="mb-6 flex gap-3">
               <div className="shrink-0 mt-1 opacity-40"><GrokIcon size={20} /></div>
-              <div className="flex items-center gap-1.5 py-2">
-                <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-pulse" />
-                <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
-                <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
+              <div className="flex items-center gap-3 py-2">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-pulse" />
+                  <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
+                  <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
+                </div>
+                <span className="text-xs text-gray-500 animate-pulse">
+                  {loadingTime >= 3 ? 'Still thinking...' : 'Thinking'}
+                  {loadingTime >= 1 && <span className="text-gray-600 ml-1 font-mono">{loadingTime}s</span>}
+                </span>
               </div>
             </div>
           )}
@@ -308,7 +359,7 @@ export default function AdminAI() {
             </button>
           </div>
           <p className="text-center text-[11px] text-gray-600 mt-3 tracking-wide">
-            Grok / The Scroll / Admin Data + Documents + Live Platform
+            grok-3-mini-fast / The Scroll / Admin Data + Primary Doc
           </p>
         </div>
       </div>
