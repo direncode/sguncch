@@ -5,8 +5,6 @@ import { Input, Select, Textarea } from '../components/FormInput'
 import { useApp } from '../lib/store'
 import {
   BUDGET_CATEGORIES,
-  exportLineItemsToCSV,
-  exportFundingRequestsToCSV,
 } from '../lib/budgetEngine'
 import {
   Editable,
@@ -149,27 +147,6 @@ export default function BudgetPage() {
     }
     return items
   }, [displayLineItems, selectedCategory, searchQuery])
-
-  // Export handlers
-  const handleExportLineItems = () => {
-    const csv = exportLineItemsToCSV(displayLineItems)
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `sg-budget-lineitems-${new Date().toISOString().split('T')[0]}.csv`
-    a.click()
-  }
-
-  const handleExportRequests = () => {
-    const csv = exportFundingRequestsToCSV(displayFundingRequests)
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `sg-funding-requests-${new Date().toISOString().split('T')[0]}.csv`
-    a.click()
-  }
 
   // Handle funding request submission
   const handleSubmitRequest = async (e) => {
@@ -420,18 +397,12 @@ export default function BudgetPage() {
           {/* ALLOCATIONS TAB */}
           {activeTab === 'allocations' && (
             <div>
-              <div className="flex items-center justify-between mb-8">
+              <div className="mb-8">
                 <Reveal>
                   <h2 className="section-title">
                     <Editable k="budget.allocations.title">Budget Allocations</Editable>
                   </h2>
                 </Reveal>
-                <button
-                  onClick={handleExportLineItems}
-                  className="btn-secondary"
-                >
-                  <Editable k="budget.allocations.export">Export CSV</Editable>
-                </button>
               </div>
 
               {/* Filters */}
@@ -667,27 +638,6 @@ export default function BudgetPage() {
               <div className="grid md:grid-cols-2 gap-8 mb-16">
                 <Reveal>
                   <div className="card-highlight p-8">
-                    <h3 className="text-lg font-semibold text-white mb-4"><Editable k="budget.transparency.download.title">Download Data</Editable></h3>
-                    <p className="text-sm text-gray-400 mb-8"><Editable k="budget.transparency.download.description">Export complete budget data in CSV format for your own analysis.</Editable></p>
-                    <div className="space-y-3">
-                      <button
-                        onClick={handleExportLineItems}
-                        className="btn-primary w-full"
-                      >
-                        <Editable k="budget.transparency.download.lineItems">Download Line Items CSV</Editable>
-                      </button>
-                      <button
-                        onClick={handleExportRequests}
-                        className="btn-secondary w-full"
-                      >
-                        <Editable k="budget.transparency.download.requests">Download Funding Requests CSV</Editable>
-                      </button>
-                    </div>
-                  </div>
-                </Reveal>
-
-                <Reveal delay={100}>
-                  <div className="card p-8">
                     <h3 className="text-lg font-semibold text-white mb-4"><Editable k="budget.transparency.methodology.title">Methodology</Editable></h3>
                     <p className="text-sm text-gray-400 mb-6">
                       <Editable k="budget.transparency.methodology.description" multiline>All budget data is updated in real-time as transactions are recorded. AI scoring uses rule-based
@@ -704,6 +654,18 @@ export default function BudgetPage() {
                         <span className="text-white">-</span> <Editable k="budget.transparency.methodology.item3">Complete audit trail</Editable>
                       </li>
                     </ul>
+                  </div>
+                </Reveal>
+
+                <Reveal delay={100}>
+                  <div className="card p-8">
+                    <h3 className="text-lg font-semibold text-white mb-4"><Editable k="budget.transparency.opendata.title">Open Data</Editable></h3>
+                    <p className="text-sm text-gray-400 mb-6">
+                      <Editable k="budget.transparency.opendata.description" multiline>All Student Government budget data is publicly available on the transparency page. View detailed breakdowns of allocations, spending, and utilization rates by category.</Editable>
+                    </p>
+                    <a href="/budget-transparency" className="btn-secondary w-full text-center block">
+                      View Full Transparency Report
+                    </a>
                   </div>
                 </Reveal>
               </div>

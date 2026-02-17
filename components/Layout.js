@@ -16,11 +16,25 @@ const navigation = [
   { name: 'Ask AI', href: '/chat' },
 ]
 
+const FEEDBACK_CATEGORIES = [
+  'General Feedback',
+  'Platform Issue',
+  'Budget & Funding',
+  'Wellness Services',
+  'Basic Needs',
+  'Academic Support',
+  'Suggestion',
+]
+
 export default function Layout({ children }) {
   const router = useRouter()
-  const { isAdmin } = useApp()
+  const { isAdmin, submitFeedback } = useApp()
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [showFeedback, setShowFeedback] = useState(false)
+  const [feedbackForm, setFeedbackForm] = useState({ message: '', email: '', category: 'General Feedback' })
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false)
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => {
@@ -150,6 +164,92 @@ export default function Layout({ children }) {
       <main className="relative z-10">
         {children}
       </main>
+
+      {/* Feedback Floating Button & Panel */}
+      <div className="fixed bottom-4 right-4 z-50" style={isAdmin ? { bottom: '3.5rem' } : {}}>
+        {showFeedback && (
+          <div className="absolute bottom-14 right-0 w-80 bg-black border border-gray-800 rounded-xl shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-800">
+              <h3 className="text-sm font-semibold text-white">Send Feedback</h3>
+              <button onClick={() => { setShowFeedback(false); setFeedbackSubmitted(false) }} className="text-gray-500 hover:text-white text-lg leading-none">&times;</button>
+            </div>
+            {feedbackSubmitted ? (
+              <div className="p-6 text-center">
+                <div className="w-10 h-10 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                </div>
+                <p className="text-sm text-white font-medium">Thank you!</p>
+                <p className="text-xs text-gray-500 mt-1">Your feedback has been sent to the admin team.</p>
+                <button onClick={() => { setShowFeedback(false); setFeedbackSubmitted(false) }} className="mt-4 text-xs text-gray-400 hover:text-white transition-colors">Close</button>
+              </div>
+            ) : (
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault()
+                  if (!feedbackForm.message.trim()) return
+                  setFeedbackSubmitting(true)
+                  await submitFeedback({
+                    message: feedbackForm.message.trim(),
+                    email: feedbackForm.email.trim(),
+                    category: feedbackForm.category,
+                  })
+                  setFeedbackSubmitting(false)
+                  setFeedbackSubmitted(true)
+                  setFeedbackForm({ message: '', email: '', category: 'General Feedback' })
+                }}
+                className="p-4 space-y-3"
+              >
+                <div>
+                  <select
+                    value={feedbackForm.category}
+                    onChange={(e) => setFeedbackForm({ ...feedbackForm, category: e.target.value })}
+                    className="w-full px-3 py-2 bg-white/5 border border-gray-800 rounded-lg text-xs text-white focus:border-white focus:outline-none"
+                  >
+                    {FEEDBACK_CATEGORIES.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <textarea
+                    value={feedbackForm.message}
+                    onChange={(e) => setFeedbackForm({ ...feedbackForm, message: e.target.value })}
+                    rows={3}
+                    placeholder="Tell us what you think..."
+                    required
+                    className="w-full px-3 py-2 bg-white/5 border border-gray-800 rounded-lg text-xs text-white placeholder-gray-600 focus:border-white focus:outline-none resize-none"
+                  />
+                </div>
+                <div>
+                  <input
+                    type="email"
+                    value={feedbackForm.email}
+                    onChange={(e) => setFeedbackForm({ ...feedbackForm, email: e.target.value })}
+                    placeholder="Email (optional)"
+                    className="w-full px-3 py-2 bg-white/5 border border-gray-800 rounded-lg text-xs text-white placeholder-gray-600 focus:border-white focus:outline-none"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={feedbackSubmitting || !feedbackForm.message.trim()}
+                  className="w-full py-2 bg-white text-black text-xs font-medium rounded-lg hover:bg-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {feedbackSubmitting ? 'Sending...' : 'Submit Feedback'}
+                </button>
+              </form>
+            )}
+          </div>
+        )}
+        <button
+          onClick={() => { setShowFeedback(!showFeedback); setFeedbackSubmitted(false) }}
+          className="w-11 h-11 bg-white text-black rounded-full shadow-lg flex items-center justify-center hover:bg-gray-200 transition-all"
+          title="Send Feedback"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+          </svg>
+        </button>
+      </div>
 
       {/* Footer */}
       <footer className="relative z-10 border-t border-gray-900">

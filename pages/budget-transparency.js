@@ -4,7 +4,6 @@ import Link from 'next/link'
 import { useApp } from '../lib/store'
 import {
   BUDGET_CATEGORIES,
-  exportLineItemsToCSV,
 } from '../lib/budgetEngine'
 
 // ==========================================
@@ -100,18 +99,6 @@ export default function BudgetTransparency() {
     return displayLineItems.filter(item => item.category === selectedCategory)
   }, [displayLineItems, selectedCategory])
 
-  // Export CSV handler
-  const handleExportCSV = () => {
-    const csv = exportLineItemsToCSV(displayLineItems)
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `sg-budget-${new Date().toISOString().split('T')[0]}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
-  }
-
   // Handle funding request submission
   const handleSubmitRequest = async (e) => {
     e.preventDefault()
@@ -188,24 +175,16 @@ export default function BudgetTransparency() {
                 <div className="h-6 w-px bg-[#30363d]" />
                 <h1 className="text-[#f0f6fc] text-lg font-bold">Budget Transparency</h1>
               </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => { setShowRequestForm(!showRequestForm); setSubmissionResult(null); }}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                    showRequestForm
-                      ? 'bg-[#21262d] text-[#8b949e] border border-[#30363d]'
-                      : 'bg-[#00d4ff] text-[#0d1117] hover:bg-[#00d4ff]/90'
-                  }`}
-                >
-                  {showRequestForm ? 'Hide Form' : 'Request Funding'}
-                </button>
-                <button
-                  onClick={handleExportCSV}
-                  className="px-4 py-2 bg-[#21262d] border border-[#30363d] rounded-lg text-sm text-[#8b949e] hover:text-[#f0f6fc] hover:border-[#00d4ff] transition-all"
-                >
-                  Export CSV
-                </button>
-              </div>
+              <button
+                onClick={() => { setShowRequestForm(!showRequestForm); setSubmissionResult(null); }}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                  showRequestForm
+                    ? 'bg-[#21262d] text-[#8b949e] border border-[#30363d]'
+                    : 'bg-[#00d4ff] text-[#0d1117] hover:bg-[#00d4ff]/90'
+                }`}
+              >
+                {showRequestForm ? 'Hide Form' : 'Request Funding'}
+              </button>
             </div>
           </div>
         </header>
