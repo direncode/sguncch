@@ -52,18 +52,10 @@ async function handler(req, res) {
         })
       }
     } catch (err) {
-      const msg = err.message || ''
-      let hint = 'Check your connection string and try again.'
-      if (msg.includes('password authentication failed')) {
-        hint = 'Password is incorrect. Copy the connection string again from Supabase Dashboard.'
-      } else if (msg.includes('ENOTFOUND') || msg.includes('getaddrinfo')) {
-        hint = 'Host not found. Make sure you copied the Session pooler connection string (not Direct).'
-      } else if (msg.includes('timeout') || msg.includes('ETIMEDOUT')) {
-        hint = 'Connection timed out. Check if your Supabase project is active.'
-      }
+      const msg = err.message || String(err)
       return res.status(400).json({
         status: 'error',
-        message: `Migration failed: ${hint}`,
+        message: `Migration failed: ${msg}`,
       })
     }
   }
