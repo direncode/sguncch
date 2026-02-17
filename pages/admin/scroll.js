@@ -48,81 +48,9 @@ function isAcceptedFile(file) {
   return ACCEPTED_EXTENSIONS.includes(ext)
 }
 
-// Inline link setter for the Documents tab — sets the PDF URL for a document
-function DocLinkSetter({ seed, authHeaders, onSaved, notify }) {
-  const [pdfUrl, setPdfUrl] = useState(seed.pdfUrl || '')
-  const [saving, setSaving] = useState(false)
-  const [result, setResult] = useState(null)
-
-  const handleSave = async () => {
-    if (!pdfUrl.trim()) {
-      setResult({ ok: false, message: 'Enter a valid PDF URL.' })
-      return
-    }
-    setSaving(true)
-    setResult(null)
-    try {
-      // Create a minimal document entry with just the link (no text content needed)
-      const res = await fetch('/api/codex/batch-upload', {
-        method: 'POST',
-        headers: authHeaders,
-        body: JSON.stringify({
-          files: [{
-            title: seed.title,
-            text_content: `[PDF Link] ${seed.title} — ${pdfUrl.trim()}`,
-            version: seed.version || '1.0',
-            source_url: pdfUrl.trim(),
-          }],
-        }),
-      })
-      const data = await res.json()
-      if (res.ok && data.succeeded > 0) {
-        setResult({ ok: true, message: 'PDF link saved. Users can now open this document.' })
-        notify(`Link set for ${seed.title}`)
-        setTimeout(() => onSaved(), 1000)
-      } else {
-        setResult({ ok: false, message: data.results?.[0]?.error || data.error || 'Failed to save' })
-      }
-    } catch {
-      setResult({ ok: false, message: 'Failed to save link.' })
-    }
-    setSaving(false)
-  }
-
-  return (
-    <div className="mt-4 pt-4 border-t border-gray-800">
-      <p className="text-xs text-gray-500 mb-3">
-        Set the direct PDF URL for <strong className="text-gray-400">{seed.title}</strong>. Users will see this as the "Open PDF" link.
-      </p>
-      <div className="flex items-center gap-3">
-        <input
-          type="url"
-          value={pdfUrl}
-          onChange={(e) => setPdfUrl(e.target.value)}
-          placeholder="https://policies.unc.edu/files/..."
-          className="flex-1 px-3 py-2 bg-black border border-gray-800 rounded text-xs text-white placeholder-gray-600 focus:border-blue-500/50 focus:outline-none"
-        />
-        <button
-          onClick={handleSave}
-          disabled={saving || !pdfUrl.trim()}
-          className="px-4 py-2 text-xs font-medium bg-blue-500 text-black rounded hover:bg-blue-400 transition disabled:opacity-50 shrink-0"
-        >
-          {saving ? 'Saving...' : 'Save Link'}
-        </button>
-      </div>
-      {result && (
-        <div className={`mt-3 p-3 rounded border text-xs ${
-          result.ok ? 'bg-green-500/10 border-green-500/30 text-green-400' : 'bg-red-500/10 border-red-500/30 text-red-400'
-        }`}>{result.message}</div>
-      )}
-    </div>
-  )
-}
-
-// Inline .txt uploader for the Documents tab — uploads a .txt + optional PDF link
+// Inline .txt uploader for the Documents tab
 function DocTxtUploader({ seed, authHeaders, onUploaded, notify }) {
   const [file, setFile] = useState(null)
-  const [pdfUrl, setPdfUrl] = useState(seed.pdfUrl || '')
   const [uploading, setUploading] = useState(false)
   const [result, setResult] = useState(null)
   const fileRef = useRef(null)
@@ -159,7 +87,7 @@ function DocTxtUploader({ seed, authHeaders, onUploaded, notify }) {
             version: seed.version || '1.0',
             file_name: file.name,
             file_size: file.size,
-            source_url: pdfUrl.trim() || null,
+            source_url: seed.pdfUrl || null,
           }],
         }),
       })
@@ -183,18 +111,6 @@ function DocTxtUploader({ seed, authHeaders, onUploaded, notify }) {
       <p className="text-xs text-gray-500 mb-3">
         Upload the .txt version of <strong className="text-gray-400">{seed.title}</strong> for Grok RAG indexing.
       </p>
-
-      {/* Optional PDF URL */}
-      <div className="mb-3">
-        <label className="text-[10px] text-gray-500 uppercase tracking-wider block mb-1.5">PDF Link (optional — set via Add Link if not here)</label>
-        <input
-          type="url"
-          value={pdfUrl}
-          onChange={(e) => setPdfUrl(e.target.value)}
-          placeholder="https://policies.unc.edu/files/..."
-          className="w-full px-3 py-2 bg-black border border-gray-800 rounded text-xs text-white placeholder-gray-600 focus:border-blue-500/50 focus:outline-none"
-        />
-      </div>
 
       <div className="flex items-center gap-3">
         <button
@@ -637,7 +553,7 @@ export default function ScrollAdmin() {
                   {!allSeeded && (
                     <button onClick={() => setActiveTab('documents')}
                       className="mt-4 w-full py-3 bg-white/10 border border-gray-700 rounded-lg text-sm text-white font-medium hover:bg-white/20 transition">
-                      Go to Documents tab to add .txt &amp; links
+                      Go to Documents tab to add .txt files
                     </button>
                   )}
                 </div>
@@ -800,41 +716,19 @@ export default function ScrollAdmin() {
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
                             {!seed.uploaded && (
-                              <>
-                                <button
-                                  onClick={() => setExpandedDoc(expandedDoc === `link-${seed.key}` ? null : `link-${seed.key}`)}
-                                  className={`px-4 py-2 text-xs font-medium rounded-lg transition ${
-                                    expandedDoc === `link-${seed.key}`
-                                      ? 'bg-blue-500 text-black'
-                                      : 'bg-blue-500/10 text-blue-400 border border-blue-500/30 hover:bg-blue-500/20'
-                                  }`}
-                                >
-                                  {expandedDoc === `link-${seed.key}` ? 'Close' : 'Add Link'}
-                                </button>
-                                <button
-                                  onClick={() => setExpandedDoc(expandedDoc === `txt-${seed.key}` ? null : `txt-${seed.key}`)}
-                                  className={`px-4 py-2 text-xs font-medium rounded-lg transition ${
-                                    expandedDoc === `txt-${seed.key}`
-                                      ? 'bg-green-500 text-black'
-                                      : 'bg-green-500/10 text-green-400 border border-green-500/30 hover:bg-green-500/20'
-                                  }`}
-                                >
-                                  {expandedDoc === `txt-${seed.key}` ? 'Close' : 'Add .txt'}
-                                </button>
-                              </>
+                              <button
+                                onClick={() => setExpandedDoc(expandedDoc === `txt-${seed.key}` ? null : `txt-${seed.key}`)}
+                                className={`px-4 py-2 text-xs font-medium rounded-lg transition ${
+                                  expandedDoc === `txt-${seed.key}`
+                                    ? 'bg-green-500 text-black'
+                                    : 'bg-green-500/10 text-green-400 border border-green-500/30 hover:bg-green-500/20'
+                                }`}
+                              >
+                                {expandedDoc === `txt-${seed.key}` ? 'Close' : 'Add .txt'}
+                              </button>
                             )}
                           </div>
                         </div>
-
-                        {/* Add Link panel */}
-                        {!seed.uploaded && expandedDoc === `link-${seed.key}` && (
-                          <DocLinkSetter
-                            seed={seed}
-                            authHeaders={authHeaders}
-                            onSaved={() => { loadDocuments(); setExpandedDoc(null) }}
-                            notify={notify}
-                          />
-                        )}
 
                         {/* Add .txt panel */}
                         {!seed.uploaded && expandedDoc === `txt-${seed.key}` && (
@@ -856,11 +750,9 @@ export default function ScrollAdmin() {
             <div className="bg-white/[0.02] border border-gray-900 rounded-xl p-6 mt-4">
               <h3 className="text-sm font-semibold text-white mb-2">How to add documents to The Scroll</h3>
               <ol className="text-xs text-gray-500 space-y-1.5 list-decimal list-inside leading-relaxed">
-                <li>Click <strong className="text-gray-400">Add Link</strong> to set the direct PDF URL for users to access</li>
                 <li>Click <strong className="text-gray-400">Add .txt</strong> to upload the text version for Grok RAG indexing</li>
-                <li>The .txt upload also requires a PDF link — both can be set together</li>
                 <li>The document is instantly chunked, embedded, and available to Grok</li>
-                <li>Users see "Open PDF" only after a link is set via the Scroll</li>
+                <li>PDF links are automatically pulled from the document registry</li>
               </ol>
             </div>
           </div>
