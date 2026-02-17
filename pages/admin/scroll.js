@@ -169,7 +169,7 @@ export default function ScrollAdmin() {
 
   // Database setup
   const [dbSetupNeeded, setDbSetupNeeded] = useState(null) // null=checking, true=needed, false=ok
-  const [dbPassword, setDbPassword] = useState('')
+  const [dbConnString, setDbConnString] = useState('')
   const [dbSetupLoading, setDbSetupLoading] = useState(false)
   const [dbSetupResult, setDbSetupResult] = useState(null)
 
@@ -207,27 +207,27 @@ export default function ScrollAdmin() {
   const authHeaders = getAuthHeaders()
 
   const handleDbSetup = async () => {
-    if (!dbPassword.trim()) return notify('Enter your Supabase database password')
+    if (!dbConnString.trim()) return notify('Paste your Supabase connection string')
     setDbSetupLoading(true)
     setDbSetupResult(null)
     try {
       const res = await fetch('/api/setup/init-db', {
         method: 'POST',
         headers: authHeaders,
-        body: JSON.stringify({ password: dbPassword }),
+        body: JSON.stringify({ connectionString: dbConnString }),
       })
       const data = await res.json()
       if (data.status === 'migrated' || data.status === 'already_configured') {
         setDbSetupResult({ ok: true, message: data.message })
         setDbSetupNeeded(false)
-        setDbPassword('')
+        setDbConnString('')
         // Reload documents now that tables exist
         setTimeout(() => loadDocuments(), 1000)
       } else {
         setDbSetupResult({ ok: false, message: data.message })
       }
     } catch {
-      setDbSetupResult({ ok: false, message: 'Connection failed. Check your password and try again.' })
+      setDbSetupResult({ ok: false, message: 'Connection failed. Check your connection string and try again.' })
     }
     setDbSetupLoading(false)
   }
@@ -523,24 +523,24 @@ export default function ScrollAdmin() {
                 <h3 className="text-yellow-400 font-semibold mb-1">Database Setup Required</h3>
                 <p className="text-sm text-gray-400 mb-4">
                   Your Supabase tables don&apos;t exist yet. Documents uploaded now will be lost on redeploy.
-                  Enter your Supabase database password to create all tables automatically.
+                  Paste your connection string to create all tables automatically.
                 </p>
                 <p className="text-xs text-gray-500 mb-4">
-                  Find it at: <strong className="text-gray-400">Supabase Dashboard</strong> &rarr; Project Settings &rarr; Database &rarr; Database password
+                  <strong className="text-gray-400">Supabase Dashboard</strong> &rarr; Connect &rarr; Connection string &rarr; select <strong className="text-gray-400">Session pooler</strong> &rarr; copy the URI
                 </p>
-                <div className="flex items-center gap-3 max-w-lg">
+                <div className="flex items-center gap-3">
                   <input
                     type="password"
-                    value={dbPassword}
-                    onChange={(e) => setDbPassword(e.target.value)}
+                    value={dbConnString}
+                    onChange={(e) => setDbConnString(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleDbSetup()}
-                    placeholder="Database password"
-                    className="flex-1 px-4 py-2.5 bg-black border border-gray-800 rounded-lg text-sm text-white placeholder-gray-600 focus:border-yellow-500/50 focus:outline-none"
+                    placeholder="postgresql://postgres.xxxxx:[YOUR-PASSWORD]@aws-0-region.pooler.supabase.com:5432/postgres"
+                    className="flex-1 px-4 py-2.5 bg-black border border-gray-800 rounded-lg text-sm text-white placeholder-gray-600 focus:border-yellow-500/50 focus:outline-none font-mono"
                   />
                   <button
                     onClick={handleDbSetup}
-                    disabled={dbSetupLoading || !dbPassword.trim()}
-                    className="px-5 py-2.5 text-sm font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded-lg hover:bg-yellow-500/30 transition disabled:opacity-50"
+                    disabled={dbSetupLoading || !dbConnString.trim()}
+                    className="px-5 py-2.5 text-sm font-medium bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 rounded-lg hover:bg-yellow-500/30 transition disabled:opacity-50 whitespace-nowrap"
                   >
                     {dbSetupLoading ? 'Creating tables...' : 'Initialize Database'}
                   </button>

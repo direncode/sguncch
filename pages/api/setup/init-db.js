@@ -3,15 +3,6 @@ import { autoMigrateCodexTables, migrateWithConnectionString, getMigrationSQL } 
 import { resetCodexCache } from '../../../lib/codex'
 import { supabase } from '../../../lib/supabase'
 
-function deriveConnectionString(supabaseUrl, password) {
-  // Extract project ref from https://[ref].supabase.co
-  const match = supabaseUrl.match(/https?:\/\/([^.]+)\.supabase\.co/)
-  if (!match) return null
-  const ref = match[1]
-  // Direct connection format for Supabase
-  return `postgresql://postgres:${encodeURIComponent(password)}@db.${ref}.supabase.co:5432/postgres`
-}
-
 async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -39,28 +30,20 @@ async function handler(req, res) {
     })
   }
 
-  const { password } = req.body || {}
+  const { connectionString } = req.body || {}
 
-  // If password provided, derive connection string from Supabase URL
-  if (password) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    if (!supabaseUrl) {
+  // If connection string provided, use it directly
+  if (connectionString) {
+    const trimmed = connectionString.trim()
+    if (!trimmed.startsWith('postgresql://') && !trimmed.startsWith('postgres://')) {
       return res.status(400).json({
         status: 'error',
-        message: 'NEXT_PUBLIC_SUPABASE_URL is not set. Configure it first.',
-      })
-    }
-
-    const connectionString = deriveConnectionString(supabaseUrl, password)
-    if (!connectionString) {
-      return res.status(400).json({
-        status: 'error',
-        message: 'Could not derive connection string from Supabase URL. Expected format: https://[ref].supabase.co',
+        message: 'Invalid connection string. It should start with postgresql:// or postgres://',
       })
     }
 
     try {
-      const migrated = await migrateWithConnectionString(connectionString)
+      const migrated = await migrateWithConnectionString(trimmed)
       if (migrated) {
         resetCodexCache()
         return res.status(200).json({
@@ -69,9 +52,18 @@ async function handler(req, res) {
         })
       }
     } catch (err) {
+      const msg = err.message || ''
+      let hint = 'Check your connection string and try again.'
+      if (msg.includes('password authentication failed')) {
+        hint = 'Password is incorrect. Copy the connection string again from Supabase Dashboard.'
+      } else if (msg.includes('ENOTFOUND') || msg.includes('getaddrinfo')) {
+        hint = 'Host not found. Make sure you copied the Session pooler connection string (not Direct).'
+      } else if (msg.includes('timeout') || msg.includes('ETIMEDOUT')) {
+        hint = 'Connection timed out. Check if your Supabase project is active.'
+      }
       return res.status(400).json({
         status: 'error',
-        message: `Migration failed: ${err.message}. Check your database password.`,
+        message: `Migration failed: ${hint}`,
       })
     }
   }
@@ -90,7 +82,7 @@ async function handler(req, res) {
   // Auto-migration failed — return SQL for manual execution
   return res.status(200).json({
     status: 'manual_required',
-    message: 'Enter your Supabase database password above, or run the SQL below in Supabase SQL Editor.',
+    message: 'Paste your Supabase connection string above, or run the SQL below in Supabase SQL Editor.',
     sql: getMigrationSQL(),
   })
 }
