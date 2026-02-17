@@ -160,6 +160,7 @@ export default function Documents() {
   const [txtUploadDoc, setTxtUploadDoc] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [scrollDocs, setScrollDocs] = useState([])
+  const [uploadedDocId, setUploadedDocId] = useState(null)
 
   const loadScrollDocs = () => {
     fetch('/api/codex/documents?status=approved')
@@ -301,10 +302,21 @@ export default function Documents() {
                     </div>
                   </div>
 
+                  {uploadedDocId === doc.id && (
+                    <div className="mt-3 p-3 rounded border text-xs bg-green-500/5 border-green-500/20 text-green-400">
+                      Successfully added to The Scroll and indexed.
+                    </div>
+                  )}
+
                   {txtUploadDoc?.id === doc.id && (
                     <TxtUploadPanel
                       doc={doc}
-                      onUploaded={loadScrollDocs}
+                      onUploaded={() => {
+                        setTxtUploadDoc(null)
+                        setUploadedDocId(doc.id)
+                        loadScrollDocs()
+                        setTimeout(() => setUploadedDocId(null), 5000)
+                      }}
                       onClose={() => setTxtUploadDoc(null)}
                     />
                   )}
