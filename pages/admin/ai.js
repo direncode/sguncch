@@ -52,8 +52,8 @@ export default function AdminAI() {
   const [loadingTime, setLoadingTime] = useState(0)
   const [error, setError] = useState(null)
   const [scrollStats, setScrollStats] = useState(null)
-  const [primaryDoc, setPrimaryDoc] = useState(null)
-  const [primaryDocContext, setPrimaryDocContext] = useState('')
+  const [scrollDigest, setScrollDigest] = useState(null)
+  const [scrollContext, setScrollContext] = useState('')
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
   const loadingTimerRef = useRef(null)
@@ -80,24 +80,43 @@ export default function AdminAI() {
     return () => { if (loadingTimerRef.current) clearInterval(loadingTimerRef.current) }
   }, [isLoading])
 
-  // Load scroll documents and identify primary document
+  // Load entire Scroll and build compressed digest
   useEffect(() => {
     fetch('/api/codex/scroll')
       .then(r => r.json())
       .then(data => {
         if (data.documents && data.documents.length > 0) {
+          const totalChars = data.documents.reduce((sum, d) => sum + (d.char_count || 0), 0)
           setScrollStats({
             count: data.documents.length,
             categories: data.buckets?.length || 0,
-            chars: data.documents.reduce((sum, d) => sum + (d.char_count || 0), 0),
+            chars: totalChars,
           })
 
-          // Auto-identify the primary document (largest/most comprehensive)
-          const sorted = [...data.documents].sort((a, b) => (b.char_count || 0) - (a.char_count || 0))
-          const primary = sorted[0]
-          setPrimaryDoc({ id: primary.id, title: primary.title, chars: primary.char_count })
-          // Truncate to first 3000 chars for fast context injection
-          setPrimaryDocContext((primary.text_full || '').slice(0, 3000))
+          // Compress all documents into a token-efficient digest
+          // Budget ~8000 chars total, distributed by doc size (larger docs get more)
+          const BUDGET = 8000
+          const docs = [...data.documents].sort((a, b) => (b.char_count || 0) - (a.char_count || 0))
+          const parts = []
+          let used = 0
+
+          for (const doc of docs) {
+            const text = doc.text_full || ''
+            if (!text) continue
+            // Allocate chars proportional to doc size, minimum 200 per doc
+            const share = Math.max(200, Math.floor((doc.char_count / totalChars) * BUDGET))
+            const remaining = BUDGET - used
+            if (remaining <= 100) break
+            const limit = Math.min(share, remaining)
+            // Compress: collapse whitespace, strip redundant blank lines
+            const compressed = text.replace(/\n{3,}/g, '\n\n').replace(/[ \t]+/g, ' ').trim()
+            parts.push(`[${doc.title}]\n${compressed.slice(0, limit)}`)
+            used += Math.min(compressed.length, limit)
+          }
+
+          const digest = parts.join('\n---\n')
+          setScrollDigest({ count: docs.length, chars: digest.length })
+          setScrollContext(digest)
         } else if (data.documents) {
           setScrollStats({ count: 0, categories: 0, chars: 0 })
         }
@@ -120,7 +139,7 @@ export default function AdminAI() {
           question,
           platformData: { policies, operationalData, budgetData, quickStats, announcements, feedback },
           isAdminMode: true,
-          primaryDocumentContext: primaryDocContext || undefined,
+          primaryDocumentContext: scrollContext || undefined,
         }),
       })
       const data = await res.json()
@@ -173,16 +192,16 @@ export default function AdminAI() {
             </div>
             <div className="flex items-center gap-4 text-xs">
               <span className="text-gray-600 font-mono">grok-4-1-fast</span>
-              {primaryDoc && (
+              {scrollDigest && (
                 <span className="flex items-center gap-1.5 text-green-500 font-mono">
                   <span className="w-1 h-1 bg-green-500 rounded-full" />
-                  doc loaded
+                  full scroll loaded
                 </span>
               )}
               {scrollStats && (
                 <div className="flex items-center gap-3 text-gray-600 font-mono">
                   <span>{scrollStats.count} docs</span>
-                  <span>{(scrollStats.chars / 1000).toFixed(0)}K chars</span>
+                  {scrollDigest && <span>{(scrollDigest.chars / 1000).toFixed(1)}K ctx</span>}
                 </div>
               )}
               <Link href="/chat" className="text-gray-500 hover:text-white transition">Public Chat &rarr;</Link>
@@ -236,11 +255,11 @@ export default function AdminAI() {
                       Sourcing from The Scroll: {scrollStats.count} documents across {scrollStats.categories} categories
                     </span>
                   </div>
-                  {primaryDoc && (
+                  {scrollDigest && (
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/[0.05] border border-green-500/20 rounded-full">
                       <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
                       <span className="text-[10px] text-green-400 font-mono">
-                        Primary: {primaryDoc.title}
+                        Full Scroll digest: {scrollDigest.count} docs, {(scrollDigest.chars / 1000).toFixed(1)}K chars
                       </span>
                     </div>
                   )}
@@ -359,7 +378,7 @@ export default function AdminAI() {
             </button>
           </div>
           <p className="text-center text-[11px] text-gray-600 mt-3 tracking-wide">
-            grok-4-1-fast / The Scroll / Admin Data + Primary Doc
+            grok-4-1-fast / Full Scroll Digest / Admin Data
           </p>
         </div>
       </div>

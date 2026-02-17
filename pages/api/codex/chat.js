@@ -113,9 +113,9 @@ export default async function handler(req, res) {
     let documentContext = ''
     const sourcesWithMeta = []
 
-    // Include pre-loaded primary document context if provided
+    // Include pre-loaded full Scroll digest if provided
     if (primaryDocumentContext && typeof primaryDocumentContext === 'string') {
-      documentContext = `[PRIMARY REFERENCE DOCUMENT]\n${primaryDocumentContext}\n\n---\n\n`
+      documentContext = `[FULL SCROLL DIGEST — All Governing Documents]\n${primaryDocumentContext}\n\n---\n\n`
     }
 
     if (chunks && chunks.length > 0) {
