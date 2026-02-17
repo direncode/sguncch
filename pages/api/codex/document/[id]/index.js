@@ -1,4 +1,4 @@
-import { getDocumentById, getApprovalLog } from '../../../../lib/codex'
+import { getDocumentById, getApprovalLog } from '../../../../../lib/codex'
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {

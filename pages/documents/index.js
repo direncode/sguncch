@@ -160,12 +160,31 @@ export default function Documents() {
   const [txtUploadDoc, setTxtUploadDoc] = useState(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [scrollDocs, setScrollDocs] = useState([])
+  const [uploadedDocId, setUploadedDocId] = useState(null)
 
   const loadScrollDocs = () => {
     fetch('/api/codex/documents?status=approved')
       .then(r => r.json())
       .then(data => setScrollDocs(data.documents || []))
       .catch(() => {})
+  }
+
+  const handleRemoveDoc = async (scrollDocId, docName) => {
+    if (!confirm(`Remove "${docName}" from The Scroll? You can re-upload it later.`)) return
+    try {
+      const res = await fetch(`/api/codex/document/${scrollDocId}/delete`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${getAdminToken()}` },
+      })
+      if (res.ok) {
+        loadScrollDocs()
+      } else {
+        const data = await res.json()
+        alert(data.error || 'Failed to remove document')
+      }
+    } catch {
+      alert('Failed to remove document')
+    }
   }
 
   useEffect(() => { loadScrollDocs() }, [])
@@ -272,6 +291,14 @@ export default function Documents() {
 
                     {/* Actions */}
                     <div className="flex items-center gap-2 shrink-0">
+                      {isAdmin && inScroll && (
+                        <button
+                          onClick={() => handleRemoveDoc(scrollMatch.id, doc.name)}
+                          className="px-3 py-1.5 text-xs font-medium rounded border text-red-400 border-red-500/30 hover:border-red-400 transition"
+                        >
+                          Remove
+                        </button>
+                      )}
                       {isAdmin && !inScroll && (
                         <button
                           onClick={() => setTxtUploadDoc(txtUploadDoc?.id === doc.id ? null : doc)}
@@ -301,10 +328,21 @@ export default function Documents() {
                     </div>
                   </div>
 
+                  {uploadedDocId === doc.id && (
+                    <div className="mt-3 p-3 rounded border text-xs bg-green-500/5 border-green-500/20 text-green-400">
+                      Successfully added to The Scroll and indexed.
+                    </div>
+                  )}
+
                   {txtUploadDoc?.id === doc.id && (
                     <TxtUploadPanel
                       doc={doc}
-                      onUploaded={loadScrollDocs}
+                      onUploaded={() => {
+                        setTxtUploadDoc(null)
+                        setUploadedDocId(doc.id)
+                        loadScrollDocs()
+                        setTimeout(() => setUploadedDocId(null), 5000)
+                      }}
                       onClose={() => setTxtUploadDoc(null)}
                     />
                   )}
