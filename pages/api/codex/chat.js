@@ -198,7 +198,7 @@ export default async function handler(req, res) {
         section: s.section,
         approved_at: s.approved_at,
       })),
-      model: 'grok-4.1-fast',
+      model: 'grok-4-1-fast',
       webSearchUsed: useWebSearch,
       platformContextIncluded: Boolean(platformContextStr),
     })

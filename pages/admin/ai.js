@@ -172,7 +172,7 @@ export default function AdminAI() {
               </div>
             </div>
             <div className="flex items-center gap-4 text-xs">
-              <span className="text-gray-600 font-mono">grok-4.1-fast</span>
+              <span className="text-gray-600 font-mono">grok-4-1-fast</span>
               {primaryDoc && (
                 <span className="flex items-center gap-1.5 text-green-500 font-mono">
                   <span className="w-1 h-1 bg-green-500 rounded-full" />
@@ -359,7 +359,7 @@ export default function AdminAI() {
             </button>
           </div>
           <p className="text-center text-[11px] text-gray-600 mt-3 tracking-wide">
-            grok-4.1-fast / The Scroll / Admin Data + Primary Doc
+            grok-4-1-fast / The Scroll / Admin Data + Primary Doc
           </p>
         </div>
       </div>
