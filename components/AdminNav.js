@@ -5,6 +5,7 @@ const adminLinks = [
   { href: '/admin', label: 'Dashboard' },
   { href: '/admin/scroll', label: 'The Scroll' },
   { href: '/admin/ai', label: 'Grok AI' },
+  { href: '/admin/submissions', label: 'Submissions' },
   { href: '/admin/codex', label: 'Codex' },
 ]
 

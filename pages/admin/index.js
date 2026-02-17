@@ -296,6 +296,7 @@ export default function AdminConsole() {
     { id: 'budget', label: 'Budget & Funding' },
     { id: 'scroll', label: 'The Scroll', href: '/admin/scroll' },
     { id: 'ai', label: 'Grok AI', href: '/admin/ai' },
+    { id: 'submissions', label: 'Submissions', href: '/admin/submissions' },
     { id: 'content', label: 'Content' },
     { id: 'feedback', label: 'Feedback', badge: newFeedback.length },
     { id: 'settings', label: 'Settings' },
@@ -529,6 +530,13 @@ export default function AdminConsole() {
                       >
                         <p className="text-sm font-medium text-white">Grok AI</p>
                         <p className="text-xs text-gray-500 mt-1">Admin AI assistant</p>
+                      </Link>
+                      <Link
+                        href="/admin/submissions"
+                        className="p-4 bg-white/5 border border-gray-700 rounded-lg hover:bg-white/10 transition-all text-left block"
+                      >
+                        <p className="text-sm font-medium text-white">Submissions</p>
+                        <p className="text-xs text-gray-500 mt-1">View all form submissions</p>
                       </Link>
                     </div>
                   </div>
@@ -1211,6 +1219,13 @@ export default function AdminConsole() {
                         className="flex items-center justify-between p-3 bg-black/30 rounded-lg hover:bg-black/50 transition-all"
                       >
                         <span className="text-white">Grok AI</span>
+                        <span className="text-gray-500">→</span>
+                      </Link>
+                      <Link
+                        href="/admin/submissions"
+                        className="flex items-center justify-between p-3 bg-black/30 rounded-lg hover:bg-black/50 transition-all"
+                      >
+                        <span className="text-white">Submissions</span>
                         <span className="text-gray-500">→</span>
                       </Link>
                       <Link
