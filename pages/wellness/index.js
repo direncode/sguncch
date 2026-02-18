@@ -80,6 +80,7 @@ export default function WellnessPage() {
     updatePageContentItem,
     addPageContentItem,
     deletePageContentItem,
+    getSiteContent,
   } = useApp()
 
   const content = pageContent?.wellness || {}
@@ -396,13 +397,17 @@ export default function WellnessPage() {
                     </button>
                     {showRideForm && (
                       <div className="mt-6 pt-6 border-t border-gray-800">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
-                        <iframe
-                          src="https://software.sites.unc.edu/qualtrics/"
-                          className="w-full rounded-lg border border-gray-800 bg-black"
-                          style={{ height: '500px' }}
-                          title="Safe Ride Request"
-                        />
+                        <a
+                          href={getSiteContent('wellness.ride.url', 'https://software.sites.unc.edu/qualtrics/')}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-primary w-full text-center block"
+                        >
+                          Open Safe Ride Form in Qualtrics
+                        </a>
+                        <p className="text-[10px] text-gray-600 font-mono mt-2 text-center break-all">
+                          <Editable k="wellness.ride.url">https://software.sites.unc.edu/qualtrics/</Editable>
+                        </p>
                       </div>
                     )}
                   </div>
@@ -433,13 +438,17 @@ export default function WellnessPage() {
                     </button>
                     {showVolunteerForm && (
                       <div className="mt-6 pt-6 border-t border-gray-800">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
-                        <iframe
-                          src="https://software.sites.unc.edu/qualtrics/"
-                          className="w-full rounded-lg border border-gray-800 bg-black"
-                          style={{ height: '500px' }}
-                          title="Volunteer Application"
-                        />
+                        <a
+                          href={getSiteContent('wellness.volunteer.url', 'https://software.sites.unc.edu/qualtrics/')}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-secondary w-full text-center block"
+                        >
+                          Open Volunteer Application in Qualtrics
+                        </a>
+                        <p className="text-[10px] text-gray-600 font-mono mt-2 text-center break-all">
+                          <Editable k="wellness.volunteer.url">https://software.sites.unc.edu/qualtrics/</Editable>
+                        </p>
                       </div>
                     )}
                   </div>
@@ -603,13 +612,17 @@ export default function WellnessPage() {
                       </button>
                       {showSafetyPlanForm && (
                         <div className="mt-6 pt-6 border-t border-gray-800">
-                          <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
-                          <iframe
-                            src="https://software.sites.unc.edu/qualtrics/"
-                            className="w-full rounded-lg border border-gray-800 bg-black"
-                            style={{ height: '500px' }}
-                            title="Event Safety Plan"
-                          />
+                          <a
+                            href={getSiteContent('wellness.safetyplan.url', 'https://software.sites.unc.edu/qualtrics/')}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn-primary w-full text-center block"
+                          >
+                            Open Safety Plan Form in Qualtrics
+                          </a>
+                          <p className="text-[10px] text-gray-600 font-mono mt-2 text-center break-all">
+                            <Editable k="wellness.safetyplan.url">https://software.sites.unc.edu/qualtrics/</Editable>
+                          </p>
                         </div>
                       )}
                     </div>
@@ -841,13 +854,17 @@ export default function WellnessPage() {
                     <div className="card p-8 mt-6">
                       <h3 className="font-semibold text-white text-lg mb-6">Send Feedback</h3>
                       <div className="mt-2">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
-                        <iframe
-                          src="https://software.sites.unc.edu/qualtrics/"
-                          className="w-full rounded-lg border border-gray-800 bg-black"
-                          style={{ height: '500px' }}
-                          title="Wellness Feedback"
-                        />
+                        <a
+                          href={getSiteContent('wellness.feedback.url', 'https://software.sites.unc.edu/qualtrics/')}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-secondary w-full text-center block"
+                        >
+                          Open Feedback Form in Qualtrics
+                        </a>
+                        <p className="text-[10px] text-gray-600 font-mono mt-2 text-center break-all">
+                          <Editable k="wellness.feedback.url">https://software.sites.unc.edu/qualtrics/</Editable>
+                        </p>
                       </div>
                     </div>
                   </Reveal>

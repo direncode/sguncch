@@ -59,7 +59,7 @@ export default function BasicNeedsPage() {
   const [activeTab, setActiveTab] = useState('overview')
   const [showShuttleReservation, setShowShuttleReservation] = useState(false)
   const [showSwipeShare, setShowSwipeShare] = useState(false)
-  const { policies } = useApp()
+  const { policies, getSiteContent } = useApp()
 
   const deptPolicies = policies.filter(p => p.department === 'basic-needs')
 
@@ -379,13 +379,12 @@ export default function BasicNeedsPage() {
                     </button>
                     {showSwipeShare && (
                       <div className="mt-6 pt-6 border-t border-gray-800">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
-                        <iframe
-                          src="https://software.sites.unc.edu/qualtrics/"
-                          className="w-full rounded-lg border border-gray-800 bg-black"
-                          style={{ height: '500px' }}
-                          title="Meal Swipe Exchange"
-                        />
+                        <a href={getSiteContent('basicneeds.swipe.url', 'https://software.sites.unc.edu/qualtrics/')} target="_blank" rel="noopener noreferrer" className="btn-primary w-full text-center block">
+                          Open Meal Swipe Form in Qualtrics
+                        </a>
+                        <p className="text-[10px] text-gray-600 font-mono mt-2 text-center break-all">
+                          <Editable k="basicneeds.swipe.url">https://software.sites.unc.edu/qualtrics/</Editable>
+                        </p>
                       </div>
                     )}
                   </div>
@@ -575,13 +574,12 @@ export default function BasicNeedsPage() {
                     </button>
                     {showShuttleReservation && (
                       <div className="mt-6 pt-6 border-t border-gray-800">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
-                        <iframe
-                          src="https://software.sites.unc.edu/qualtrics/"
-                          className="w-full rounded-lg border border-gray-800 bg-black"
-                          style={{ height: '500px' }}
-                          title="Shuttle Reservation"
-                        />
+                        <a href={getSiteContent('basicneeds.shuttle.url', 'https://software.sites.unc.edu/qualtrics/')} target="_blank" rel="noopener noreferrer" className="btn-primary w-full text-center block">
+                          Open Shuttle Reservation Form in Qualtrics
+                        </a>
+                        <p className="text-[10px] text-gray-600 font-mono mt-2 text-center break-all">
+                          <Editable k="basicneeds.shuttle.url">https://software.sites.unc.edu/qualtrics/</Editable>
+                        </p>
                       </div>
                     )}
                   </div>
@@ -764,13 +762,12 @@ export default function BasicNeedsPage() {
                       </button>
                       {showFeedbackForm && (
                         <div className="mt-6 pt-6 border-t border-gray-800">
-                          <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
-                          <iframe
-                            src="https://software.sites.unc.edu/qualtrics/"
-                            className="w-full rounded-lg border border-gray-800 bg-black"
-                            style={{ height: '500px' }}
-                            title="Basic Needs Feedback"
-                          />
+                          <a href={getSiteContent('basicneeds.feedback.url', 'https://software.sites.unc.edu/qualtrics/')} target="_blank" rel="noopener noreferrer" className="btn-secondary w-full text-center block">
+                            Open Feedback Form in Qualtrics
+                          </a>
+                          <p className="text-[10px] text-gray-600 font-mono mt-2 text-center break-all">
+                            <Editable k="basicneeds.feedback.url">https://software.sites.unc.edu/qualtrics/</Editable>
+                          </p>
                         </div>
                       )}
                     </div>

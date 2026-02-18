@@ -60,7 +60,7 @@ export default function CommunicationsPage() {
   const [subscribed, setSubscribed] = useState(false)
   const [activeFormPanel, setActiveFormPanel] = useState(null)
   const [isSubscribing, setIsSubscribing] = useState(false)
-  const { policies, budgetData } = useApp()
+  const { policies, budgetData, getSiteContent } = useApp()
 
   const deptPolicies = policies.filter(p => p.department === 'communications')
   const overallProgress = getOverallProgress(policies)
@@ -340,13 +340,12 @@ export default function CommunicationsPage() {
                     </button>
                     {activeFormPanel === 'story' && (
                       <div className="mt-6 pt-6 border-t border-gray-800">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
-                        <iframe
-                          src="https://software.sites.unc.edu/qualtrics/"
-                          className="w-full rounded-lg border border-gray-800 bg-black"
-                          style={{ height: '500px' }}
-                          title="Story Submission"
-                        />
+                        <a href={getSiteContent('comms.story.url', 'https://software.sites.unc.edu/qualtrics/')} target="_blank" rel="noopener noreferrer" className="btn-primary w-full text-center block">
+                          Open Story Submission in Qualtrics
+                        </a>
+                        <p className="text-[10px] text-gray-600 font-mono mt-2 text-center break-all">
+                          <Editable k="comms.story.url">https://software.sites.unc.edu/qualtrics/</Editable>
+                        </p>
                       </div>
                     )}
                   </div>
@@ -364,13 +363,12 @@ export default function CommunicationsPage() {
                     </button>
                     {activeFormPanel === 'nomination' && (
                       <div className="mt-6 pt-6 border-t border-gray-800">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
-                        <iframe
-                          src="https://software.sites.unc.edu/qualtrics/"
-                          className="w-full rounded-lg border border-gray-800 bg-black"
-                          style={{ height: '500px' }}
-                          title="Nomination"
-                        />
+                        <a href={getSiteContent('comms.nomination.url', 'https://software.sites.unc.edu/qualtrics/')} target="_blank" rel="noopener noreferrer" className="btn-secondary w-full text-center block">
+                          Open Nomination Form in Qualtrics
+                        </a>
+                        <p className="text-[10px] text-gray-600 font-mono mt-2 text-center break-all">
+                          <Editable k="comms.nomination.url">https://software.sites.unc.edu/qualtrics/</Editable>
+                        </p>
                       </div>
                     )}
                   </div>
@@ -573,13 +571,12 @@ export default function CommunicationsPage() {
                     </button>
                     {activeFormPanel === 'podcast-guest' && (
                       <div className="mt-6 pt-6 border-t border-gray-800">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
-                        <iframe
-                          src="https://software.sites.unc.edu/qualtrics/"
-                          className="w-full rounded-lg border border-gray-800 bg-black"
-                          style={{ height: '500px' }}
-                          title="Podcast Guest Application"
-                        />
+                        <a href={getSiteContent('comms.podcast.url', 'https://software.sites.unc.edu/qualtrics/')} target="_blank" rel="noopener noreferrer" className="btn-primary w-full text-center block">
+                          Open Guest Application in Qualtrics
+                        </a>
+                        <p className="text-[10px] text-gray-600 font-mono mt-2 text-center break-all">
+                          <Editable k="comms.podcast.url">https://software.sites.unc.edu/qualtrics/</Editable>
+                        </p>
                       </div>
                     )}
                   </div>
@@ -597,13 +594,12 @@ export default function CommunicationsPage() {
                     </button>
                     {activeFormPanel === 'podcast-nomination' && (
                       <div className="mt-6 pt-6 border-t border-gray-800">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
-                        <iframe
-                          src="https://software.sites.unc.edu/qualtrics/"
-                          className="w-full rounded-lg border border-gray-800 bg-black"
-                          style={{ height: '500px' }}
-                          title="Podcast Guest Nomination"
-                        />
+                        <a href={getSiteContent('comms.podcastNomination.url', 'https://software.sites.unc.edu/qualtrics/')} target="_blank" rel="noopener noreferrer" className="btn-secondary w-full text-center block">
+                          Open Guest Nomination in Qualtrics
+                        </a>
+                        <p className="text-[10px] text-gray-600 font-mono mt-2 text-center break-all">
+                          <Editable k="comms.podcastNomination.url">https://software.sites.unc.edu/qualtrics/</Editable>
+                        </p>
                       </div>
                     )}
                   </div>
@@ -702,13 +698,12 @@ export default function CommunicationsPage() {
                   </button>
                   {activeFormPanel === 'talent' && (
                     <div className="mt-6 pt-6 border-t border-gray-800">
-                      <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
-                      <iframe
-                        src="https://software.sites.unc.edu/qualtrics/"
-                        className="w-full rounded-lg border border-gray-800 bg-black"
-                        style={{ height: '500px' }}
-                        title="Talent Spotlight Submission"
-                      />
+                      <a href={getSiteContent('comms.talent.url', 'https://software.sites.unc.edu/qualtrics/')} target="_blank" rel="noopener noreferrer" className="btn-primary w-full text-center block">
+                        Open Talent Spotlight Form in Qualtrics
+                      </a>
+                      <p className="text-[10px] text-gray-600 font-mono mt-2 text-center break-all">
+                        <Editable k="comms.talent.url">https://software.sites.unc.edu/qualtrics/</Editable>
+                      </p>
                     </div>
                   )}
                 </div>
@@ -850,13 +845,12 @@ export default function CommunicationsPage() {
                     <div className="card p-8 mt-6">
                       <h3 className="font-semibold text-white text-lg mb-6"><Editable k="communications.faq.feedback.title">Send Feedback</Editable></h3>
                       <div className="mt-6 pt-6 border-t border-gray-800">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
-                        <iframe
-                          src="https://software.sites.unc.edu/qualtrics/"
-                          className="w-full rounded-lg border border-gray-800 bg-black"
-                          style={{ height: '500px' }}
-                          title="Feedback"
-                        />
+                        <a href={getSiteContent('comms.feedback.url', 'https://software.sites.unc.edu/qualtrics/')} target="_blank" rel="noopener noreferrer" className="btn-secondary w-full text-center block">
+                          Open Feedback Form in Qualtrics
+                        </a>
+                        <p className="text-[10px] text-gray-600 font-mono mt-2 text-center break-all">
+                          <Editable k="comms.feedback.url">https://software.sites.unc.edu/qualtrics/</Editable>
+                        </p>
                       </div>
                     </div>
                   </Reveal>

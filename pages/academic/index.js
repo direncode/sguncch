@@ -57,7 +57,7 @@ export default function AcademicPage() {
   const [activeTab, setActiveTab] = useState('overview')
   const [showMentorModal, setShowMentorModal] = useState(false)
   const [showCenterModal, setShowCenterModal] = useState(false)
-  const { policies } = useApp()
+  const { policies, getSiteContent } = useApp()
 
   const deptPolicies = policies.filter(p => p.department === 'academic')
   const getPolicy = (id) => deptPolicies.find(p => p.id === id)
@@ -269,13 +269,12 @@ export default function AcademicPage() {
                     </button>
                     {showMentorModal && (
                       <div className="mt-6 pt-6 border-t border-gray-800">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
-                        <iframe
-                          src="https://software.sites.unc.edu/qualtrics/"
-                          className="w-full rounded-lg border border-gray-800 bg-black"
-                          style={{ height: '500px' }}
-                          title="Request a Mentor"
-                        />
+                        <a href={getSiteContent('academic.mentor.url', 'https://software.sites.unc.edu/qualtrics/')} target="_blank" rel="noopener noreferrer" className="btn-primary w-full text-center block">
+                          Open Mentor Request Form in Qualtrics
+                        </a>
+                        <p className="text-[10px] text-gray-600 font-mono mt-2 text-center break-all">
+                          <Editable k="academic.mentor.url">https://software.sites.unc.edu/qualtrics/</Editable>
+                        </p>
                       </div>
                     )}
                   </div>
@@ -477,13 +476,12 @@ export default function AcademicPage() {
                       </button>
                       {showCenterModal && (
                         <div className="mt-6 pt-6 border-t border-gray-800">
-                          <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
-                          <iframe
-                            src="https://software.sites.unc.edu/qualtrics/"
-                            className="w-full rounded-lg border border-gray-800 bg-black"
-                            style={{ height: '500px' }}
-                            title="Reserve Study Center Space"
-                          />
+                          <a href={getSiteContent('academic.reserve.url', 'https://software.sites.unc.edu/qualtrics/')} target="_blank" rel="noopener noreferrer" className="btn-primary w-full text-center block">
+                            Open Space Reservation Form in Qualtrics
+                          </a>
+                          <p className="text-[10px] text-gray-600 font-mono mt-2 text-center break-all">
+                            <Editable k="academic.reserve.url">https://software.sites.unc.edu/qualtrics/</Editable>
+                          </p>
                         </div>
                       )}
                     </div>
@@ -784,13 +782,12 @@ export default function AcademicPage() {
                     <div className="card p-8 mt-6">
                       <h3 className="font-semibold text-white text-lg mb-6"><Editable k="academic.faq.feedback.title">Send Feedback</Editable></h3>
                       <div className="mt-6 pt-6 border-t border-gray-800">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
-                        <iframe
-                          src="https://software.sites.unc.edu/qualtrics/"
-                          className="w-full rounded-lg border border-gray-800 bg-black"
-                          style={{ height: '500px' }}
-                          title="Academic Affairs Feedback"
-                        />
+                        <a href={getSiteContent('academic.feedback.url', 'https://software.sites.unc.edu/qualtrics/')} target="_blank" rel="noopener noreferrer" className="btn-secondary w-full text-center block">
+                          Open Feedback Form in Qualtrics
+                        </a>
+                        <p className="text-[10px] text-gray-600 font-mono mt-2 text-center break-all">
+                          <Editable k="academic.feedback.url">https://software.sites.unc.edu/qualtrics/</Editable>
+                        </p>
                       </div>
                     </div>
                   </Reveal>
