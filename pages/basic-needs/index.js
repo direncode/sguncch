@@ -379,9 +379,9 @@ export default function BasicNeedsPage() {
                     </button>
                     {showSwipeShare && (
                       <div className="mt-6 pt-6 border-t border-gray-800">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
                         <iframe
-                          src="https://unc.qualtrics.com/jfe/form/SV_BASICNEEDS_SWIPE"
+                          src="https://software.sites.unc.edu/qualtrics/"
                           className="w-full rounded-lg border border-gray-800 bg-black"
                           style={{ height: '500px' }}
                           title="Meal Swipe Exchange"
@@ -575,9 +575,9 @@ export default function BasicNeedsPage() {
                     </button>
                     {showShuttleReservation && (
                       <div className="mt-6 pt-6 border-t border-gray-800">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
                         <iframe
-                          src="https://unc.qualtrics.com/jfe/form/SV_BASICNEEDS_SHUTTLE"
+                          src="https://software.sites.unc.edu/qualtrics/"
                           className="w-full rounded-lg border border-gray-800 bg-black"
                           style={{ height: '500px' }}
                           title="Shuttle Reservation"
@@ -764,9 +764,9 @@ export default function BasicNeedsPage() {
                       </button>
                       {showFeedbackForm && (
                         <div className="mt-6 pt-6 border-t border-gray-800">
-                          <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                          <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
                           <iframe
-                            src="https://unc.qualtrics.com/jfe/form/SV_BASICNEEDS_FEEDBACK"
+                            src="https://software.sites.unc.edu/qualtrics/"
                             className="w-full rounded-lg border border-gray-800 bg-black"
                             style={{ height: '500px' }}
                             title="Basic Needs Feedback"

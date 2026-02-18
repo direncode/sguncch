@@ -512,7 +512,7 @@ export default function BudgetPage() {
                       ))}
                     </div>
                     <a
-                      href="https://heelslife.unc.edu"
+                      href="https://heellife.unc.edu/organization/rsofinances"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="btn-primary w-full text-center block"
@@ -527,12 +527,12 @@ export default function BudgetPage() {
 
                 <Reveal delay={100}>
                   <div className="card p-8">
-                    <h3 className="text-lg font-semibold text-white mb-6">Public Budget Ledger</h3>
+                    <h3 className="text-lg font-semibold text-white mb-6">Budget Transparency</h3>
                     <p className="text-sm text-gray-400 mb-6">
-                      View all approved budget allocations, spending, and line items on our transparency page. The public ledger is maintained by Student Government admin.
+                      View all approved budget allocations, spending, and line items. The public ledger is maintained by Student Government admin.
                     </p>
                     <a href="/budget-transparency" className="btn-secondary w-full text-center block">
-                      View Full Transparency Report
+                      View Budget Transparency
                     </a>
                   </div>
                 </Reveal>
@@ -664,7 +664,7 @@ export default function BudgetPage() {
                       <Editable k="budget.transparency.opendata.description" multiline>All Student Government budget data is publicly available on the transparency page. View detailed breakdowns of allocations, spending, and utilization rates by category.</Editable>
                     </p>
                     <a href="/budget-transparency" className="btn-secondary w-full text-center block">
-                      View Full Transparency Report
+                      View Budget Transparency
                     </a>
                   </div>
                 </Reveal>

@@ -269,9 +269,9 @@ export default function AcademicPage() {
                     </button>
                     {showMentorModal && (
                       <div className="mt-6 pt-6 border-t border-gray-800">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
                         <iframe
-                          src="https://unc.qualtrics.com/jfe/form/SV_ACADEMIC_MENTOR"
+                          src="https://software.sites.unc.edu/qualtrics/"
                           className="w-full rounded-lg border border-gray-800 bg-black"
                           style={{ height: '500px' }}
                           title="Request a Mentor"
@@ -477,9 +477,9 @@ export default function AcademicPage() {
                       </button>
                       {showCenterModal && (
                         <div className="mt-6 pt-6 border-t border-gray-800">
-                          <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                          <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
                           <iframe
-                            src="https://unc.qualtrics.com/jfe/form/SV_ACADEMIC_CENTER"
+                            src="https://software.sites.unc.edu/qualtrics/"
                             className="w-full rounded-lg border border-gray-800 bg-black"
                             style={{ height: '500px' }}
                             title="Reserve Study Center Space"
@@ -784,9 +784,9 @@ export default function AcademicPage() {
                     <div className="card p-8 mt-6">
                       <h3 className="font-semibold text-white text-lg mb-6"><Editable k="academic.faq.feedback.title">Send Feedback</Editable></h3>
                       <div className="mt-6 pt-6 border-t border-gray-800">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
                         <iframe
-                          src="https://unc.qualtrics.com/jfe/form/SV_ACADEMIC_FEEDBACK"
+                          src="https://software.sites.unc.edu/qualtrics/"
                           className="w-full rounded-lg border border-gray-800 bg-black"
                           style={{ height: '500px' }}
                           title="Academic Affairs Feedback"

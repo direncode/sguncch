@@ -340,9 +340,9 @@ export default function CommunicationsPage() {
                     </button>
                     {activeFormPanel === 'story' && (
                       <div className="mt-6 pt-6 border-t border-gray-800">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
                         <iframe
-                          src="https://unc.qualtrics.com/jfe/form/SV_COMMS_STORY"
+                          src="https://software.sites.unc.edu/qualtrics/"
                           className="w-full rounded-lg border border-gray-800 bg-black"
                           style={{ height: '500px' }}
                           title="Story Submission"
@@ -364,9 +364,9 @@ export default function CommunicationsPage() {
                     </button>
                     {activeFormPanel === 'nomination' && (
                       <div className="mt-6 pt-6 border-t border-gray-800">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
                         <iframe
-                          src="https://unc.qualtrics.com/jfe/form/SV_COMMS_NOMINATION"
+                          src="https://software.sites.unc.edu/qualtrics/"
                           className="w-full rounded-lg border border-gray-800 bg-black"
                           style={{ height: '500px' }}
                           title="Nomination"
@@ -573,9 +573,9 @@ export default function CommunicationsPage() {
                     </button>
                     {activeFormPanel === 'podcast-guest' && (
                       <div className="mt-6 pt-6 border-t border-gray-800">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
                         <iframe
-                          src="https://unc.qualtrics.com/jfe/form/SV_COMMS_PODCAST"
+                          src="https://software.sites.unc.edu/qualtrics/"
                           className="w-full rounded-lg border border-gray-800 bg-black"
                           style={{ height: '500px' }}
                           title="Podcast Guest Application"
@@ -597,9 +597,9 @@ export default function CommunicationsPage() {
                     </button>
                     {activeFormPanel === 'podcast-nomination' && (
                       <div className="mt-6 pt-6 border-t border-gray-800">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
                         <iframe
-                          src="https://unc.qualtrics.com/jfe/form/SV_COMMS_NOMINATION"
+                          src="https://software.sites.unc.edu/qualtrics/"
                           className="w-full rounded-lg border border-gray-800 bg-black"
                           style={{ height: '500px' }}
                           title="Podcast Guest Nomination"
@@ -702,9 +702,9 @@ export default function CommunicationsPage() {
                   </button>
                   {activeFormPanel === 'talent' && (
                     <div className="mt-6 pt-6 border-t border-gray-800">
-                      <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                      <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
                       <iframe
-                        src="https://unc.qualtrics.com/jfe/form/SV_COMMS_TALENT"
+                        src="https://software.sites.unc.edu/qualtrics/"
                         className="w-full rounded-lg border border-gray-800 bg-black"
                         style={{ height: '500px' }}
                         title="Talent Spotlight Submission"
@@ -850,9 +850,9 @@ export default function CommunicationsPage() {
                     <div className="card p-8 mt-6">
                       <h3 className="font-semibold text-white text-lg mb-6"><Editable k="communications.faq.feedback.title">Send Feedback</Editable></h3>
                       <div className="mt-6 pt-6 border-t border-gray-800">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
                         <iframe
-                          src="https://unc.qualtrics.com/jfe/form/SV_COMMS_FEEDBACK"
+                          src="https://software.sites.unc.edu/qualtrics/"
                           className="w-full rounded-lg border border-gray-800 bg-black"
                           style={{ height: '500px' }}
                           title="Feedback"

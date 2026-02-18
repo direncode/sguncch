@@ -358,7 +358,7 @@ export default function Home() {
                   <p className="text-sm text-gray-500 mt-1">To request funding for your student organization, submit through Heels Life.</p>
                 </div>
                 <a
-                  href="https://heelslife.unc.edu"
+                  href="https://heellife.unc.edu/organization/rsofinances"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn-secondary shrink-0"

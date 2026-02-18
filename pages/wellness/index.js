@@ -396,9 +396,9 @@ export default function WellnessPage() {
                     </button>
                     {showRideForm && (
                       <div className="mt-6 pt-6 border-t border-gray-800">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
                         <iframe
-                          src="https://unc.qualtrics.com/jfe/form/SV_WELLNESS_RIDE"
+                          src="https://software.sites.unc.edu/qualtrics/"
                           className="w-full rounded-lg border border-gray-800 bg-black"
                           style={{ height: '500px' }}
                           title="Safe Ride Request"
@@ -433,9 +433,9 @@ export default function WellnessPage() {
                     </button>
                     {showVolunteerForm && (
                       <div className="mt-6 pt-6 border-t border-gray-800">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
                         <iframe
-                          src="https://unc.qualtrics.com/jfe/form/SV_WELLNESS_VOLUNTEER"
+                          src="https://software.sites.unc.edu/qualtrics/"
                           className="w-full rounded-lg border border-gray-800 bg-black"
                           style={{ height: '500px' }}
                           title="Volunteer Application"
@@ -603,9 +603,9 @@ export default function WellnessPage() {
                       </button>
                       {showSafetyPlanForm && (
                         <div className="mt-6 pt-6 border-t border-gray-800">
-                          <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                          <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
                           <iframe
-                            src="https://unc.qualtrics.com/jfe/form/SV_WELLNESS_SAFETY"
+                            src="https://software.sites.unc.edu/qualtrics/"
                             className="w-full rounded-lg border border-gray-800 bg-black"
                             style={{ height: '500px' }}
                             title="Event Safety Plan"
@@ -841,9 +841,9 @@ export default function WellnessPage() {
                     <div className="card p-8 mt-6">
                       <h3 className="font-semibold text-white text-lg mb-6">Send Feedback</h3>
                       <div className="mt-2">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
                         <iframe
-                          src="https://unc.qualtrics.com/jfe/form/SV_WELLNESS_FEEDBACK"
+                          src="https://software.sites.unc.edu/qualtrics/"
                           className="w-full rounded-lg border border-gray-800 bg-black"
                           style={{ height: '500px' }}
                           title="Wellness Feedback"

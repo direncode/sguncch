@@ -536,9 +536,9 @@ export default function EnvironmentalPage() {
                   </button>
                   {showAdoptModal && (
                     <div className="mt-6 pt-6 border-t border-gray-800">
-                      <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                      <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
                       <iframe
-                        src="https://unc.qualtrics.com/jfe/form/SV_ENV_ADOPT"
+                        src="https://software.sites.unc.edu/qualtrics/"
                         className="w-full rounded-lg border border-gray-800 bg-black"
                         style={{ height: '500px' }}
                         title="Adopt-a-Space Application"
@@ -722,9 +722,9 @@ export default function EnvironmentalPage() {
                     </button>
                     {showDonateModal && (
                       <div className="mt-6 pt-6 border-t border-gray-800">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
                         <iframe
-                          src="https://unc.qualtrics.com/jfe/form/SV_ENV_DONATE"
+                          src="https://software.sites.unc.edu/qualtrics/"
                           className="w-full rounded-lg border border-gray-800 bg-black"
                           style={{ height: '500px' }}
                           title="Donation Scheduling"
@@ -797,9 +797,9 @@ export default function EnvironmentalPage() {
                     <div className="card p-8 mt-6">
                       <h3 className="font-semibold text-white text-lg mb-6"><Editable k="environmental.faq.feedbackTitle">Send Feedback</Editable></h3>
                       <div className="mt-2">
-                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via UNC Qualtrics</p>
+                        <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Complete via Qualtrics</p>
                         <iframe
-                          src="https://unc.qualtrics.com/jfe/form/SV_ENV_FEEDBACK"
+                          src="https://software.sites.unc.edu/qualtrics/"
                           className="w-full rounded-lg border border-gray-800 bg-black"
                           style={{ height: '500px' }}
                           title="Environmental Feedback"
