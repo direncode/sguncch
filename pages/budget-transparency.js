@@ -644,6 +644,80 @@ export default function BudgetTransparency() {
             </div>
           )}
 
+          {/* Heels Life RSO Finances Embed */}
+          <div className="mt-12">
+            <div className="bg-[#161b22] border border-[#30363d] rounded-xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-[#30363d] flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold text-[#f0f6fc]">Heels Life &mdash; RSO Finances</h2>
+                  <p className="text-xs text-[#6e7681] mt-1">Registered Student Organization financial portal via Heels Life</p>
+                </div>
+                <a
+                  href="https://heellife.unc.edu/organization/rsofinances"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-1.5 text-xs font-medium text-[#00d4ff] border border-[#00d4ff]/30 rounded-lg hover:bg-[#00d4ff]/10 transition-all"
+                >
+                  Open in Heels Life &rarr;
+                </a>
+              </div>
+              <iframe
+                src="https://heellife.unc.edu/organization/rsofinances"
+                className="w-full border-0"
+                style={{ height: '600px' }}
+                title="Heels Life RSO Finances"
+                loading="lazy"
+              />
+            </div>
+          </div>
+
+          {/* Qualtrics Survey Tools */}
+          <div className="mt-8">
+            <div className="bg-[#161b22] border border-[#30363d] rounded-xl overflow-hidden">
+              <div className="px-6 py-4 border-b border-[#30363d]">
+                <h2 className="text-lg font-semibold text-[#f0f6fc]">Survey Tools</h2>
+                <p className="text-xs text-[#6e7681] mt-1">Budget feedback and transparency surveys powered by Qualtrics</p>
+              </div>
+              <div className="p-6 space-y-6">
+                {/* Default Qualtrics link */}
+                <div className="bg-[#0d1117] border border-[#30363d] rounded-lg p-5">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-sm font-semibold text-[#f0f6fc] mb-1">Qualtrics &mdash; Software Distribution</h3>
+                      <p className="text-xs text-[#6e7681]">Information Technology Services &bull; Access UNC&apos;s licensed Qualtrics survey platform</p>
+                    </div>
+                    <a
+                      href="https://software.sites.unc.edu/qualtrics/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="shrink-0 px-4 py-2 text-sm font-medium bg-[#00d4ff] text-[#0d1117] rounded-lg hover:bg-[#00d4ff]/90 transition-all"
+                    >
+                      Go to Qualtrics
+                    </a>
+                  </div>
+                </div>
+
+                {/* Custom Survey Placeholder */}
+                <div className="bg-[#0d1117] border border-dashed border-[#30363d] rounded-lg p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 rounded-lg bg-[#21262d] flex items-center justify-center text-[#6e7681]">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-[#8b949e]">Custom Survey</h3>
+                      <p className="text-xs text-[#6e7681]">A custom Qualtrics survey will be embedded here once configured by SG admin</p>
+                    </div>
+                  </div>
+                  <div className="h-32 bg-[#161b22] border border-[#21262d] rounded-lg flex items-center justify-center">
+                    <p className="text-xs text-[#6e7681] font-mono">Survey embed placeholder &mdash; configure via Admin Dashboard</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Footer */}
           <div className="mt-12 pt-8 border-t border-[#30363d]">
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
