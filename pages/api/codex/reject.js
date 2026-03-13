@@ -1,5 +1,8 @@
 import { withAdminAuth } from '../../../lib/auth'
 import { updateDocumentStatus, logApprovalAction } from '../../../lib/codex'
+import { createLogger } from '../../../lib/logger'
+
+const log = createLogger('API:reject')
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -22,7 +25,7 @@ async function handler(req, res) {
 
     return res.status(200).json({ message: 'Document rejected' })
   } catch (err) {
-    console.error('Reject error:', err)
+    log.error('Reject error', { error: err.message })
     return res.status(500).json({ error: 'Failed to reject document' })
   }
 }

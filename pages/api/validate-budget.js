@@ -5,6 +5,9 @@
 
 import { validateFundingRequest, quickPriceCheck } from '../../lib/groq'
 import { createRateLimiter, getClientIP } from '../../lib/rateLimit'
+import { createLogger } from '../../lib/logger'
+
+const log = createLogger('API:validate-budget')
 
 // Rate limit: 20 validation requests per minute per IP
 const limiter = createRateLimiter({
@@ -13,7 +16,7 @@ const limiter = createRateLimiter({
 })
 
 export default async function handler(req, res) {
-  console.log(`[validate-budget] ${req.method} request from ${getClientIP(req)}`)
+  log.info('Incoming request', { method: req.method, ip: getClientIP(req) })
 
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -24,7 +27,7 @@ export default async function handler(req, res) {
 
   // Only allow POST
   if (req.method !== 'POST') {
-    console.log(`[validate-budget] Rejected ${req.method} - only POST allowed`)
+    log.info('Rejected request - only POST allowed', { method: req.method })
     return res.status(405).json({
       error: 'Method not allowed',
       method: req.method,
@@ -82,7 +85,7 @@ export default async function handler(req, res) {
     })
 
   } catch (error) {
-    console.error('Budget validation error:', error)
+    log.error('Budget validation error', { error: error.message })
     return res.status(500).json({
       error: 'Validation failed',
       message: error.message,

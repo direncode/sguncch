@@ -1,4 +1,7 @@
 import { getApprovalLog } from '../../../lib/codex'
+import { createLogger } from '../../../lib/logger'
+
+const log = createLogger('API:audit')
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -12,7 +15,7 @@ export default async function handler(req, res) {
     if (error) return res.status(500).json({ error })
     return res.status(200).json({ audit_log: data })
   } catch (err) {
-    console.error('Audit log error:', err)
+    log.error('Audit log error', { error: err.message })
     return res.status(500).json({ error: 'Failed to fetch audit log' })
   }
 }

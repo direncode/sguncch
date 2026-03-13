@@ -45,8 +45,11 @@ CREATE TABLE IF NOT EXISTS policies (
   department TEXT NOT NULL,
   status TEXT DEFAULT 'planned' CHECK (status IN ('planned', 'in_progress', 'completed')),
   progress INTEGER DEFAULT 0 CHECK (progress >= 0 AND progress <= 100),
+  phase INTEGER DEFAULT 1 CHECK (phase >= 1 AND phase <= 6),
   priority TEXT DEFAULT 'medium' CHECK (priority IN ('high', 'medium', 'low')),
   metrics JSONB DEFAULT '{}',
+  impact_summary TEXT DEFAULT '',
+  outcomes JSONB DEFAULT '{}',
   last_updated TIMESTAMPTZ DEFAULT NOW(),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -346,8 +349,11 @@ SELECT
   department,
   COUNT(*) as total_policies,
   AVG(progress) as avg_progress,
+  ROUND(AVG(phase), 1) as avg_phase,
   COUNT(*) FILTER (WHERE status = 'completed') as completed,
-  COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress
+  COUNT(*) FILTER (WHERE status = 'in_progress') as in_progress,
+  COUNT(*) FILTER (WHERE phase >= 6) as phase_complete,
+  COUNT(*) FILTER (WHERE phase >= 4 AND phase < 6) as phase_implementing
 FROM policies
 GROUP BY department;
 
@@ -588,3 +594,81 @@ CREATE POLICY "Admins can update funding requests" ON funding_requests
 
 CREATE INDEX IF NOT EXISTS idx_funding_requests_status ON funding_requests(status);
 CREATE INDEX IF NOT EXISTS idx_funding_requests_submitted ON funding_requests(submitted_at DESC);
+
+-- ============================================
+-- APP LOGS TABLE (Centralized application logging)
+-- ============================================
+CREATE TABLE IF NOT EXISTS app_logs (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  level TEXT NOT NULL CHECK (level IN ('ERROR', 'WARN', 'INFO')),
+  module TEXT NOT NULL,
+  message TEXT NOT NULL,
+  metadata JSONB DEFAULT '{}',
+  correlation_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE app_logs ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "System can insert app logs" ON app_logs
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Admins can read app logs" ON app_logs
+  FOR SELECT USING (true);
+
+CREATE INDEX IF NOT EXISTS idx_app_logs_level ON app_logs(level);
+CREATE INDEX IF NOT EXISTS idx_app_logs_module ON app_logs(module);
+CREATE INDEX IF NOT EXISTS idx_app_logs_created ON app_logs(created_at DESC);
+
+-- ============================================
+-- NEWS FEED CACHE TABLE (Live UNC news aggregation)
+-- ============================================
+CREATE TABLE IF NOT EXISTS news_feed_cache (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  source_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  link TEXT NOT NULL UNIQUE,
+  pub_date TIMESTAMPTZ,
+  source_name TEXT,
+  category TEXT,
+  cached_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE news_feed_cache ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can read news cache" ON news_feed_cache
+  FOR SELECT USING (true);
+
+CREATE POLICY "System can manage news cache" ON news_feed_cache
+  FOR ALL USING (true);
+
+CREATE INDEX IF NOT EXISTS idx_news_cache_date ON news_feed_cache(pub_date DESC);
+CREATE INDEX IF NOT EXISTS idx_news_cache_source ON news_feed_cache(source_id);
+CREATE INDEX IF NOT EXISTS idx_news_cache_cached ON news_feed_cache(cached_at);
+
+-- ============================================
+-- POLICY UPDATES TABLE (Narrative progress tracking)
+-- ============================================
+CREATE TABLE IF NOT EXISTS policy_updates (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  policy_id TEXT NOT NULL,
+  phase INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  narrative TEXT NOT NULL,
+  evidence TEXT[] DEFAULT '{}',
+  impact TEXT,
+  author TEXT DEFAULT 'Admin',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE policy_updates ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can read policy updates" ON policy_updates
+  FOR SELECT USING (true);
+
+CREATE POLICY "Admins can manage policy updates" ON policy_updates
+  FOR ALL USING (true);
+
+CREATE INDEX IF NOT EXISTS idx_policy_updates_policy ON policy_updates(policy_id);
+CREATE INDEX IF NOT EXISTS idx_policy_updates_date ON policy_updates(created_at DESC);

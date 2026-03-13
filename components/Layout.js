@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/router'
 import GridBackground from './GridBackground'
 import AdminNav from './AdminNav'
+import LiveNewsSlider from './LiveNewsSlider'
 import { useApp } from '../lib/store'
 
 const navigation = [
@@ -145,6 +146,11 @@ export default function Layout({ children }) {
           </div>
         </div>
       </header>
+
+      {/* Live News Ticker */}
+      <div className="fixed top-20 left-0 right-0 z-40">
+        <LiveNewsSlider />
+      </div>
 
       {/* Main Content */}
       <main className="relative z-10">

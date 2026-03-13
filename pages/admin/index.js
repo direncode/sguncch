@@ -3,7 +3,8 @@ import { useRouter } from 'next/router'
 import Head from 'next/head'
 import Link from 'next/link'
 import { useApp } from '../../lib/store'
-import { departments as defaultDepartments, getOverallProgress, getStatusCounts } from '../../lib/data'
+import { departments as defaultDepartments, getOverallProgress, getOverallPhaseProgress, getStatusCounts, POLICY_PHASES, getPhaseLabel, getPhaseSummary } from '../../lib/data'
+import PhaseIndicator from '../../components/PhaseIndicator'
 import AdminNav from '../../components/AdminNav'
 import {
   BUDGET_CATEGORIES,
@@ -397,10 +398,23 @@ export default function AdminConsole() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
                 <Reveal delay={50}>
                   <div className="bg-white/5 border border-gray-800 rounded-xl p-6">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Overall Progress</p>
-                    <p className="text-4xl font-mono font-bold text-white">{overallProgress}%</p>
-                    <div className="mt-3 h-1 bg-gray-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-white rounded-full transition-all" style={{ width: `${overallProgress}%` }} />
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Phase Progress</p>
+                    <p className="text-4xl font-mono font-bold text-white">{getOverallPhaseProgress(policies)}%</p>
+                    <div className="mt-3 flex gap-1">
+                      {POLICY_PHASES.map(phase => {
+                        const count = policies.filter(p => (p.phase || 1) === phase.number).length
+                        return count > 0 ? (
+                          <div key={phase.number} className="text-center flex-1">
+                            <div className="text-[10px] font-mono text-gray-500">{count}</div>
+                            <div className="h-1 bg-[#4B9CD3] rounded-full" style={{ opacity: 0.3 + (phase.number / 6) * 0.7 }} />
+                          </div>
+                        ) : (
+                          <div key={phase.number} className="flex-1">
+                            <div className="text-[10px] font-mono text-gray-700">0</div>
+                            <div className="h-1 bg-gray-800 rounded-full" />
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 </Reveal>
@@ -434,7 +448,9 @@ export default function AdminConsole() {
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                     {defaultDepartments.map((dept, i) => {
                       const deptPolicies = policies.filter(p => p.department === dept.id)
-                      const progress = getOverallProgress(deptPolicies)
+                      const avgPhase = deptPolicies.length > 0
+                        ? (deptPolicies.reduce((s, p) => s + (p.phase || 1), 0) / deptPolicies.length).toFixed(1)
+                        : '1.0'
                       return (
                         <Reveal key={dept.id} delay={i * 50}>
                           <button
@@ -445,9 +461,10 @@ export default function AdminConsole() {
                             className="bg-white/5 border border-gray-800 rounded-xl p-5 hover:bg-white/10 transition-all text-left group"
                           >
                             <p className="text-sm text-gray-400 mb-2 group-hover:text-white transition-colors">{dept.name}</p>
-                            <p className="text-2xl font-mono font-bold text-white">{progress}%</p>
-                            <div className="mt-3 h-1 bg-gray-800 rounded-full overflow-hidden">
-                              <div className="h-full bg-white rounded-full transition-all" style={{ width: `${progress}%` }} />
+                            <p className="text-lg font-mono font-bold text-white">Phase {avgPhase}</p>
+                            <p className="text-[10px] text-gray-500 mt-1">{getPhaseLabel(Math.round(parseFloat(avgPhase)))}</p>
+                            <div className="mt-2">
+                              <PhaseIndicator currentPhase={Math.round(parseFloat(avgPhase))} compact />
                             </div>
                             <p className="text-xs text-gray-600 mt-2">{deptPolicies.length} policies</p>
                           </button>
@@ -654,13 +671,13 @@ export default function AdminConsole() {
                           </div>
                         )}
 
+                        <div className="mb-2">
+                          <PhaseIndicator currentPhase={policy.phase || 1} compact />
+                        </div>
+                        {policy.impactSummary && (
+                          <p className="text-xs text-gray-400 mb-2 italic">{policy.impactSummary}</p>
+                        )}
                         <div className="flex items-center gap-4">
-                          <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-white rounded-full transition-all"
-                              style={{ width: `${policy.progress}%` }}
-                            />
-                          </div>
                           <div className="flex gap-2">
                             <button
                               onClick={() => { setEditingPolicy(policy); setShowPolicyModal(true) }}
@@ -668,15 +685,33 @@ export default function AdminConsole() {
                             >
                               Edit
                             </button>
-                            {!hasMilestones && (
+                            {(policy.phase || 1) < 6 && (
                               <button
                                 onClick={() => {
-                                  const newProgress = Math.min(100, policy.progress + 10)
-                                  logPolicyProgress(policy.id, newProgress, `Progress updated to ${newProgress}%`)
+                                  const nextPhase = Math.min(6, (policy.phase || 1) + 1)
+                                  const note = prompt(`Advancing to Phase ${nextPhase}: ${getPhaseLabel(nextPhase)}\n\nDescribe what was accomplished:`)
+                                  if (note) {
+                                    const update = {
+                                      id: `upd-${Date.now()}`,
+                                      date: new Date().toISOString(),
+                                      phase: nextPhase,
+                                      title: note.substring(0, 100),
+                                      narrative: note,
+                                      evidence: [],
+                                      impact: '',
+                                      author: 'Admin',
+                                    }
+                                    updatePolicy(policy.id, {
+                                      phase: nextPhase,
+                                      narrativeUpdates: [update, ...(policy.narrativeUpdates || [])],
+                                      status: nextPhase >= 6 ? 'completed' : nextPhase >= 2 ? 'in_progress' : 'planned',
+                                    })
+                                    logPolicyProgress(policy.id, Math.round((nextPhase / 6) * 100), `Advanced to Phase ${nextPhase}: ${getPhaseLabel(nextPhase)} — ${note.substring(0, 50)}`)
+                                  }
                                 }}
-                                className="px-3 py-1.5 bg-green-500/20 border border-green-500/30 rounded text-xs text-green-400 hover:bg-green-500/30 transition-all"
+                                className="px-3 py-1.5 bg-[#4B9CD3]/20 border border-[#4B9CD3]/30 rounded text-xs text-[#4B9CD3] hover:bg-[#4B9CD3]/30 transition-all"
                               >
-                                +10%
+                                Advance Phase
                               </button>
                             )}
                           </div>
@@ -1333,6 +1368,8 @@ function PolicyForm({ policy, onSave, onDelete, onCancel }) {
     department: policy?.department || 'wellness',
     status: policy?.status || 'planned',
     priority: policy?.priority || 'medium',
+    phase: policy?.phase || 1,
+    impactSummary: policy?.impactSummary || '',
     milestones: policy?.milestones || [],
   })
   const [showTemplates, setShowTemplates] = useState(false)
@@ -1352,6 +1389,8 @@ function PolicyForm({ policy, onSave, onDelete, onCancel }) {
     onSave({
       ...form,
       progress: calculatedProgress,
+      phase: form.phase,
+      impactSummary: form.impactSummary,
     })
   }
 
@@ -1473,6 +1512,38 @@ function PolicyForm({ policy, onSave, onDelete, onCancel }) {
             <option value="high">High</option>
           </select>
         </div>
+      </div>
+
+      {/* Phase & Impact */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm text-gray-400 mb-2">Current Phase</label>
+          <select
+            value={form.phase}
+            onChange={(e) => setForm({ ...form, phase: parseInt(e.target.value) })}
+            className="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg text-white focus:border-white focus:outline-none"
+          >
+            {POLICY_PHASES.map(phase => (
+              <option key={phase.number} value={phase.number}>
+                Phase {phase.number}: {phase.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-end pb-1">
+          <PhaseIndicator currentPhase={form.phase} compact />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm text-gray-400 mb-2">Impact Summary <span className="text-gray-600">(what this means for students)</span></label>
+        <textarea
+          value={form.impactSummary}
+          onChange={(e) => setForm({ ...form, impactSummary: e.target.value })}
+          rows={2}
+          className="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:border-white focus:outline-none resize-none"
+          placeholder="e.g. Students can now schedule drop-in counseling sessions at 3 new campus locations..."
+        />
       </div>
 
       {/* Milestones Section */}

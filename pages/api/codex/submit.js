@@ -1,6 +1,10 @@
 // Public submission endpoint — no admin auth, rate limited
 // Anyone can submit text for review (pending approval)
 
+import { createLogger } from '../../../lib/logger'
+
+const log = createLogger('API:submit')
+
 const rateLimitMap = new Map()
 const RATE_LIMIT = 5
 const RATE_WINDOW_MS = 60000
@@ -69,7 +73,7 @@ export default async function handler(req, res) {
       document_id: data.id,
     })
   } catch (err) {
-    console.error('Public submit error:', err)
+    log.error('Public submit error', { error: err.message })
     return res.status(500).json({ error: 'Submission failed. Please try again.' })
   }
 }

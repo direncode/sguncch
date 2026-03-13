@@ -1,5 +1,8 @@
 import { withAdminAuth } from '../../../lib/auth'
 import { createDocument, logApprovalAction } from '../../../lib/codex'
+import { createLogger } from '../../../lib/logger'
+
+const log = createLogger('API:upload')
 
 function getRawBody(req, limit = 50 * 1024 * 1024) {
   return new Promise((resolve, reject) => {
@@ -71,7 +74,7 @@ async function handler(req, res) {
 
     return res.status(200).json({ document: data, message: 'Document uploaded for review' })
   } catch (err) {
-    console.error('Upload error:', err)
+    log.error('Upload error', { error: err.message })
     return res.status(500).json({ error: `Failed to upload document: ${err.message || 'Unknown error'}` })
   }
 }

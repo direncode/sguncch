@@ -1,5 +1,8 @@
 import { withAdminAuth } from '../../../../../lib/auth'
 import { deleteDocument, getDocumentById } from '../../../../../lib/codex'
+import { createLogger } from '../../../../../lib/logger'
+
+const log = createLogger('API:document-delete')
 
 async function handler(req, res) {
   if (req.method !== 'DELETE') {
@@ -24,7 +27,7 @@ async function handler(req, res) {
 
     return res.status(200).json({ message: `Deleted "${doc.title}" and its chunks` })
   } catch (err) {
-    console.error('Delete document error:', err)
+    log.error('Delete document error', { error: err.message })
     return res.status(500).json({ error: 'Failed to delete document' })
   }
 }

@@ -1,4 +1,7 @@
 import { buildPlatformContext } from '../../../lib/platformContext'
+import { createLogger } from '../../../lib/logger'
+
+const log = createLogger('API:platform-context')
 
 /**
  * Returns the live platform context as a structured string.
@@ -21,7 +24,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ context })
   } catch (err) {
-    console.error('Platform context error:', err)
+    log.error('Platform context error', { error: err.message })
     return res.status(500).json({ error: 'Failed to build platform context' })
   }
 }

@@ -1,6 +1,9 @@
 // The Scroll API — returns approved documents with text and auto-categorized buckets
 
 import { getDocuments } from '../../../lib/codex'
+import { createLogger } from '../../../lib/logger'
+
+const log = createLogger('API:scroll')
 
 const CATEGORIES = [
   { id: 'laws', label: 'Laws & Statutes', keywords: ['law', 'statute', 'code of conduct', 'act', 'legislation', 'legal', 'ordinance', 'regulation', 'compliance', 'ferpa', 'title ix', 'clery', 'judicial', 'enforcement'] },
@@ -42,7 +45,7 @@ export default async function handler(req, res) {
     const { data: documents, error } = await getDocuments('approved', { includeText: true })
 
     if (error) {
-      console.error('Scroll API - getDocuments error:', error)
+      log.error('Scroll API - getDocuments error', { error: String(error) })
       return res.status(500).json({ error: 'Failed to load The Scroll' })
     }
 
@@ -76,7 +79,7 @@ export default async function handler(req, res) {
       total: categorized.length,
     })
   } catch (err) {
-    console.error('Scroll API error:', err)
+    log.error('Scroll API error', { error: err.message })
     return res.status(500).json({ error: 'Failed to load The Scroll' })
   }
 }

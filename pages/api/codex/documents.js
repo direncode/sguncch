@@ -1,4 +1,7 @@
 import { getDocuments, searchDocuments } from '../../../lib/codex'
+import { createLogger } from '../../../lib/logger'
+
+const log = createLogger('API:documents')
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -19,7 +22,7 @@ export default async function handler(req, res) {
     if (error) return res.status(500).json({ error })
     return res.status(200).json({ documents: data })
   } catch (err) {
-    console.error('Documents list error:', err)
+    log.error('Documents list error', { error: err.message })
     return res.status(500).json({ error: 'Failed to fetch documents' })
   }
 }

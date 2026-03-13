@@ -1,5 +1,8 @@
 import { submitFormToSupabase } from '../../../lib/supabase'
 import { sanitizeObject, containsXSS, checkRateLimit } from '../../../lib/security'
+import { createLogger } from '../../../lib/logger'
+
+const log = createLogger('API:forms-submit')
 
 // Rate limit tracking (in-memory, per-serverless-instance)
 const rateLimits = new Map()
@@ -54,7 +57,7 @@ export default async function handler(req, res) {
 
     if (error) {
       // If table doesn't exist yet, still acknowledge receipt
-      console.warn('Supabase form save failed:', error)
+      log.warn('Supabase form save failed', { error: String(error) })
       return res.status(200).json({
         success: true,
         id: `local-${Date.now()}`,
@@ -70,7 +73,7 @@ export default async function handler(req, res) {
       storage: 'supabase',
     })
   } catch (err) {
-    console.error('Form submission error:', err)
+    log.error('Form submission error', { error: err.message })
     return res.status(200).json({
       success: true,
       id: `local-${Date.now()}`,

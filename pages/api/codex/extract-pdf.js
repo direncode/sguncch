@@ -1,4 +1,7 @@
 import { withAdminAuth } from '../../../lib/auth'
+import { createLogger } from '../../../lib/logger'
+
+const log = createLogger('API:extract-pdf')
 
 // Increase body size limit for base64 PDF uploads
 export const config = {
@@ -105,7 +108,7 @@ async function handler(req, res) {
 
       return res.status(200).json({ content })
     } catch (err) {
-      console.error('PDF extraction error:', err)
+      log.error('PDF extraction error', { error: err.message })
       return res.status(500).json({ error: err.message })
     }
   }

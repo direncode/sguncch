@@ -1,5 +1,8 @@
 import { withAdminAuth } from '../../../lib/auth'
 import { getFormSubmissions, updateFormSubmission } from '../../../lib/supabase'
+import { createLogger } from '../../../lib/logger'
+
+const log = createLogger('API:forms')
 
 async function handler(req, res) {
   if (req.method === 'GET') {
@@ -12,7 +15,7 @@ async function handler(req, res) {
       }
       return res.status(200).json({ data })
     } catch (err) {
-      console.error('Get form submissions error:', err)
+      log.error('Get form submissions error', { error: err.message })
       return res.status(200).json({ data: [], error: 'Failed to fetch submissions' })
     }
   }
@@ -34,7 +37,7 @@ async function handler(req, res) {
       }
       return res.status(200).json({ data })
     } catch (err) {
-      console.error('Update form submission error:', err)
+      log.error('Update form submission error', { error: err.message })
       return res.status(500).json({ error: 'Failed to update submission' })
     }
   }

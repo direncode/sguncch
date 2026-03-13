@@ -2,7 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
 import Layout from '../components/Layout'
+import PhaseIndicator from '../components/PhaseIndicator'
 import { useApp } from '../lib/store'
+import { getPhaseSummary, getPhaseLabel, POLICY_PHASES } from '../lib/data'
 
 // Scroll reveal hook
 function useScrollReveal() {
@@ -176,7 +178,7 @@ export default function Home() {
       {/* Stats Section */}
       <section className="section-padding border-t border-gray-900">
         <div className="max-w-[1600px] mx-auto px-6 lg:px-12">
-          <div className="grid md:grid-cols-3 gap-12 lg:gap-24">
+          <div className="grid md:grid-cols-3 gap-12 lg:gap-24 mb-16">
             <Reveal>
               <div>
                 <span className="counter"><Counter value={totalPolicies} /></span>
@@ -198,6 +200,26 @@ export default function Home() {
               </div>
             </Reveal>
           </div>
+
+          {/* Phase Distribution */}
+          {mounted && policies?.length > 0 && (
+            <Reveal delay={300}>
+              <div>
+                <span className="caption mb-6 block">Initiative Phases</span>
+                <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
+                  {(() => {
+                    const phaseSummary = getPhaseSummary(policies);
+                    return POLICY_PHASES.map(phase => (
+                      <div key={phase.number} className="bg-white/[0.02] border border-gray-900 rounded-xl p-4 text-center">
+                        <p className="text-2xl font-mono font-bold text-white">{phaseSummary[phase.number] || 0}</p>
+                        <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider">{phase.shortLabel}</p>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
+            </Reveal>
+          )}
         </div>
       </section>
 

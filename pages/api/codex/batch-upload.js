@@ -1,6 +1,9 @@
 import { withAdminAuth } from '../../../lib/auth'
 import { createDocument, updateDocumentStatus, insertChunks, logApprovalAction } from '../../../lib/codex'
 import { chunkText, generateEmbedding, isEmbeddingAvailable } from '../../../lib/embeddings'
+import { createLogger } from '../../../lib/logger'
+
+const log = createLogger('API:batch-upload')
 
 function getRawBody(req, limit = 50 * 1024 * 1024) {
   return new Promise((resolve, reject) => {
@@ -133,7 +136,7 @@ async function handler(req, res) {
       failed,
     })
   } catch (err) {
-    console.error('Batch upload error:', err)
+    log.error('Batch upload error', { error: err.message })
     return res.status(500).json({ error: `Batch upload failed: ${err.message || 'Unknown error'}` })
   }
 }

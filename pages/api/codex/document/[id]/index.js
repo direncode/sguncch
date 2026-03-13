@@ -1,4 +1,7 @@
 import { getDocumentById, getApprovalLog } from '../../../../../lib/codex'
+import { createLogger } from '../../../../../lib/logger'
+
+const log = createLogger('API:document-detail')
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -25,7 +28,7 @@ export default async function handler(req, res) {
       audit_log: auditLog || [],
     })
   } catch (err) {
-    console.error('Document detail error:', err)
+    log.error('Document detail error', { error: err.message })
     return res.status(500).json({ error: 'Failed to fetch document' })
   }
 }

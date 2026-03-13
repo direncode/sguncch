@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import Head from 'next/head'
 import Layout from '../../components/Layout'
 import { useApp } from '../../lib/store'
-import { getOverallProgress, getStatusCounts, departmentContacts, departmentFAQs, departmentAnnouncements } from '../../lib/data'
+import { departmentContacts, departmentFAQs, departmentAnnouncements, getLatestUpdate, getPhaseLabel, getPhaseSummary, POLICY_PHASES } from '../../lib/data'
+import PhaseIndicator from '../../components/PhaseIndicator'
 import { Editable, EditModeToggle } from '../../components/InlineEditor'
 import {
   submitForm,
@@ -63,8 +64,6 @@ export default function CommunicationsPage() {
   const { policies, budgetData } = useApp()
 
   const deptPolicies = policies.filter(p => p.department === 'communications')
-  const overallProgress = getOverallProgress(policies)
-  const statusCounts = getStatusCounts(policies)
   const getPolicy = (id) => deptPolicies.find(p => p.id === id)
 
   const tabs = [
@@ -100,23 +99,32 @@ export default function CommunicationsPage() {
     }
   }
 
-  const PolicyProgress = ({ policy }) => (
-    <div className="card p-6 mb-8">
-      <div className="flex items-start justify-between mb-4">
-        <span className={`px-3 py-1 rounded text-xs font-mono tracking-wider ${
-          policy?.status === 'completed' ? 'bg-white/10 text-white' :
-          policy?.status === 'in_progress' ? 'bg-white/5 text-gray-300' :
-          'bg-white/5 text-gray-500'
-        }`}>
-          {policy?.status === 'in_progress' ? 'IN PROGRESS' : policy?.status === 'completed' ? 'COMPLETED' : 'PLANNED'}
-        </span>
-        <span className="text-gray-400 font-mono text-sm">{policy?.progress || 0}% Complete</span>
+  const PolicyProgress = ({ policy }) => {
+    const latestUpdate = getLatestUpdate(policy)
+    return (
+      <div className="card p-6 mb-8">
+        <div className="flex items-start justify-between mb-4">
+          <span className={`px-3 py-1 rounded text-xs font-mono tracking-wider ${
+            policy?.status === 'completed' ? 'bg-white/10 text-white' :
+            policy?.status === 'in_progress' ? 'bg-white/5 text-gray-300' :
+            'bg-white/5 text-gray-500'
+          }`}>
+            {policy?.status === 'in_progress' ? 'IN PROGRESS' : policy?.status === 'completed' ? 'COMPLETED' : 'PLANNED'}
+          </span>
+          <PhaseIndicator currentPhase={policy?.phase || 1} compact />
+        </div>
+        {policy?.impactSummary && (
+          <p className="text-gray-300 text-sm mb-3">{policy.impactSummary}</p>
+        )}
+        {latestUpdate && (
+          <div className="text-xs text-gray-500 mt-2">
+            <span className="text-gray-400">{latestUpdate.title}</span>
+            {latestUpdate.date && <span className="ml-2">{latestUpdate.date}</span>}
+          </div>
+        )}
       </div>
-      <div className="h-1 bg-gray-800 rounded overflow-hidden">
-        <div className="h-full bg-white rounded transition-all" style={{ width: `${policy?.progress || 0}%` }} />
-      </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <Layout>
@@ -194,15 +202,15 @@ export default function CommunicationsPage() {
                 <Reveal delay={150}>
                   <div className="card p-6 text-center">
                     <p className="text-4xl font-mono font-bold text-white">
-                      {Math.round(deptPolicies.reduce((sum, p) => sum + (p.progress || 0), 0) / deptPolicies.length) || 0}%
+                      {deptPolicies.filter(p => p.status === 'completed').length}
                     </p>
-                    <p className="text-xs text-gray-500 mt-2 uppercase tracking-wider"><Editable k="communications.overview.stats.avgProgress">Avg Progress</Editable></p>
+                    <p className="text-xs text-gray-500 mt-2 uppercase tracking-wider"><Editable k="communications.overview.stats.avgProgress">Completed</Editable></p>
                   </div>
                 </Reveal>
                 <Reveal delay={200}>
                   <div className="card p-6 text-center">
-                    <p className="text-4xl font-mono font-bold text-white">{overallProgress}%</p>
-                    <p className="text-xs text-gray-500 mt-2 uppercase tracking-wider"><Editable k="communications.overview.stats.platformProgress">Platform Progress</Editable></p>
+                    <p className="text-4xl font-mono font-bold text-white">{deptPolicies.filter(p => p.phase >= 4).length}</p>
+                    <p className="text-xs text-gray-500 mt-2 uppercase tracking-wider"><Editable k="communications.overview.stats.platformProgress">In Pilot+</Editable></p>
                   </div>
                 </Reveal>
               </div>
@@ -246,16 +254,19 @@ export default function CommunicationsPage() {
                           {policy.status === 'in_progress' ? 'In Progress' : 'Planned'}
                         </span>
                       </div>
-                      <p className="text-sm text-gray-400 mb-6 line-clamp-2">{policy.description}</p>
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1 h-1 bg-gray-800 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-white rounded-full transition-all"
-                            style={{ width: `${policy.progress}%` }}
-                          />
+                      {policy?.impactSummary && (
+                        <p className="text-gray-300 text-sm mb-3">{policy.impactSummary}</p>
+                      )}
+                      {!policy?.impactSummary && (
+                        <p className="text-sm text-gray-400 mb-3 line-clamp-2">{policy.description}</p>
+                      )}
+                      <PhaseIndicator currentPhase={policy?.phase || 1} compact />
+                      {(() => { const update = getLatestUpdate(policy); return update ? (
+                        <div className="text-xs text-gray-500 mt-2">
+                          <span className="text-gray-400">{update.title}</span>
+                          {update.date && <span className="ml-2">{update.date}</span>}
                         </div>
-                        <span className="text-sm font-mono text-gray-400">{policy.progress}%</span>
-                      </div>
+                      ) : null; })()}
                     </div>
                   </Reveal>
                 ))}
@@ -738,32 +749,32 @@ export default function CommunicationsPage() {
                 </div>
               </Reveal>
 
-              {/* Overall Progress */}
+              {/* Overall Phase Distribution */}
               <Reveal>
                 <div className="card p-8 mb-16">
-                  <span className="caption mb-6 block"><Editable k="communications.accountability.progress.title">Platform-Wide Progress</Editable></span>
-                  <div className="flex items-center gap-6 mb-8">
-                    <div className="text-5xl font-bold font-mono text-white">{overallProgress}%</div>
-                    <div className="flex-1">
-                      <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-white rounded-full transition-all"
-                          style={{ width: `${overallProgress}%` }}
-                        />
-                      </div>
-                    </div>
+                  <span className="caption mb-6 block"><Editable k="communications.accountability.progress.title">Platform-Wide Phase Distribution</Editable></span>
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-4 mb-8">
+                    {(() => {
+                      const phaseSummary = getPhaseSummary(policies);
+                      return POLICY_PHASES.map(phase => (
+                        <div key={phase.number} className="card p-4 text-center">
+                          <p className="text-2xl font-bold font-mono text-white">{phaseSummary[phase.number] || 0}</p>
+                          <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider">{phase.shortLabel}</p>
+                        </div>
+                      ));
+                    })()}
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="card p-5 text-center">
-                      <p className="text-3xl font-bold font-mono text-white">{statusCounts.completed}</p>
+                      <p className="text-3xl font-bold font-mono text-white">{policies.filter(p => p.status === 'completed').length}</p>
                       <p className="text-xs text-gray-500 mt-2 uppercase tracking-wider"><Editable k="communications.accountability.progress.completed">Completed</Editable></p>
                     </div>
                     <div className="card-highlight p-5 text-center">
-                      <p className="text-3xl font-bold font-mono text-white">{statusCounts.in_progress}</p>
+                      <p className="text-3xl font-bold font-mono text-white">{policies.filter(p => p.status === 'in_progress').length}</p>
                       <p className="text-xs text-gray-500 mt-2 uppercase tracking-wider"><Editable k="communications.accountability.progress.inProgress">In Progress</Editable></p>
                     </div>
                     <div className="card p-5 text-center">
-                      <p className="text-3xl font-bold font-mono text-gray-400">{statusCounts.planned}</p>
+                      <p className="text-3xl font-bold font-mono text-gray-400">{policies.filter(p => p.status === 'planned').length}</p>
                       <p className="text-xs text-gray-500 mt-2 uppercase tracking-wider"><Editable k="communications.accountability.progress.planned">Planned</Editable></p>
                     </div>
                   </div>
@@ -780,7 +791,7 @@ export default function CommunicationsPage() {
                     <h4 className="text-lg font-semibold text-white mb-4"><Editable k="communications.accountability.features.dashboard.title">Public Dashboard</Editable></h4>
                     <p className="text-gray-400 mb-6"><Editable k="communications.accountability.features.dashboard.description">Track real-time progress on all initiatives with clear metrics and timelines.</Editable></p>
                     <ul className="space-y-3 text-gray-400">
-                      <li className="flex items-center gap-3"><span className="text-white">-</span> <Editable k="communications.accountability.features.dashboard.item1">Progress percentages</Editable></li>
+                      <li className="flex items-center gap-3"><span className="text-white">-</span> <Editable k="communications.accountability.features.dashboard.item1">Phase tracking</Editable></li>
                       <li className="flex items-center gap-3"><span className="text-white">-</span> <Editable k="communications.accountability.features.dashboard.item2">Status updates</Editable></li>
                       <li className="flex items-center gap-3"><span className="text-white">-</span> <Editable k="communications.accountability.features.dashboard.item3">Milestone tracking</Editable></li>
                     </ul>

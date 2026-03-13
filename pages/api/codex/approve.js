@@ -1,6 +1,9 @@
 import { withAdminAuth } from '../../../lib/auth'
 import { getDocumentById, updateDocumentStatus, insertChunks, logApprovalAction } from '../../../lib/codex'
 import { chunkText, generateEmbedding, isEmbeddingAvailable } from '../../../lib/embeddings'
+import { createLogger } from '../../../lib/logger'
+
+const log = createLogger('API:approve')
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -45,7 +48,7 @@ async function handler(req, res) {
     // Insert chunks
     const { error: chunkError } = await insertChunks(document_id, chunks)
     if (chunkError) {
-      console.error('Chunk insert error:', chunkError)
+      log.error('Chunk insert error', { error: String(chunkError) })
     }
 
     // Log approval
@@ -57,7 +60,7 @@ async function handler(req, res) {
       embeddings_generated: useEmbeddings,
     })
   } catch (err) {
-    console.error('Approve error:', err)
+    log.error('Approve error', { error: err.message })
     return res.status(500).json({ error: 'Failed to approve document' })
   }
 }

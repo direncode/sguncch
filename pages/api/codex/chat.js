@@ -3,6 +3,9 @@ import { getDocumentById, getDocuments } from '../../../lib/codex'
 import { buildPlatformContext, buildEnhancedSystemPrompt } from '../../../lib/platformContext'
 import { MIN_SEED_COUNT } from '../../../lib/scrollRegistry'
 import { getNewsSourcesContext } from '../../../lib/newsSources'
+import { createLogger } from '../../../lib/logger'
+
+const log = createLogger('API:chat')
 
 // Stricter rate limiting: 5 requests per minute per IP
 const rateLimitMap = new Map()
@@ -209,7 +212,7 @@ export default async function handler(req, res) {
       platformContextIncluded: Boolean(platformContextStr),
     })
   } catch (err) {
-    console.error('Chat error:', err)
+    log.error('Chat error', { error: err.message })
     return res.status(500).json({ error: 'Failed to generate response. Please try again.' })
   }
 }

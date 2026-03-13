@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import Head from 'next/head'
 import Layout from '../../components/Layout'
 import { useApp } from '../../lib/store'
-import { departmentContacts, departmentFAQs, departmentAnnouncements, serviceGuides } from '../../lib/data'
+import { departmentContacts, departmentFAQs, departmentAnnouncements, serviceGuides, getLatestUpdate, getPhaseLabel } from '../../lib/data'
+import PhaseIndicator from '../../components/PhaseIndicator'
 import { Editable, EditModeToggle } from '../../components/InlineEditor'
 import {
   emailTemplates,
@@ -78,23 +79,32 @@ export default function AcademicPage() {
   const mentorGuide = serviceGuides['peer-mentor']
   const [expandedFaq, setExpandedFaq] = useState(null)
 
-  const PolicyProgress = ({ policy }) => (
-    <div className="card p-6 mb-8">
-      <div className="flex items-start justify-between mb-4">
-        <span className={`px-3 py-1 rounded text-xs font-mono tracking-wider ${
-          policy?.status === 'completed' ? 'bg-white/10 text-white' :
-          policy?.status === 'in_progress' ? 'bg-white/5 text-gray-300' :
-          'bg-white/5 text-gray-500'
-        }`}>
-          {policy?.status === 'in_progress' ? 'IN PROGRESS' : policy?.status === 'completed' ? 'COMPLETED' : 'PLANNED'}
-        </span>
-        <span className="text-gray-400 font-mono text-sm">{policy?.progress || 0}% Complete</span>
+  const PolicyProgress = ({ policy }) => {
+    const latestUpdate = getLatestUpdate(policy)
+    return (
+      <div className="card p-6 mb-8">
+        <div className="flex items-start justify-between mb-4">
+          <span className={`px-3 py-1 rounded text-xs font-mono tracking-wider ${
+            policy?.status === 'completed' ? 'bg-white/10 text-white' :
+            policy?.status === 'in_progress' ? 'bg-white/5 text-gray-300' :
+            'bg-white/5 text-gray-500'
+          }`}>
+            {policy?.status === 'in_progress' ? 'IN PROGRESS' : policy?.status === 'completed' ? 'COMPLETED' : 'PLANNED'}
+          </span>
+          <PhaseIndicator currentPhase={policy?.phase || 1} compact />
+        </div>
+        {policy?.impactSummary && (
+          <p className="text-gray-300 text-sm mb-3">{policy.impactSummary}</p>
+        )}
+        {latestUpdate && (
+          <div className="text-xs text-gray-500 mt-2">
+            <span className="text-gray-400">{latestUpdate.title}</span>
+            {latestUpdate.date && <span className="ml-2">{latestUpdate.date}</span>}
+          </div>
+        )}
       </div>
-      <div className="h-1 bg-gray-800 rounded overflow-hidden">
-        <div className="h-full bg-white rounded transition-all" style={{ width: `${policy?.progress || 0}%` }} />
-      </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <Layout>
@@ -172,9 +182,9 @@ export default function AcademicPage() {
                 <Reveal delay={150}>
                   <div className="card p-5 text-center">
                     <p className="text-4xl font-semibold font-mono text-white">
-                      {Math.round(deptPolicies.reduce((sum, p) => sum + (p.progress || 0), 0) / deptPolicies.length) || 0}%
+                      {deptPolicies.filter(p => p.status === 'completed').length}
                     </p>
-                    <p className="text-sm text-gray-500 mt-1 uppercase tracking-wide"><Editable k="academic.overview.stats.avgProgress">Avg Progress</Editable></p>
+                    <p className="text-sm text-gray-500 mt-1 uppercase tracking-wide"><Editable k="academic.overview.stats.avgProgress">Completed</Editable></p>
                   </div>
                 </Reveal>
                 <Reveal delay={200}>
@@ -206,13 +216,16 @@ export default function AcademicPage() {
                           {policy.status === 'in_progress' ? 'In Progress' : 'Planned'}
                         </span>
                       </div>
-                      <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-white rounded-full transition-all"
-                          style={{ width: `${policy.progress}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-gray-500 mt-2 font-mono">{policy.progress}% <Editable k="academic.overview.complete">complete</Editable></p>
+                      <PhaseIndicator currentPhase={policy?.phase || 1} compact />
+                      {policy?.impactSummary && (
+                        <p className="text-gray-300 text-sm mt-3">{policy.impactSummary}</p>
+                      )}
+                      {(() => { const update = getLatestUpdate(policy); return update ? (
+                        <div className="text-xs text-gray-500 mt-2">
+                          <span className="text-gray-400">{update.title}</span>
+                          {update.date && <span className="ml-2">{update.date}</span>}
+                        </div>
+                      ) : null; })()}
                     </div>
                   </Reveal>
                 ))}

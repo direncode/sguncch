@@ -4,6 +4,9 @@
 import { withAdminAuth } from '../../../lib/auth'
 import { callGrok } from '../../../lib/embeddings'
 import crypto from 'crypto'
+import { createLogger } from '../../../lib/logger'
+
+const log = createLogger('API:classify')
 
 async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -63,7 +66,7 @@ Return this exact JSON shape:
       model: 'grok-4',
     })
   } catch (err) {
-    console.error('Classification error:', err)
+    log.error('Classification error', { error: err.message })
     return res.status(500).json({ error: 'Classification failed: ' + err.message })
   }
 }

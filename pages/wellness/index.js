@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react'
 import Head from 'next/head'
 import Layout from '../../components/Layout'
 import { useApp } from '../../lib/store'
-import { wellnessResources, departmentContacts, departmentFAQs, departmentAnnouncements, serviceGuides } from '../../lib/data'
+import { wellnessResources, departmentContacts, departmentFAQs, departmentAnnouncements, serviceGuides, getLatestUpdate, getPhaseLabel } from '../../lib/data'
+import PhaseIndicator from '../../components/PhaseIndicator'
 import {
   phoneNumbers,
   calendarEvents,
@@ -118,23 +119,32 @@ export default function WellnessPage() {
 
   const getPolicy = (id) => deptPolicies.find(p => p.id === id)
 
-  const PolicyProgress = ({ policy }) => (
-    <div className="card p-6 mb-8">
-      <div className="flex items-start justify-between mb-4">
-        <span className={`px-3 py-1 rounded text-xs font-mono tracking-wider ${
-          policy?.status === 'completed' ? 'bg-white/10 text-white' :
-          policy?.status === 'in_progress' ? 'bg-white/5 text-gray-300' :
-          'bg-white/5 text-gray-500'
-        }`}>
-          {policy?.status === 'in_progress' ? 'IN PROGRESS' : policy?.status === 'completed' ? 'COMPLETED' : 'PLANNED'}
-        </span>
-        <span className="text-gray-400 font-mono text-sm">{policy?.progress || 0}% Complete</span>
+  const PolicyProgress = ({ policy }) => {
+    const latestUpdate = getLatestUpdate(policy)
+    return (
+      <div className="card p-6 mb-8">
+        <div className="flex items-start justify-between mb-4">
+          <span className={`px-3 py-1 rounded text-xs font-mono tracking-wider ${
+            policy?.status === 'completed' ? 'bg-white/10 text-white' :
+            policy?.status === 'in_progress' ? 'bg-white/5 text-gray-300' :
+            'bg-white/5 text-gray-500'
+          }`}>
+            {policy?.status === 'in_progress' ? 'IN PROGRESS' : policy?.status === 'completed' ? 'COMPLETED' : 'PLANNED'}
+          </span>
+          <PhaseIndicator currentPhase={policy?.phase || 1} compact />
+        </div>
+        {policy?.impactSummary && (
+          <p className="text-gray-300 text-sm mb-3">{policy.impactSummary}</p>
+        )}
+        {latestUpdate && (
+          <div className="text-xs text-gray-500 mt-2">
+            <span className="text-gray-400">{latestUpdate.title}</span>
+            {latestUpdate.date && <span className="ml-2">{latestUpdate.date}</span>}
+          </div>
+        )}
       </div>
-      <div className="h-1 bg-gray-800 rounded overflow-hidden">
-        <div className="h-full bg-white rounded transition-all" style={{ width: `${policy?.progress || 0}%` }} />
-      </div>
-    </div>
-  )
+    )
+  }
 
   return (
     <Layout>
@@ -232,14 +242,20 @@ export default function WellnessPage() {
                     >
                       <div className="flex items-start justify-between mb-4">
                         <h3 className="text-xl font-semibold text-white group-hover:text-gray-300 transition-colors pr-4">{policy.title}</h3>
-                        <span className="px-2 py-1 rounded text-xs font-mono text-gray-400 bg-white/5">
-                          {policy.progress}%
-                        </span>
+                        <PhaseIndicator currentPhase={policy?.phase || 1} compact />
                       </div>
-                      <p className="text-gray-400 text-sm mb-6 line-clamp-2">{policy.description}</p>
-                      <div className="h-1 bg-gray-800 rounded overflow-hidden">
-                        <div className="h-full bg-white rounded transition-all" style={{ width: `${policy.progress}%` }} />
-                      </div>
+                      {policy?.impactSummary && (
+                        <p className="text-gray-300 text-sm mb-3">{policy.impactSummary}</p>
+                      )}
+                      {!policy?.impactSummary && (
+                        <p className="text-gray-400 text-sm mb-3 line-clamp-2">{policy.description}</p>
+                      )}
+                      {(() => { const update = getLatestUpdate(policy); return update ? (
+                        <div className="text-xs text-gray-500 mt-2">
+                          <span className="text-gray-400">{update.title}</span>
+                          {update.date && <span className="ml-2">{update.date}</span>}
+                        </div>
+                      ) : null; })()}
                     </div>
                   </Reveal>
                 ))}
