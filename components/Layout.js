@@ -12,6 +12,7 @@ const navigation = [
   { name: 'Community', href: '/basic-needs' },
   { name: 'Academic', href: '/academic' },
   { name: 'Impact', href: '/communications' },
+  { name: 'News', href: '/news' },
   { name: 'Documents', href: '/documents' },
   { name: 'The Scroll', href: '/scroll' },
   { name: 'Ask AI', href: '/chat' },
