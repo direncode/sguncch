@@ -5,12 +5,12 @@ import { cacheNewsArticles, getCachedNews } from '../../../lib/supabase'
 const log = createLogger('API:news-feed')
 
 // In-memory cache fallback when Supabase unavailable
-let memoryCache = { articles: [], cachedAt: 0 }
+let memoryCache = { articles: [], cachedAt: 0, diagnostics: null }
 const CACHE_TTL_MS = 5 * 60 * 1000 // 5 minutes
 
 // Simple rate limiter
 const rateLimitMap = new Map()
-const RATE_LIMIT = 10
+const RATE_LIMIT = 15
 const RATE_WINDOW_MS = 60000
 
 function checkRateLimit(ip) {
@@ -37,19 +37,19 @@ function parseRSSFeed(xml, source) {
 
   const blocks = [...xml.matchAll(itemRegex), ...xml.matchAll(entryRegex)]
 
-  for (const match of blocks.slice(0, 10)) {
+  for (const match of blocks.slice(0, 15)) {
     const block = match[1]
 
     const title = extractTag(block, 'title')
     const link = extractTag(block, 'link') || extractAttr(block, 'link', 'href')
-    const description = stripHtml(extractTag(block, 'description') || extractTag(block, 'summary') || '')
-    const pubDate = extractTag(block, 'pubDate') || extractTag(block, 'published') || extractTag(block, 'updated')
+    const description = stripHtml(extractTag(block, 'description') || extractTag(block, 'summary') || extractTag(block, 'content') || '')
+    const pubDate = extractTag(block, 'pubDate') || extractTag(block, 'published') || extractTag(block, 'updated') || extractTag(block, 'dc:date')
 
     if (title && link) {
       articles.push({
         title: decodeEntities(title).trim(),
         link: link.trim(),
-        description: description.substring(0, 200),
+        description: description.substring(0, 300),
         pubDate: pubDate ? new Date(pubDate).toISOString() : null,
         sourceId: source.id,
         sourceName: source.name,
@@ -79,7 +79,7 @@ function extractAttr(xml, tag, attr) {
 }
 
 function stripHtml(html) {
-  return html.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim()
+  return html.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
 function decodeEntities(str) {
@@ -89,6 +89,83 @@ function decodeEntities(str) {
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
+    .replace(/&#x27;/g, "'")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(n))
+}
+
+/**
+ * Fetch a single feed with direct fetch + proxy fallback
+ */
+async function fetchSingleFeed(source) {
+  const methods = [
+    // Method 1: Direct fetch
+    async () => {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 10000)
+      try {
+        const response = await fetch(source.feedUrl, {
+          signal: controller.signal,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (compatible; ProjectBold/1.0; +https://projectbold.org)',
+            'Accept': 'application/rss+xml, application/xml, application/atom+xml, text/xml, */*',
+          },
+        })
+        clearTimeout(timeout)
+        if (!response.ok) throw new Error(`HTTP ${response.status}`)
+        return await response.text()
+      } catch (err) {
+        clearTimeout(timeout)
+        throw err
+      }
+    },
+    // Method 2: RSS2JSON public proxy
+    async () => {
+      const proxyUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(source.feedUrl)}`
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 10000)
+      try {
+        const response = await fetch(proxyUrl, { signal: controller.signal })
+        clearTimeout(timeout)
+        if (!response.ok) throw new Error(`Proxy HTTP ${response.status}`)
+        const json = await response.json()
+        if (json.status !== 'ok') throw new Error(json.message || 'Proxy error')
+        // Convert rss2json format to our article format directly
+        return json.items?.map(item => ({
+          title: decodeEntities(item.title || '').trim(),
+          link: item.link || item.guid || '',
+          description: stripHtml(item.description || item.content || '').substring(0, 300),
+          pubDate: item.pubDate ? new Date(item.pubDate).toISOString() : null,
+          sourceId: source.id,
+          sourceName: source.name,
+          category: source.category,
+        })).filter(a => a.title && a.link) || []
+      } catch (err) {
+        clearTimeout(timeout)
+        throw err
+      }
+    },
+  ]
+
+  let lastError = null
+
+  // Try direct fetch first
+  try {
+    const xml = await methods[0]()
+    const articles = parseRSSFeed(xml, source)
+    if (articles.length > 0) return { articles, method: 'direct' }
+  } catch (err) {
+    lastError = err
+  }
+
+  // Try proxy fallback — returns articles directly, not XML
+  try {
+    const result = await methods[1]()
+    if (Array.isArray(result) && result.length > 0) return { articles: result, method: 'proxy' }
+  } catch (err) {
+    lastError = err
+  }
+
+  throw lastError || new Error('No articles found')
 }
 
 export default async function handler(req, res) {
@@ -123,32 +200,28 @@ export default async function handler(req, res) {
     // Try memory cache
     if (Date.now() - memoryCache.cachedAt < CACHE_TTL_MS && memoryCache.articles.length > 0) {
       log.info('Serving from memory cache', { count: memoryCache.articles.length })
-      return res.status(200).json({ articles: memoryCache.articles, source: 'memory-cache' })
+      return res.status(200).json({
+        articles: memoryCache.articles,
+        source: 'memory-cache',
+        diagnostics: memoryCache.diagnostics,
+      })
     }
 
     // Fetch all feeds in parallel
-    log.info('Fetching fresh feeds', { sourceCount: UNC_FEED_SOURCES.length })
+    log.info('Fetching fresh feeds', { sourceCount: UNC_FEED_SOURCES.length, sources: UNC_FEED_SOURCES.map(s => s.id) })
+
+    const diagnostics = { succeeded: [], failed: [], totalSources: UNC_FEED_SOURCES.length }
 
     const feedPromises = UNC_FEED_SOURCES.map(async (source) => {
       try {
-        const controller = new AbortController()
-        const timeout = setTimeout(() => controller.abort(), 8000)
-
-        const response = await fetch(source.feedUrl, {
-          signal: controller.signal,
-          headers: { 'User-Agent': 'ProjectBold-UNC-NewsAggregator/1.0' },
-        })
-        clearTimeout(timeout)
-
-        if (!response.ok) {
-          log.warn('Feed fetch failed', { source: source.id, status: response.status })
-          return []
-        }
-
-        const xml = await response.text()
-        return parseRSSFeed(xml, source)
+        const result = await fetchSingleFeed(source)
+        diagnostics.succeeded.push({ id: source.id, name: source.name, count: result.articles.length, method: result.method })
+        log.info('Feed OK', { source: source.id, count: result.articles.length, method: result.method })
+        return result.articles
       } catch (err) {
-        log.warn('Feed fetch error', { source: source.id, error: err.message })
+        const errorMsg = err?.message || String(err)
+        diagnostics.failed.push({ id: source.id, name: source.name, error: errorMsg })
+        log.warn('Feed failed', { source: source.id, url: source.feedUrl, error: errorMsg })
         return []
       }
     })
@@ -158,24 +231,30 @@ export default async function handler(req, res) {
       .filter(r => r.status === 'fulfilled')
       .flatMap(r => r.value)
       .sort((a, b) => new Date(b.pubDate || 0) - new Date(a.pubDate || 0))
-      .slice(0, 50)
+      .slice(0, 100)
 
-    log.info('Feeds fetched', { totalArticles: allArticles.length })
-
-    // Cache to Supabase (async, don't block response)
-    cacheNewsArticles(allArticles).catch(err => {
-      log.warn('Failed to cache to Supabase', { error: err.message })
+    log.info('Feeds complete', {
+      totalArticles: allArticles.length,
+      succeeded: diagnostics.succeeded.length,
+      failed: diagnostics.failed.length,
     })
 
+    // Cache to Supabase (async, don't block response)
+    if (allArticles.length > 0) {
+      cacheNewsArticles(allArticles).catch(err => {
+        log.warn('Failed to cache to Supabase', { error: err.message })
+      })
+    }
+
     // Update memory cache
-    memoryCache = { articles: allArticles, cachedAt: Date.now() }
+    memoryCache = { articles: allArticles, cachedAt: Date.now(), diagnostics }
 
     // Set cache headers
     res.setHeader('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600')
 
-    return res.status(200).json({ articles: allArticles, source: 'fresh' })
+    return res.status(200).json({ articles: allArticles, source: 'fresh', diagnostics })
   } catch (err) {
-    log.error('News feed error', { error: err.message })
-    return res.status(500).json({ error: 'Failed to fetch news feeds' })
+    log.error('News feed error', { error: err.message, stack: err.stack })
+    return res.status(500).json({ error: 'Failed to fetch news feeds', detail: err.message })
   }
 }
