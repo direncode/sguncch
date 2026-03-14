@@ -758,7 +758,7 @@ export default function CommunicationsPage() {
                       const phaseSummary = getPhaseSummary(policies);
                       return POLICY_PHASES.map(phase => (
                         <div key={phase.number} className="card p-4 text-center">
-                          <p className="text-2xl font-bold font-mono text-white">{phaseSummary[phase.number] || 0}</p>
+                          <p className="text-2xl font-bold font-mono text-white">{phaseSummary[phase.number]?.count || 0}</p>
                           <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider">{phase.shortLabel}</p>
                         </div>
                       ));

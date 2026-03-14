@@ -211,7 +211,7 @@ export default function Home() {
                     const phaseSummary = getPhaseSummary(policies);
                     return POLICY_PHASES.map(phase => (
                       <div key={phase.number} className="bg-white/[0.02] border border-gray-900 rounded-xl p-4 text-center">
-                        <p className="text-2xl font-mono font-bold text-white">{phaseSummary[phase.number] || 0}</p>
+                        <p className="text-2xl font-mono font-bold text-white">{phaseSummary[phase.number]?.count || 0}</p>
                         <p className="text-[10px] text-gray-500 mt-1 uppercase tracking-wider">{phase.shortLabel}</p>
                       </div>
                     ));
