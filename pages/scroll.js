@@ -1,6 +1,18 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Head from 'next/head'
+import { useRouter } from 'next/router'
 import Layout from '../components/Layout'
+
+function highlightText(text, query) {
+  if (!query || !text) return text
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const parts = text.split(new RegExp(`(${escaped})`, 'gi'))
+  return parts.map((part, i) =>
+    part.toLowerCase() === query.toLowerCase()
+      ? <mark key={i} className="bg-yellow-200 text-gray-900 rounded-sm px-0.5">{part}</mark>
+      : part
+  )
+}
 
 const CATEGORY_STYLES = {
   'laws':         { color: 'text-red-400',    border: 'border-red-500/20',    bg: 'bg-red-500/5',    activeBg: 'bg-red-500/10' },
@@ -25,6 +37,8 @@ export default function ScrollPage() {
   const [activeCategory, setActiveCategory] = useState('all')
   const [expandedDocs, setExpandedDocs] = useState(new Set())
   const [search, setSearch] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
+  const [readingDoc, setReadingDoc] = useState(null)
 
   // Submission state
   const [showSubmit, setShowSubmit] = useState(false)
@@ -40,10 +54,20 @@ export default function ScrollPage() {
   const scrollRef = useRef(null)
   const fileInputRef = useRef(null)
   const dropRef = useRef(null)
+  const searchTimerRef = useRef(null)
 
   useEffect(() => {
     loadScroll()
   }, [])
+
+  // Debounced search
+  useEffect(() => {
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current)
+    searchTimerRef.current = setTimeout(() => {
+      setDebouncedSearch(search)
+    }, 300)
+    return () => { if (searchTimerRef.current) clearTimeout(searchTimerRef.current) }
+  }, [search])
 
   const loadScroll = async () => {
     setLoading(true)
@@ -150,12 +174,25 @@ export default function ScrollPage() {
   // Filter documents
   const filtered = documents.filter(doc => {
     if (activeCategory !== 'all' && doc.category !== activeCategory) return false
-    if (search) {
-      const s = search.toLowerCase()
+    if (debouncedSearch) {
+      const s = debouncedSearch.toLowerCase()
       return doc.title.toLowerCase().includes(s) || (doc.text_full || '').toLowerCase().includes(s)
     }
     return true
   })
+
+  // Match counts per category when searching
+  const categoryMatchCounts = useMemo(() => {
+    if (!debouncedSearch) return {}
+    const counts = {}
+    const s = debouncedSearch.toLowerCase()
+    for (const doc of documents) {
+      if (doc.title.toLowerCase().includes(s) || (doc.text_full || '').toLowerCase().includes(s)) {
+        counts[doc.category] = (counts[doc.category] || 0) + 1
+      }
+    }
+    return counts
+  }, [documents, debouncedSearch])
 
   // Group by category for stream view
   const groupedByCategory = {}
@@ -200,11 +237,16 @@ export default function ScrollPage() {
               placeholder="Search The Scroll..."
               className="w-full px-4 py-2.5 bg-white/[0.03] border border-gray-800 rounded text-sm text-white placeholder-gray-600 focus:border-gray-600 focus:outline-none"
             />
-            {search && (
-              <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white text-sm">
-                &times;
-              </button>
-            )}
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+              {debouncedSearch && (
+                <span className="text-xs text-gray-500 font-mono">{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
+              )}
+              {search && (
+                <button onClick={() => { setSearch(''); setDebouncedSearch('') }} className="text-gray-500 hover:text-white text-sm">
+                  &times;
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Contribute button */}
@@ -230,6 +272,7 @@ export default function ScrollPage() {
           </button>
           {buckets.map(bucket => {
             const style = getCatStyle(bucket.id)
+            const matchCount = debouncedSearch ? (categoryMatchCounts[bucket.id] || 0) : null
             return (
               <button
                 key={bucket.id}
@@ -240,7 +283,7 @@ export default function ScrollPage() {
                     : `border-gray-800 text-gray-500 hover:${style.color} hover:border-gray-700`
                 }`}
               >
-                {bucket.label} ({bucket.count})
+                {bucket.label} ({matchCount !== null ? matchCount : bucket.count})
               </button>
             )
           })}
@@ -411,7 +454,7 @@ export default function ScrollPage() {
                   </div>
                   <div className="space-y-3">
                     {docs.map(doc => (
-                      <DocumentCard key={doc.id} doc={doc} expanded={expandedDocs.has(doc.id)} onToggle={() => toggleExpand(doc.id)} />
+                      <DocumentCard key={doc.id} doc={doc} expanded={expandedDocs.has(doc.id)} onToggle={() => toggleExpand(doc.id)} searchQuery={debouncedSearch} onRead={() => setReadingDoc(doc)} allDocs={documents} />
                     ))}
                   </div>
                 </section>
@@ -427,7 +470,7 @@ export default function ScrollPage() {
                 </div>
                 <div className="space-y-3">
                   {groupedByCategory['general'].map(doc => (
-                    <DocumentCard key={doc.id} doc={doc} expanded={expandedDocs.has(doc.id)} onToggle={() => toggleExpand(doc.id)} />
+                    <DocumentCard key={doc.id} doc={doc} expanded={expandedDocs.has(doc.id)} onToggle={() => toggleExpand(doc.id)} searchQuery={debouncedSearch} onRead={() => setReadingDoc(doc)} allDocs={documents} />
                   ))}
                 </div>
               </section>
@@ -437,7 +480,7 @@ export default function ScrollPage() {
           // Single category view
           <div className="space-y-3" ref={scrollRef}>
             {filtered.map(doc => (
-              <DocumentCard key={doc.id} doc={doc} expanded={expandedDocs.has(doc.id)} onToggle={() => toggleExpand(doc.id)} />
+              <DocumentCard key={doc.id} doc={doc} expanded={expandedDocs.has(doc.id)} onToggle={() => toggleExpand(doc.id)} searchQuery={debouncedSearch} onRead={() => setReadingDoc(doc)} allDocs={documents} />
             ))}
           </div>
         )}
@@ -466,17 +509,30 @@ export default function ScrollPage() {
           </div>
         )}
       </div>
+
+      {/* Reading Mode Overlay */}
+      {readingDoc && (
+        <ReadingMode doc={readingDoc} onClose={() => setReadingDoc(null)} />
+      )}
     </Layout>
   )
 }
 
-function DocumentCard({ doc, expanded, onToggle }) {
+function DocumentCard({ doc, expanded, onToggle, searchQuery, onRead, allDocs }) {
   const [copied, setCopied] = useState(false)
   const style = getCatStyle(doc.category)
-  const preview = (doc.text_full || '').slice(0, 400)
-  const hasMore = (doc.text_full || '').length > 400
+  const preview = doc.summary || (doc.text_full || '').slice(0, 400)
+  const hasMore = !doc.summary && (doc.text_full || '').length > 400
   const wordCount = (doc.text_full || '').split(/\s+/).filter(Boolean).length
   const readTime = Math.max(1, Math.ceil(wordCount / 200))
+
+  // Related documents: up to 2 other docs from the same category
+  const relatedDocs = useMemo(() => {
+    if (!allDocs) return []
+    return allDocs
+      .filter(d => d.category === doc.category && d.id !== doc.id)
+      .slice(0, 2)
+  }, [allDocs, doc.category, doc.id])
 
   const handleCopy = async (e) => {
     e.stopPropagation()
@@ -496,7 +552,9 @@ function DocumentCard({ doc, expanded, onToggle }) {
       >
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-3 mb-1">
-            <h3 className="text-white font-medium truncate">{doc.title}</h3>
+            <h3 className="text-white font-medium truncate">
+              {searchQuery ? highlightText(doc.title, searchQuery) : doc.title}
+            </h3>
             <span className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase border shrink-0 ${style.color} ${style.border} ${style.bg}`}>
               {doc.category}
             </span>
@@ -518,7 +576,7 @@ function DocumentCard({ doc, expanded, onToggle }) {
         {expanded ? (
           <div>
             {/* Action bar */}
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
               <a
                 href={`/chat?doc=${doc.id}&title=${encodeURIComponent(doc.title)}`}
                 onClick={(e) => e.stopPropagation()}
@@ -533,19 +591,66 @@ function DocumentCard({ doc, expanded, onToggle }) {
               >
                 {copied ? 'Copied' : 'Copy text'}
               </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); onRead && onRead() }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.05] border border-gray-800 rounded-full text-xs text-gray-400 hover:text-white hover:border-gray-600 transition-all"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                Read
+              </button>
               <span className="text-[10px] text-gray-600 font-mono ml-auto">{(doc.char_count || 0).toLocaleString()} characters</span>
             </div>
+
+            {/* Key provisions */}
+            {doc.key_provisions && doc.key_provisions.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {doc.key_provisions.map((provision, i) => (
+                  <span key={i} className={`px-2 py-0.5 rounded text-[10px] font-mono border ${style.color} ${style.border} ${style.bg}`}>
+                    {provision}
+                  </span>
+                ))}
+              </div>
+            )}
+
             <div className="bg-black/50 border border-gray-900 rounded p-4 max-h-[600px] overflow-y-auto">
               <pre className="text-sm text-gray-300 whitespace-pre-wrap font-sans leading-relaxed">
                 {doc.text_full}
               </pre>
             </div>
+
+            {/* Related documents */}
+            {relatedDocs.length > 0 && (
+              <div className="mt-3 flex items-center gap-2">
+                <span className="text-[10px] text-gray-600 font-mono">Related:</span>
+                {relatedDocs.map(rd => (
+                  <span key={rd.id} className={`px-2 py-0.5 rounded text-[10px] border cursor-default ${style.color} ${style.border} ${style.bg}`}>
+                    {rd.title.length > 40 ? rd.title.slice(0, 40) + '...' : rd.title}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div>
+            {/* Summary or preview with highlighting */}
             <p className="text-sm text-gray-500 leading-relaxed line-clamp-3">
-              {preview}{hasMore ? '...' : ''}
+              {searchQuery ? highlightText(preview + (hasMore ? '...' : ''), searchQuery) : <>{preview}{hasMore ? '...' : ''}</>}
             </p>
+
+            {/* Key provisions chips in collapsed view */}
+            {doc.key_provisions && doc.key_provisions.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-2">
+                {doc.key_provisions.slice(0, 4).map((provision, i) => (
+                  <span key={i} className={`px-1.5 py-0.5 rounded text-[9px] font-mono border ${style.color} ${style.border} ${style.bg}`}>
+                    {provision}
+                  </span>
+                ))}
+                {doc.key_provisions.length > 4 && (
+                  <span className="text-[9px] text-gray-600 font-mono self-center">+{doc.key_provisions.length - 4} more</span>
+                )}
+              </div>
+            )}
+
             {/* Hover actions */}
             <div className="mt-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
               <a
@@ -554,12 +659,195 @@ function DocumentCard({ doc, expanded, onToggle }) {
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] text-gray-500 hover:text-white transition"
               >
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>
-                Ask Grok about this
+                Ask Grok
               </a>
+              <button
+                onClick={(e) => { e.stopPropagation(); onRead && onRead() }}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] text-gray-500 hover:text-white transition"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                Read
+              </button>
             </div>
+
+            {/* Related documents in collapsed view */}
+            {relatedDocs.length > 0 && (
+              <div className="mt-2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="text-[9px] text-gray-600 font-mono">Related:</span>
+                {relatedDocs.map(rd => (
+                  <span key={rd.id} className={`px-1.5 py-0.5 rounded text-[9px] border cursor-default ${style.color} ${style.border} ${style.bg}`}>
+                    {rd.title.length > 30 ? rd.title.slice(0, 30) + '...' : rd.title}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function ReadingMode({ doc, onClose }) {
+  const [copied, setCopied] = useState(false)
+  const style = getCatStyle(doc.category)
+  const text = doc.text_full || ''
+
+  // Detect headings: ALL CAPS lines, "Section X", "Article X"
+  const headings = useMemo(() => {
+    const lines = text.split('\n')
+    const found = []
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim()
+      if (!line) continue
+      const isAllCaps = line.length > 3 && line === line.toUpperCase() && /[A-Z]/.test(line)
+      const isSectionOrArticle = /^(Section|Article|SECTION|ARTICLE)\s+\w/i.test(line)
+      if (isAllCaps || isSectionOrArticle) {
+        found.push({ text: line, id: `heading-${i}`, lineIndex: i })
+      }
+    }
+    return found
+  }, [text])
+
+  // Build rendered content with heading detection
+  const renderedContent = useMemo(() => {
+    const lines = text.split('\n')
+    const headingLineSet = new Set(headings.map(h => h.lineIndex))
+    const elements = []
+    let currentParagraph = []
+    let lineCounter = 0
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      if (line.trim() === '') {
+        if (currentParagraph.length > 0) {
+          elements.push({ type: 'paragraph', text: currentParagraph.join('\n'), key: `p-${lineCounter}` })
+          currentParagraph = []
+          lineCounter++
+        }
+      } else if (headingLineSet.has(i)) {
+        if (currentParagraph.length > 0) {
+          elements.push({ type: 'paragraph', text: currentParagraph.join('\n'), key: `p-${lineCounter}` })
+          currentParagraph = []
+          lineCounter++
+        }
+        elements.push({ type: 'heading', text: line.trim(), id: `heading-${i}`, key: `h-${i}` })
+      } else {
+        currentParagraph.push(line)
+      }
+    }
+    if (currentParagraph.length > 0) {
+      elements.push({ type: 'paragraph', text: currentParagraph.join('\n'), key: `p-${lineCounter}` })
+    }
+    return elements
+  }, [text, headings])
+
+  const scrollToHeading = (id) => {
+    const el = document.getElementById(id)
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {}
+  }
+
+  // Close on Escape
+  useEffect(() => {
+    const handler = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  // Prevent body scroll
+  useEffect(() => {
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = '' }
+  }, [])
+
+  return (
+    <div className="fixed inset-0 z-50 bg-white overflow-hidden flex">
+      {/* Sidebar navigation */}
+      {headings.length > 0 && (
+        <div className="hidden lg:block w-64 border-r border-gray-200 overflow-y-auto p-6 shrink-0">
+          <p className="text-[10px] font-mono uppercase tracking-widest text-gray-400 mb-4">Sections</p>
+          <nav className="space-y-1">
+            {headings.map(h => (
+              <button
+                key={h.id}
+                onClick={() => scrollToHeading(h.id)}
+                className="block w-full text-left text-xs text-gray-500 hover:text-gray-900 py-1 px-2 rounded hover:bg-gray-100 transition truncate"
+                title={h.text}
+              >
+                {h.text.length > 35 ? h.text.slice(0, 35) + '...' : h.text}
+              </button>
+            ))}
+          </nav>
+        </div>
+      )}
+
+      {/* Main reading area */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Top bar */}
+        <div className="sticky top-0 bg-white/95 backdrop-blur border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+          <div className="flex items-center gap-3 min-w-0">
+            <h1 className="text-lg font-semibold text-gray-900 truncate">{doc.title}</h1>
+            <span className={`px-2 py-0.5 rounded text-[10px] font-mono uppercase border shrink-0 ${style.color} ${style.border} ${style.bg}`}>
+              {doc.category}
+            </span>
+            {doc.version && <span className="text-xs text-gray-400 font-mono shrink-0">v{doc.version}</span>}
+          </div>
+          <div className="flex items-center gap-2 shrink-0 ml-4">
+            <button
+              onClick={handleCopy}
+              className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-900 border border-gray-200 rounded-full hover:border-gray-400 transition"
+            >
+              {copied ? 'Copied!' : 'Copy Text'}
+            </button>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 flex items-center justify-center text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-full transition"
+              aria-label="Close reading mode"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Document body */}
+        <div className="max-w-[680px] mx-auto px-6 py-10" style={{ fontSize: '16px', lineHeight: '1.8' }}>
+          {renderedContent.map(el => {
+            if (el.type === 'heading') {
+              return (
+                <h2
+                  key={el.key}
+                  id={el.id}
+                  className="text-gray-900 font-semibold text-lg mt-8 mb-3 scroll-mt-20"
+                >
+                  {el.text}
+                </h2>
+              )
+            }
+            return (
+              <p key={el.key} className="text-gray-700 mb-4 whitespace-pre-wrap">
+                {el.text}
+              </p>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* Floating Ask Grok button */}
+      <a
+        href={`/chat?doc=${doc.id}&title=${encodeURIComponent(doc.title)}`}
+        className="fixed bottom-6 right-6 z-50 inline-flex items-center gap-2 px-5 py-3 bg-gray-900 text-white rounded-full shadow-lg hover:bg-gray-800 transition text-sm font-medium"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>
+        Ask Grok
+      </a>
     </div>
   )
 }
