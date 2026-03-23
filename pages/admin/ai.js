@@ -1,9 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/router'
 import Head from 'next/head'
 import Link from 'next/link'
 import { useApp } from '../../lib/store'
-import { getAuthHeaders } from '../../lib/adminSession'
+// import { getAuthHeaders } from '../../lib/adminSession'
 import AdminNav from '../../components/AdminNav'
 
 function GrokIcon({ size = 24 }) {
@@ -113,11 +113,6 @@ export default function AdminAI() {
   const [showDeptPicker, setShowDeptPicker] = useState(false)
   const [copiedIdx, setCopiedIdx] = useState(null)
 
-  // Conversation persistence
-  const [conversations, setConversations] = useState([])
-  const [activeConversationId, setActiveConversationId] = useState(null)
-  const [showSidebar, setShowSidebar] = useState(false)
-
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
 
@@ -143,39 +138,6 @@ export default function AdminAI() {
       })
       .catch(() => {})
   }, [])
-
-  // Load conversation history
-  useEffect(() => {
-    if (accountInfo?.id) {
-      fetch(`/api/chat/history?userId=${accountInfo.id}`, { headers: getAuthHeaders() })
-        .then(r => r.ok ? r.json() : { conversations: [] })
-        .then(data => setConversations(data.conversations || []))
-        .catch(() => {})
-    }
-  }, [accountInfo])
-
-  const saveConversation = useCallback(async (msgs) => {
-    if (!accountInfo?.id) return
-    const title = msgs.find(m => m.role === 'user')?.content?.slice(0, 60) || 'New Conversation'
-    try {
-      const res = await fetch('/api/chat/history', {
-        method: 'POST',
-        headers: getAuthHeaders(),
-        body: JSON.stringify({
-          userId: accountInfo.id,
-          conversationId: activeConversationId,
-          title,
-          messages: msgs,
-        }),
-      })
-      if (res.ok) {
-        const data = await res.json()
-        if (data.conversation?.id && !activeConversationId) {
-          setActiveConversationId(data.conversation.id)
-        }
-      }
-    } catch { /* non-blocking */ }
-  }, [accountInfo, activeConversationId])
 
   const sendMessage = async (questionText) => {
     const question = questionText || input.trim()
@@ -220,8 +182,6 @@ export default function AdminAI() {
       // Update conversation history for multi-turn
       setConversationHistory(prev => [...prev, newUserMsg, { role: 'assistant', content: data.answer }])
 
-      // Save conversation
-      saveConversation(allMessages)
     } catch {
       setError('Failed to connect. Please try again.')
     }
@@ -267,17 +227,8 @@ export default function AdminAI() {
   const startNewConversation = () => {
     setMessages([])
     setConversationHistory([])
-    setActiveConversationId(null)
     setShowTemplates(true)
     setError(null)
-  }
-
-  const loadConversation = (conv) => {
-    setMessages(conv.messages || [])
-    setConversationHistory((conv.messages || []).filter(m => m.role === 'user' || m.role === 'assistant'))
-    setActiveConversationId(conv.id)
-    setShowTemplates(false)
-    setShowSidebar(false)
   }
 
   // Count data sources accessed
@@ -323,11 +274,6 @@ export default function AdminAI() {
                   </button>
                 </>
               )}
-              {accountInfo && conversations.length > 0 && (
-                <button onClick={() => setShowSidebar(!showSidebar)} className="text-gray-500 hover:text-white transition text-xs">
-                  History ({conversations.length})
-                </button>
-              )}
               <Link href="/chat" className="text-gray-500 hover:text-white transition">Public Chat &rarr;</Link>
             </div>
           </div>
@@ -349,32 +295,6 @@ export default function AdminAI() {
           </div>
         </div>
       </div>
-
-      {/* Conversation History Sidebar */}
-      {showSidebar && (
-        <div className="fixed inset-0 z-50 flex">
-          <div className="w-72 bg-gray-950 border-r border-gray-800 h-full overflow-y-auto p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-white">Chat History</h3>
-              <button onClick={() => setShowSidebar(false)} className="text-gray-500 hover:text-white text-sm">Close</button>
-            </div>
-            <button onClick={() => { startNewConversation(); setShowSidebar(false) }}
-              className="w-full text-left px-3 py-2 text-sm text-gray-400 bg-white/[0.03] border border-gray-800 rounded-lg mb-3 hover:bg-white/[0.06] transition">
-              + New Conversation
-            </button>
-            {conversations.map(conv => (
-              <button key={conv.id} onClick={() => loadConversation(conv)}
-                className={`w-full text-left px-3 py-2 text-sm rounded-lg mb-1 transition ${activeConversationId === conv.id ? 'bg-white/10 text-white' : 'text-gray-400 hover:bg-white/[0.04]'}`}>
-                <p className="truncate">{conv.title || 'Untitled'}</p>
-                <p className="text-[10px] text-gray-600 mt-0.5">
-                  {new Date(conv.updated_at || conv.created_at).toLocaleDateString()}
-                </p>
-              </button>
-            ))}
-          </div>
-          <div className="flex-1" onClick={() => setShowSidebar(false)} />
-        </div>
-      )}
 
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto min-h-0">

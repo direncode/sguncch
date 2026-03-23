@@ -326,6 +326,7 @@ export default function AdminConsole() {
     adminRole,
     isLeads,
     isLoaded,
+    accountInfo,
     policies,
     budgetData,
     feedback,
@@ -392,12 +393,14 @@ export default function AdminConsole() {
     }
   }, [isLoaded, isAdmin, needsOnboarding, adminRole, policies])
 
-  // Redirect if not admin
+  // Redirect if not admin or account not created
   useEffect(() => {
     if (isLoaded && !isAdmin) {
       router.push('/admin/login')
+    } else if (isLoaded && isAdmin && !accountInfo) {
+      router.push('/admin/register')
     }
-  }, [isLoaded, isAdmin, router])
+  }, [isLoaded, isAdmin, accountInfo, router])
 
   // Get team-scoped policies
   const myPolicies = useMemo(() => getTeamPolicies(adminRole), [adminRole, getTeamPolicies])
