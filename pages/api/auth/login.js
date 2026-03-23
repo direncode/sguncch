@@ -12,9 +12,10 @@ export default async function handler(req, res) {
     return res.status(429).json({ error: rl.message })
   }
 
-  // Validate the admin key server-side
-  if (verifyAdmin(req)) {
-    return res.status(200).json({ success: true })
+  // Validate the admin key server-side and determine role
+  const result = verifyAdmin(req)
+  if (result.authenticated) {
+    return res.status(200).json({ success: true, role: result.role })
   }
 
   return res.status(401).json({ error: 'Invalid admin key' })
