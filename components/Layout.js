@@ -14,6 +14,7 @@ const navigation = [
   { name: 'Documents', href: '/documents' },
   { name: 'The Scroll', href: '/scroll' },
   { name: 'Ask AI', href: '/chat' },
+  { name: 'Admin', href: '/admin' },
 ]
 
 export default function Layout({ children }) {
@@ -80,13 +81,6 @@ export default function Layout({ children }) {
 
             {/* Right side */}
             <div className="flex items-center gap-6">
-              <Link
-                href="/admin"
-                className="hidden sm:block text-sm text-gray-400 hover:text-white transition-colors"
-              >
-                Admin
-              </Link>
-
               {/* Mobile menu button */}
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
