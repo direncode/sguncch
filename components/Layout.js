@@ -6,7 +6,7 @@ import AdminNav from './AdminNav'
 import { useApp } from '../lib/store'
 
 const navigation = [
-  { name: 'Budget', href: '/budget' },
+  { name: 'Budget', href: '/budget-transparency' },
   { name: 'Resources', href: '/wellness' },
   { name: 'Community', href: '/basic-needs' },
   { name: 'Academic', href: '/academic' },

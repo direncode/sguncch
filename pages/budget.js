@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import Head from 'next/head'
+import { useRouter } from 'next/router'
 import Layout from '../components/Layout'
 import { Input, Select, Textarea } from '../components/FormInput'
 import { useApp } from '../lib/store'
@@ -58,7 +59,9 @@ function Reveal({ children, delay = 0, className = '' }) {
 }
 
 export default function BudgetPage() {
+  const router = useRouter()
   const {
+    isAdmin,
     budgetData,
     budgetLineItems,
     fundingRequests,
@@ -66,6 +69,13 @@ export default function BudgetPage() {
   } = useApp()
 
   const [activeTab, setActiveTab] = useState('overview')
+
+  // Redirect non-admins to the public transparency page
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !isAdmin) {
+      router.replace('/budget-transparency')
+    }
+  }, [isAdmin, router])
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
 

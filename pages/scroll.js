@@ -51,6 +51,8 @@ export default function ScrollPage() {
   const [submitResult, setSubmitResult] = useState(null)
   const [dragActive, setDragActive] = useState(false)
 
+  const [mounted, setMounted] = useState(false)
+
   const scrollRef = useRef(null)
   const fileInputRef = useRef(null)
   const dropRef = useRef(null)
@@ -58,6 +60,7 @@ export default function ScrollPage() {
 
   useEffect(() => {
     loadScroll()
+    requestAnimationFrame(() => setMounted(true))
   }, [])
 
   // Debounced search
@@ -209,7 +212,7 @@ export default function ScrollPage() {
         <title>The Scroll | Project Bold</title>
       </Head>
 
-      <div className="max-w-[1600px] mx-auto px-6 lg:px-12 pt-28 pb-20">
+      <div className={`max-w-[1600px] mx-auto px-6 lg:px-12 pt-28 pb-20 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
 
         {/* Hero */}
         <div className="mb-12">
@@ -219,11 +222,13 @@ export default function ScrollPage() {
             The living knowledge base of UNC Student Government. Every approved document,
             searchable and organized. Anyone can contribute.
           </p>
-          <div className="flex items-center gap-6 mt-4 text-xs text-gray-600 font-mono">
-            <span>{documents.length} document{documents.length !== 1 ? 's' : ''}</span>
-            <span>{totalChars.toLocaleString()} characters</span>
-            <span>{buckets.length} categories</span>
-          </div>
+          {!loading && (
+            <div className="flex items-center gap-6 mt-4 text-xs text-gray-600 font-mono transition-opacity duration-500">
+              <span>{documents.length} document{documents.length !== 1 ? 's' : ''}</span>
+              <span>{totalChars.toLocaleString()} characters</span>
+              <span>{buckets.length} categor{buckets.length !== 1 ? 'ies' : 'y'}</span>
+            </div>
+          )}
         </div>
 
         {/* Controls */}
@@ -430,12 +435,44 @@ export default function ScrollPage() {
 
         {/* The Stream */}
         {loading ? (
-          <div className="text-center py-20 text-gray-500 text-sm">Loading The Scroll...</div>
+          <div className="space-y-4 animate-pulse">
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="bg-white/[0.02] border border-gray-900 rounded-lg p-5">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-4 w-48 bg-gray-800 rounded" />
+                  <div className="h-4 w-16 bg-gray-800/50 rounded" />
+                </div>
+                <div className="space-y-2">
+                  <div className="h-3 w-full bg-gray-800/30 rounded" />
+                  <div className="h-3 w-3/4 bg-gray-800/30 rounded" />
+                </div>
+              </div>
+            ))}
+          </div>
         ) : filtered.length === 0 ? (
           <div className="bg-white/[0.02] border border-gray-900 rounded-xl p-16 text-center">
-            <p className="text-gray-500">
-              {search ? `No documents match "${search}"` : documents.length === 0 ? 'The Scroll is empty. Be the first to contribute.' : 'No documents in this category.'}
-            </p>
+            {search ? (
+              <div>
+                <svg className="w-10 h-10 text-gray-700 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+                </svg>
+                <p className="text-gray-500">No documents match &ldquo;{search}&rdquo;</p>
+                <button onClick={() => { setSearch(''); setDebouncedSearch('') }} className="mt-3 text-sm text-gray-400 hover:text-white transition">Clear search</button>
+              </div>
+            ) : documents.length === 0 ? (
+              <div>
+                <svg className="w-12 h-12 text-gray-700 mx-auto mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                </svg>
+                <p className="text-gray-400 font-medium mb-1">The Scroll is empty</p>
+                <p className="text-gray-600 text-sm mb-4">Upload seed documents via the Admin Scroll panel, or contribute below.</p>
+                <button onClick={() => setShowSubmit(true)} className="text-sm text-white bg-white/10 border border-gray-700 px-4 py-2 rounded hover:bg-white/15 transition">
+                  Contribute a document
+                </button>
+              </div>
+            ) : (
+              <p className="text-gray-500">No documents in this category.</p>
+            )}
           </div>
         ) : activeCategory === 'all' ? (
           // Grouped by category
@@ -520,11 +557,20 @@ export default function ScrollPage() {
 
 function DocumentCard({ doc, expanded, onToggle, searchQuery, onRead, allDocs }) {
   const [copied, setCopied] = useState(false)
+  const contentRef = useRef(null)
+  const [contentHeight, setContentHeight] = useState(0)
   const style = getCatStyle(doc.category)
   const preview = doc.summary || (doc.text_full || '').slice(0, 400)
   const hasMore = !doc.summary && (doc.text_full || '').length > 400
   const wordCount = (doc.text_full || '').split(/\s+/).filter(Boolean).length
   const readTime = Math.max(1, Math.ceil(wordCount / 200))
+
+  // Measure content height for smooth expand/collapse
+  useEffect(() => {
+    if (expanded && contentRef.current) {
+      setContentHeight(contentRef.current.scrollHeight)
+    }
+  }, [expanded])
 
   // Related documents: up to 2 other docs from the same category
   const relatedDocs = useMemo(() => {
@@ -571,12 +617,34 @@ function DocumentCard({ doc, expanded, onToggle, searchQuery, onRead, allDocs })
         </span>
       </button>
 
-      {/* Preview / Full text */}
+      {/* Preview — always visible */}
       <div className="px-5 pb-4">
-        {expanded ? (
-          <div>
+        <p className={`text-sm text-gray-500 leading-relaxed transition-all duration-300 ${expanded ? 'line-clamp-none' : 'line-clamp-3'}`}>
+          {searchQuery ? highlightText(preview + (hasMore && !expanded ? '...' : ''), searchQuery) : <>{preview}{hasMore && !expanded ? '...' : ''}</>}
+        </p>
+
+        {/* Key provisions chips */}
+        {doc.key_provisions && doc.key_provisions.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-2">
+            {(expanded ? doc.key_provisions : doc.key_provisions.slice(0, 4)).map((provision, i) => (
+              <span key={i} className={`px-1.5 py-0.5 rounded text-[9px] font-mono border ${style.color} ${style.border} ${style.bg}`}>
+                {provision}
+              </span>
+            ))}
+            {!expanded && doc.key_provisions.length > 4 && (
+              <span className="text-[9px] text-gray-600 font-mono self-center">+{doc.key_provisions.length - 4} more</span>
+            )}
+          </div>
+        )}
+
+        {/* Expanded content — animated */}
+        <div
+          className="overflow-hidden transition-all duration-400 ease-in-out"
+          style={{ maxHeight: expanded ? `${Math.max(contentHeight, 800)}px` : '0px', opacity: expanded ? 1 : 0 }}
+        >
+          <div ref={contentRef}>
             {/* Action bar */}
-            <div className="flex items-center gap-2 mb-3 flex-wrap">
+            <div className="flex items-center gap-2 mt-3 mb-3 flex-wrap">
               <a
                 href={`/chat?doc=${doc.id}&title=${encodeURIComponent(doc.title)}`}
                 onClick={(e) => e.stopPropagation()}
@@ -601,17 +669,6 @@ function DocumentCard({ doc, expanded, onToggle, searchQuery, onRead, allDocs })
               <span className="text-[10px] text-gray-600 font-mono ml-auto">{(doc.char_count || 0).toLocaleString()} characters</span>
             </div>
 
-            {/* Key provisions */}
-            {doc.key_provisions && doc.key_provisions.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mb-3">
-                {doc.key_provisions.map((provision, i) => (
-                  <span key={i} className={`px-2 py-0.5 rounded text-[10px] font-mono border ${style.color} ${style.border} ${style.bg}`}>
-                    {provision}
-                  </span>
-                ))}
-              </div>
-            )}
-
             <div className="bg-black/50 border border-gray-900 rounded p-4 max-h-[600px] overflow-y-auto">
               <pre className="text-sm text-gray-300 whitespace-pre-wrap font-sans leading-relaxed">
                 {doc.text_full}
@@ -630,56 +687,35 @@ function DocumentCard({ doc, expanded, onToggle, searchQuery, onRead, allDocs })
               </div>
             )}
           </div>
-        ) : (
-          <div>
-            {/* Summary or preview with highlighting */}
-            <p className="text-sm text-gray-500 leading-relaxed line-clamp-3">
-              {searchQuery ? highlightText(preview + (hasMore ? '...' : ''), searchQuery) : <>{preview}{hasMore ? '...' : ''}</>}
-            </p>
+        </div>
 
-            {/* Key provisions chips in collapsed view */}
-            {doc.key_provisions && doc.key_provisions.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-2">
-                {doc.key_provisions.slice(0, 4).map((provision, i) => (
-                  <span key={i} className={`px-1.5 py-0.5 rounded text-[9px] font-mono border ${style.color} ${style.border} ${style.bg}`}>
-                    {provision}
-                  </span>
-                ))}
-                {doc.key_provisions.length > 4 && (
-                  <span className="text-[9px] text-gray-600 font-mono self-center">+{doc.key_provisions.length - 4} more</span>
-                )}
-              </div>
-            )}
-
-            {/* Hover actions */}
-            <div className="mt-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <a
-                href={`/chat?doc=${doc.id}&title=${encodeURIComponent(doc.title)}`}
-                onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] text-gray-500 hover:text-white transition"
-              >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>
-                Ask Grok
-              </a>
-              <button
-                onClick={(e) => { e.stopPropagation(); onRead && onRead() }}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] text-gray-500 hover:text-white transition"
-              >
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-                Read
-              </button>
-            </div>
-
-            {/* Related documents in collapsed view */}
+        {/* Hover actions — collapsed only */}
+        {!expanded && (
+          <div className="mt-2 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <a
+              href={`/chat?doc=${doc.id}&title=${encodeURIComponent(doc.title)}`}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] text-gray-500 hover:text-white transition"
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg>
+              Ask Grok
+            </a>
+            <button
+              onClick={(e) => { e.stopPropagation(); onRead && onRead() }}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] text-gray-500 hover:text-white transition"
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+              Read
+            </button>
             {relatedDocs.length > 0 && (
-              <div className="mt-2 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                <span className="text-[9px] text-gray-600 font-mono">Related:</span>
+              <>
+                <span className="text-[9px] text-gray-600 font-mono ml-1">Related:</span>
                 {relatedDocs.map(rd => (
                   <span key={rd.id} className={`px-1.5 py-0.5 rounded text-[9px] border cursor-default ${style.color} ${style.border} ${style.bg}`}>
                     {rd.title.length > 30 ? rd.title.slice(0, 30) + '...' : rd.title}
                   </span>
                 ))}
-              </div>
+              </>
             )}
           </div>
         )}
@@ -690,8 +726,14 @@ function DocumentCard({ doc, expanded, onToggle, searchQuery, onRead, allDocs })
 
 function ReadingMode({ doc, onClose }) {
   const [copied, setCopied] = useState(false)
+  const [visible, setVisible] = useState(false)
   const style = getCatStyle(doc.category)
   const text = doc.text_full || ''
+
+  // Animate in on mount
+  useEffect(() => {
+    requestAnimationFrame(() => setVisible(true))
+  }, [])
 
   // Detect headings: ALL CAPS lines, "Section X", "Article X"
   const headings = useMemo(() => {
@@ -769,7 +811,7 @@ function ReadingMode({ doc, onClose }) {
   }, [])
 
   return (
-    <div className="fixed inset-0 z-50 bg-white overflow-hidden flex">
+    <div className={`fixed inset-0 z-50 bg-white overflow-hidden flex transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`}>
       {/* Sidebar navigation */}
       {headings.length > 0 && (
         <div className="hidden lg:block w-64 border-r border-gray-200 overflow-y-auto p-6 shrink-0">
