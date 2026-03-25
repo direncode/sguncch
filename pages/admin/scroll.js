@@ -1707,13 +1707,14 @@ function CrawlPanel({ authHeaders, notify, onDocumentsChanged }) {
     setCrawling(false)
   }
 
-  const handleSeedAll = async () => {
+  const handleSeedAll = async (livePdf = false) => {
     setCrawling(true)
     setCrawlResult(null)
     try {
       const res = await fetch('/api/codex/seed', {
         method: 'POST',
         headers: authHeaders,
+        body: JSON.stringify({ livePdf }),
       })
       const data = await res.json()
       setCrawlResult({
@@ -1744,14 +1745,22 @@ function CrawlPanel({ authHeaders, notify, onDocumentsChanged }) {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid sm:grid-cols-3 gap-4">
         <button
-          onClick={handleSeedAll}
+          onClick={() => handleSeedAll(false)}
           disabled={crawling}
           className="p-5 bg-white/5 border border-gray-800 rounded-xl hover:bg-white/10 transition-all text-left disabled:opacity-50"
         >
-          <p className="text-white font-medium mb-1">Seed Registry Documents</p>
-          <p className="text-gray-500 text-xs">Insert all 15 seed documents from the scroll registry with structured summaries</p>
+          <p className="text-white font-medium mb-1">Seed Summaries</p>
+          <p className="text-gray-500 text-xs">Insert all 15 registry documents with structured summary text (fast)</p>
+        </button>
+        <button
+          onClick={() => handleSeedAll(true)}
+          disabled={crawling}
+          className="p-5 bg-white/5 border border-[#4B9CD3]/30 rounded-xl hover:bg-[#4B9CD3]/10 transition-all text-left disabled:opacity-50"
+        >
+          <p className="text-white font-medium mb-1">Seed from Live PDFs</p>
+          <p className="text-gray-500 text-xs">Download and extract full text from all 15 registry PDFs (slower, complete)</p>
         </button>
         <button
           onClick={() => { setShowPresets(!showPresets) }}
@@ -1759,7 +1768,7 @@ function CrawlPanel({ authHeaders, notify, onDocumentsChanged }) {
           className="p-5 bg-white/5 border border-gray-800 rounded-xl hover:bg-white/10 transition-all text-left disabled:opacity-50"
         >
           <p className="text-white font-medium mb-1">UNC Source Presets</p>
-          <p className="text-gray-500 text-xs">Quick-crawl from pre-configured UNC policy portals and departments</p>
+          <p className="text-gray-500 text-xs">Crawl pre-configured UNC policy portals and departments</p>
         </button>
       </div>
 
@@ -1951,7 +1960,7 @@ function CrawlPanel({ authHeaders, notify, onDocumentsChanged }) {
       <div className="text-xs text-gray-600 space-y-1">
         <p>Allowed domains: policies.unc.edu, studentgovernment.unc.edu, dos.unc.edu, eoc.unc.edu, townofchapelhill.org</p>
         <p>Documents are auto-approved and immediately appear in The Scroll. Duplicate content is skipped.</p>
-        <p>PDF files are discovered but require manual .txt upload. The crawler extracts HTML content only.</p>
+        <p>PDF files are automatically parsed and text-extracted. The crawler handles both HTML pages and PDFs.</p>
       </div>
     </div>
   )

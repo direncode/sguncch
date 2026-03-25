@@ -18,6 +18,7 @@
 
 import { verifyAdmin } from '../../../lib/auth'
 import { createDocument, updateDocumentStatus, getDocuments } from '../../../lib/codex'
+import pdfParse from 'pdf-parse'
 
 // Generous timeout for slow institutional pages
 export const config = {
@@ -132,9 +133,23 @@ async function fetchPage(url, timeout = 15000) {
     }
 
     const contentType = res.headers.get('content-type') || ''
-    if (contentType.includes('application/pdf')) {
-      // PDF — can't extract text server-side without libs, return metadata
-      return { type: 'pdf', url, text: null }
+
+    // PDF extraction using pdf-parse
+    if (contentType.includes('application/pdf') || url.toLowerCase().endsWith('.pdf')) {
+      try {
+        const buffer = Buffer.from(await res.arrayBuffer())
+        const pdf = await pdfParse(buffer)
+        const text = pdf.text?.trim()
+        if (text && text.length > 50) {
+          // Try to extract title from PDF metadata or first line
+          const pdfTitle = pdf.info?.Title || text.split('\n')[0]?.trim().slice(0, 200) || null
+          return { type: 'pdf', url, text, pdfTitle, pages: pdf.numpages }
+        }
+        return { type: 'pdf', url, text: null, reason: 'PDF text extraction returned too little content' }
+      } catch (pdfErr) {
+        console.error('PDF parse error:', pdfErr.message)
+        return { type: 'pdf', url, text: null, reason: 'PDF parse failed: ' + pdfErr.message }
+      }
     }
 
     const html = await res.text()
@@ -388,16 +403,29 @@ function htmlToText(html) {
 async function ingestSinglePage(url) {
   const page = await fetchPage(url)
 
-  if (page.type === 'pdf') {
-    return {
-      success: true,
-      status: 'skipped',
-      reason: 'PDF files cannot be extracted server-side — upload the .txt version via Admin Scroll',
-      url,
-    }
-  }
+  let content
 
-  const content = extractArticleContent(page.html, url)
+  if (page.type === 'pdf') {
+    if (!page.text) {
+      return {
+        success: false,
+        status: 'pdf_failed',
+        reason: page.reason || 'Could not extract text from PDF',
+        url,
+      }
+    }
+    // Use extracted PDF text
+    const titleFromUrl = decodeURIComponent(url.split('/').pop()?.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ') || 'Untitled PDF')
+    content = {
+      title: page.pdfTitle || titleFromUrl,
+      text: page.text,
+      category: '',
+      version: '',
+      sourceUrl: url,
+    }
+  } else {
+    content = extractArticleContent(page.html, url)
+  }
 
   if (!content.text || content.text.length < 100) {
     return {
@@ -457,13 +485,25 @@ async function ingestMultiple(links) {
     try {
       const page = await fetchPage(link.url)
 
-      if (page.type === 'pdf') {
-        results.skipped++
-        results.details.push({ title: link.title, url: link.url, status: 'skipped', reason: 'PDF' })
-        continue
-      }
+      let content
 
-      const content = extractArticleContent(page.html, link.url)
+      if (page.type === 'pdf') {
+        if (!page.text) {
+          results.skipped++
+          results.details.push({ title: link.title, url: link.url, status: 'skipped', reason: page.reason || 'PDF parse failed' })
+          continue
+        }
+        const titleFromUrl = decodeURIComponent(link.url.split('/').pop()?.replace(/\.pdf$/i, '').replace(/[-_]/g, ' ') || link.title)
+        content = {
+          title: page.pdfTitle || titleFromUrl,
+          text: page.text,
+          category: '',
+          version: '',
+          sourceUrl: link.url,
+        }
+      } else {
+        content = extractArticleContent(page.html, link.url)
+      }
 
       if (!content.text || content.text.length < 100) {
         results.skipped++

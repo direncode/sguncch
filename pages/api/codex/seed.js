@@ -5,6 +5,9 @@
 import { verifyAdmin } from '../../../lib/auth'
 import { createDocument, updateDocumentStatus, getDocuments } from '../../../lib/codex'
 import { SEED_DOCUMENTS } from '../../../lib/scrollRegistry'
+import pdfParse from 'pdf-parse'
+
+const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -15,6 +18,8 @@ export default async function handler(req, res) {
   if (!auth.authenticated) {
     return res.status(401).json({ error: 'Unauthorized' })
   }
+
+  const { livePdf = false } = req.body || {}
 
   try {
     // Get existing approved docs to avoid duplicates
@@ -31,8 +36,34 @@ export default async function handler(req, res) {
         continue
       }
 
-      // Build informative document text from metadata
-      const textContent = buildDocumentText(seed)
+      // Try to fetch and parse the actual PDF if livePdf mode is enabled
+      let textContent = null
+      let source = 'summary'
+
+      if (livePdf && seed.pdfUrl) {
+        try {
+          const pdfRes = await fetch(seed.pdfUrl, {
+            headers: { 'User-Agent': UA },
+            redirect: 'follow',
+          })
+          if (pdfRes.ok) {
+            const buffer = Buffer.from(await pdfRes.arrayBuffer())
+            const pdf = await pdfParse(buffer)
+            if (pdf.text && pdf.text.trim().length > 200) {
+              textContent = pdf.text.trim()
+              source = 'pdf'
+            }
+          }
+        } catch (pdfErr) {
+          console.error(`PDF fetch/parse failed for ${seed.title}:`, pdfErr.message)
+          // Fall through to summary
+        }
+      }
+
+      // Fallback to structured summary
+      if (!textContent) {
+        textContent = buildDocumentText(seed)
+      }
 
       const { data: doc, error } = await createDocument({
         title: seed.title,
@@ -53,7 +84,7 @@ export default async function handler(req, res) {
       if (doc) {
         await updateDocumentStatus(doc.id, 'approved', 'system-seed')
         results.seeded++
-        results.details.push({ title: seed.title, status: 'seeded', id: doc.id })
+        results.details.push({ title: seed.title, status: 'seeded', id: doc.id, source, textLength: textContent.length })
       }
     }
 
