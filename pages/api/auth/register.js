@@ -60,7 +60,17 @@ export default async function handler(req, res) {
 
     if (error) {
       console.error('Account creation error:', error)
-      return res.status(500).json({ error: 'Failed to create account' })
+      // Surface specific error for debugging
+      if (typeof error === 'string' && error.includes('violates check constraint')) {
+        return res.status(400).json({ error: 'Invalid team role value' })
+      }
+      if (typeof error === 'string' && error.includes('duplicate key')) {
+        return res.status(409).json({ error: 'Username already taken' })
+      }
+      if (typeof error === 'string' && error.includes('relation') && error.includes('does not exist')) {
+        return res.status(500).json({ error: 'Database table not set up — run the admin_accounts migration in Supabase' })
+      }
+      return res.status(500).json({ error: 'Failed to create account: ' + (typeof error === 'string' ? error : 'unknown error') })
     }
 
     return res.status(201).json({
