@@ -577,6 +577,7 @@ export default function ScrollAdmin() {
     { id: 'pending', label: `Pending (${pending.length})`, alert: pending.length > 0 },
     { id: 'approved', label: `Approved (${approved.length})` },
     { id: 'rejected', label: `Rejected (${rejected.length})` },
+    { id: 'crawl', label: 'Crawl' },
     { id: 'analytics', label: 'Analytics' },
   ]
 
@@ -1435,6 +1436,11 @@ export default function ScrollAdmin() {
           </div>
         )}
 
+        {/* CRAWL */}
+        {activeTab === 'crawl' && (
+          <CrawlPanel authHeaders={authHeaders} notify={notify} onDocumentsChanged={loadDocuments} />
+        )}
+
         {/* ANALYTICS */}
         {activeTab === 'analytics' && (
           <div>
@@ -1613,6 +1619,340 @@ export default function ScrollAdmin() {
       </main>
       <AdminNav />
       <div className="h-12" />
+    </div>
+  )
+}
+
+// ============================================
+// CRAWL PANEL
+// ============================================
+const PRESET_SOURCES = [
+  {
+    name: 'UNC Policy Portal — All Policies',
+    url: 'https://policies.unc.edu/TDClient/2833/Portal/KB/?CategoryID=21600',
+    description: 'Full UNC policy knowledge base with hundreds of documents',
+  },
+  {
+    name: 'UNC Policy Portal — Student Affairs',
+    url: 'https://policies.unc.edu/TDClient/2833/Portal/KB/?CategoryID=21604',
+    description: 'Student-facing policies: conduct, housing, dining, organizations',
+  },
+  {
+    name: 'UNC Policy Portal — Academic Affairs',
+    url: 'https://policies.unc.edu/TDClient/2833/Portal/KB/?CategoryID=21601',
+    description: 'Academic policies: grading, registration, advising',
+  },
+  {
+    name: 'UNC Policy Portal — Human Resources',
+    url: 'https://policies.unc.edu/TDClient/2833/Portal/KB/?CategoryID=21602',
+    description: 'HR policies: employment, benefits, workplace',
+  },
+  {
+    name: 'UNC Policy Portal — Finance & Administration',
+    url: 'https://policies.unc.edu/TDClient/2833/Portal/KB/?CategoryID=21603',
+    description: 'Budget, procurement, financial operations',
+  },
+  {
+    name: 'UNC Dean of Students',
+    url: 'https://dos.unc.edu',
+    description: 'Student conduct, student organizations, student rights',
+  },
+  {
+    name: 'UNC EOC Office',
+    url: 'https://eoc.unc.edu',
+    description: 'Equal opportunity, discrimination, Title IX',
+  },
+]
+
+function CrawlPanel({ authHeaders, notify, onDocumentsChanged }) {
+  const [crawlUrl, setCrawlUrl] = useState('')
+  const [crawlMode, setCrawlMode] = useState('full')
+  const [crawlDepth, setCrawlDepth] = useState(2)
+  const [maxPages, setMaxPages] = useState(50)
+  const [crawling, setCrawling] = useState(false)
+  const [crawlResult, setCrawlResult] = useState(null)
+  const [showPresets, setShowPresets] = useState(true)
+
+  const handleCrawl = async (overrideUrl) => {
+    const targetUrl = overrideUrl || crawlUrl.trim()
+    if (!targetUrl) return notify('Enter a URL to crawl')
+
+    setCrawling(true)
+    setCrawlResult(null)
+
+    try {
+      const res = await fetch('/api/codex/crawl', {
+        method: 'POST',
+        headers: authHeaders,
+        body: JSON.stringify({
+          url: targetUrl,
+          mode: crawlMode,
+          depth: crawlDepth,
+          maxPages,
+        }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setCrawlResult({ error: true, message: data.error || 'Crawl failed' })
+      } else {
+        setCrawlResult(data)
+        if (data.ingested > 0 && onDocumentsChanged) {
+          onDocumentsChanged()
+        }
+      }
+    } catch (err) {
+      setCrawlResult({ error: true, message: 'Network error: ' + err.message })
+    }
+    setCrawling(false)
+  }
+
+  const handleSeedAll = async () => {
+    setCrawling(true)
+    setCrawlResult(null)
+    try {
+      const res = await fetch('/api/codex/seed', {
+        method: 'POST',
+        headers: authHeaders,
+      })
+      const data = await res.json()
+      setCrawlResult({
+        success: true,
+        message: data.message,
+        ingested: data.seeded,
+        skipped: data.skipped,
+        details: data.details,
+      })
+      if (data.seeded > 0 && onDocumentsChanged) {
+        onDocumentsChanged()
+      }
+    } catch (err) {
+      setCrawlResult({ error: true, message: 'Seed failed: ' + err.message })
+    }
+    setCrawling(false)
+  }
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight mb-2">Live Crawler</h2>
+        <p className="text-gray-400 text-sm max-w-2xl">
+          Automatically discover and ingest policy documents from UNC portals and approved sources.
+          The crawler fetches pages, extracts policy text, and adds them to The Scroll.
+        </p>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid sm:grid-cols-2 gap-4">
+        <button
+          onClick={handleSeedAll}
+          disabled={crawling}
+          className="p-5 bg-white/5 border border-gray-800 rounded-xl hover:bg-white/10 transition-all text-left disabled:opacity-50"
+        >
+          <p className="text-white font-medium mb-1">Seed Registry Documents</p>
+          <p className="text-gray-500 text-xs">Insert all 15 seed documents from the scroll registry with structured summaries</p>
+        </button>
+        <button
+          onClick={() => { setShowPresets(!showPresets) }}
+          disabled={crawling}
+          className="p-5 bg-white/5 border border-gray-800 rounded-xl hover:bg-white/10 transition-all text-left disabled:opacity-50"
+        >
+          <p className="text-white font-medium mb-1">UNC Source Presets</p>
+          <p className="text-gray-500 text-xs">Quick-crawl from pre-configured UNC policy portals and departments</p>
+        </button>
+      </div>
+
+      {/* Presets */}
+      {showPresets && (
+        <div className="space-y-2">
+          <p className="text-xs font-mono uppercase tracking-widest text-gray-500 mb-3">Source Presets</p>
+          <div className="grid gap-2">
+            {PRESET_SOURCES.map((src, i) => (
+              <div key={i} className="flex items-center justify-between p-4 bg-white/[0.02] border border-gray-900 rounded-lg hover:bg-white/[0.04] transition-all group">
+                <div className="min-w-0 flex-1">
+                  <p className="text-white text-sm font-medium">{src.name}</p>
+                  <p className="text-gray-600 text-xs truncate">{src.description}</p>
+                  <p className="text-gray-700 text-[10px] font-mono truncate mt-0.5">{src.url}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 ml-4">
+                  <button
+                    onClick={() => { setCrawlUrl(src.url); setCrawlMode('discover'); setShowPresets(false) }}
+                    className="px-3 py-1.5 text-xs text-gray-400 border border-gray-800 rounded hover:text-white hover:border-gray-600 transition opacity-0 group-hover:opacity-100"
+                  >
+                    Discover
+                  </button>
+                  <button
+                    onClick={() => handleCrawl(src.url)}
+                    disabled={crawling}
+                    className="px-3 py-1.5 text-xs text-black bg-white rounded hover:bg-gray-200 transition disabled:opacity-50"
+                  >
+                    {crawling ? 'Crawling...' : 'Crawl & Ingest'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Custom URL */}
+      <div className="bg-white/[0.02] border border-gray-900 rounded-xl p-6">
+        <p className="text-xs font-mono uppercase tracking-widest text-gray-500 mb-4">Custom Crawl</p>
+
+        <div className="space-y-4">
+          <div>
+            <label className="text-xs text-gray-400 block mb-1.5">URL to crawl</label>
+            <input
+              type="url"
+              value={crawlUrl}
+              onChange={(e) => setCrawlUrl(e.target.value)}
+              placeholder="https://policies.unc.edu/TDClient/2833/Portal/KB/?CategoryID=21600"
+              className="w-full px-4 py-3 bg-black border border-gray-800 rounded text-sm text-white placeholder-gray-700 focus:border-gray-600 focus:outline-none font-mono"
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="text-xs text-gray-400 block mb-1.5">Mode</label>
+              <select
+                value={crawlMode}
+                onChange={(e) => setCrawlMode(e.target.value)}
+                className="w-full px-3 py-2.5 bg-black border border-gray-800 rounded text-sm text-white focus:border-gray-600 focus:outline-none"
+              >
+                <option value="discover">Discover links only</option>
+                <option value="ingest">Ingest single page</option>
+                <option value="full">Full crawl & ingest</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-gray-400 block mb-1.5">Depth</label>
+              <input
+                type="number"
+                value={crawlDepth}
+                onChange={(e) => setCrawlDepth(parseInt(e.target.value) || 1)}
+                min={1}
+                max={5}
+                className="w-full px-3 py-2.5 bg-black border border-gray-800 rounded text-sm text-white focus:border-gray-600 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-400 block mb-1.5">Max pages</label>
+              <input
+                type="number"
+                value={maxPages}
+                onChange={(e) => setMaxPages(parseInt(e.target.value) || 10)}
+                min={1}
+                max={200}
+                className="w-full px-3 py-2.5 bg-black border border-gray-800 rounded text-sm text-white focus:border-gray-600 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <button
+            onClick={() => handleCrawl()}
+            disabled={crawling || !crawlUrl.trim()}
+            className="w-full py-3 bg-white text-black font-medium rounded text-sm hover:bg-gray-200 transition disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            {crawling ? (
+              <span className="flex items-center justify-center gap-2">
+                <span className="w-4 h-4 border-2 border-gray-400 border-t-black rounded-full animate-spin" />
+                Crawling...
+              </span>
+            ) : 'Start Crawl'}
+          </button>
+        </div>
+      </div>
+
+      {/* Results */}
+      {crawlResult && (
+        <div className={`border rounded-xl p-6 ${crawlResult.error ? 'bg-red-500/5 border-red-500/20' : 'bg-green-500/5 border-green-500/20'}`}>
+          {crawlResult.error ? (
+            <div>
+              <p className="text-red-400 font-medium mb-1">Crawl Failed</p>
+              <p className="text-red-400/70 text-sm">{crawlResult.message}</p>
+            </div>
+          ) : (
+            <div>
+              <p className="text-green-400 font-medium mb-2">
+                {crawlResult.message || `Crawl complete`}
+              </p>
+
+              {/* Stats */}
+              <div className="flex items-center gap-6 mb-4 text-sm">
+                {crawlResult.discovered != null && (
+                  <span className="text-gray-400">
+                    <span className="text-white font-mono">{crawlResult.discovered}</span> discovered
+                  </span>
+                )}
+                {crawlResult.ingested != null && (
+                  <span className="text-green-400">
+                    <span className="font-mono">{crawlResult.ingested}</span> ingested
+                  </span>
+                )}
+                {crawlResult.skipped != null && crawlResult.skipped > 0 && (
+                  <span className="text-yellow-400">
+                    <span className="font-mono">{crawlResult.skipped}</span> skipped
+                  </span>
+                )}
+                {crawlResult.errors != null && crawlResult.errors > 0 && (
+                  <span className="text-red-400">
+                    <span className="font-mono">{crawlResult.errors}</span> errors
+                  </span>
+                )}
+              </div>
+
+              {/* Link list (discover mode) */}
+              {crawlResult.links && crawlResult.links.length > 0 && (
+                <div className="space-y-1 max-h-80 overflow-y-auto">
+                  <p className="text-xs text-gray-500 font-mono mb-2">Discovered Links:</p>
+                  {crawlResult.links.map((link, i) => (
+                    <div key={i} className="flex items-center justify-between py-1.5 px-3 bg-black/30 rounded text-xs group">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-white truncate">{link.title}</p>
+                        <p className="text-gray-600 font-mono truncate text-[10px]">{link.url}</p>
+                      </div>
+                      <button
+                        onClick={() => handleCrawl(link.url)}
+                        disabled={crawling}
+                        className="ml-2 px-2 py-1 text-[10px] text-gray-400 border border-gray-800 rounded hover:text-white hover:border-gray-600 transition opacity-0 group-hover:opacity-100 shrink-0"
+                      >
+                        Ingest
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Detail list (full/ingest mode) */}
+              {crawlResult.details && crawlResult.details.length > 0 && (
+                <div className="space-y-1 max-h-80 overflow-y-auto">
+                  <p className="text-xs text-gray-500 font-mono mb-2">Details:</p>
+                  {crawlResult.details.map((d, i) => (
+                    <div key={i} className="flex items-center gap-3 py-1.5 px-3 bg-black/30 rounded text-xs">
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${
+                        d.status === 'ingested' || d.status === 'seeded' ? 'bg-green-400' :
+                        d.status === 'skipped' ? 'bg-yellow-400' :
+                        'bg-red-400'
+                      }`} />
+                      <span className="text-white truncate flex-1">{d.title}</span>
+                      <span className="text-gray-600 shrink-0">{d.status}</span>
+                      {d.textLength && <span className="text-gray-700 font-mono shrink-0">{d.textLength.toLocaleString()} chars</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Info */}
+      <div className="text-xs text-gray-600 space-y-1">
+        <p>Allowed domains: policies.unc.edu, studentgovernment.unc.edu, dos.unc.edu, eoc.unc.edu, townofchapelhill.org</p>
+        <p>Documents are auto-approved and immediately appear in The Scroll. Duplicate content is skipped.</p>
+        <p>PDF files are discovered but require manual .txt upload. The crawler extracts HTML content only.</p>
+      </div>
     </div>
   )
 }
