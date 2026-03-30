@@ -1,7 +1,6 @@
 import { searchRelevantChunks, callGrok, isEmbeddingAvailable } from '../../../lib/embeddings'
 import { getDocumentById, getDocuments } from '../../../lib/codex'
 import { buildPlatformContext, buildEnhancedSystemPrompt } from '../../../lib/platformContext'
-import { MIN_SEED_COUNT } from '../../../lib/scrollRegistry'
 import { getNewsSourcesContext } from '../../../lib/newsSources'
 
 // Stricter rate limiting: 5 requests per minute per IP
@@ -95,14 +94,8 @@ export default async function handler(req, res) {
       return res.status(503).json({ error: 'AI service is not configured. Please contact an administrator.' })
     }
 
-    // Gate: The Scroll must have seed documents before chat is available
+    // Load approved documents (used for admin context below)
     const { data: approvedDocs } = await getDocuments('approved')
-    if (!approvedDocs || approvedDocs.length < MIN_SEED_COUNT) {
-      return res.status(422).json({
-        error: 'scroll_empty',
-        message: 'The Scroll needs to be seeded with governing documents before Grok can answer questions. An admin must upload .txt versions of the official UNC governing documents first.',
-      })
-    }
 
     // === Relevance gate ===
     const isRelevant = await checkRelevance(question)
