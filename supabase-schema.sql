@@ -588,3 +588,94 @@ CREATE POLICY "Admins can update funding requests" ON funding_requests
 
 CREATE INDEX IF NOT EXISTS idx_funding_requests_status ON funding_requests(status);
 CREATE INDEX IF NOT EXISTS idx_funding_requests_submitted ON funding_requests(submitted_at DESC);
+
+-- ============================================
+-- ADMIN ACCOUNTS TABLE (Persistent user accounts)
+-- ============================================
+CREATE TABLE IF NOT EXISTS admin_accounts (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  username TEXT UNIQUE NOT NULL,
+  display_name TEXT NOT NULL,
+  team_role TEXT NOT NULL CHECK (team_role IN ('leads', 'outreach', 'comms', 'strategy')),
+  password_hash TEXT NOT NULL,
+  avatar_color TEXT DEFAULT '#4B9CD3',
+  bio TEXT DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  last_login TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE admin_accounts ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admins can read accounts" ON admin_accounts
+  FOR SELECT USING (true);
+
+CREATE POLICY "System can insert accounts" ON admin_accounts
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Admins can update accounts" ON admin_accounts
+  FOR UPDATE USING (true);
+
+CREATE INDEX IF NOT EXISTS idx_admin_accounts_username ON admin_accounts(username);
+CREATE INDEX IF NOT EXISTS idx_admin_accounts_role ON admin_accounts(team_role);
+
+-- ============================================
+-- POLICY DISCUSSIONS TABLE (Forum-style messaging)
+-- ============================================
+CREATE TABLE IF NOT EXISTS policy_discussions (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  policy_id TEXT NOT NULL,
+  user_id UUID REFERENCES admin_accounts(id),
+  username TEXT NOT NULL,
+  display_name TEXT NOT NULL,
+  team_role TEXT NOT NULL,
+  message TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE policy_discussions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admins can read discussions" ON policy_discussions
+  FOR SELECT USING (true);
+
+CREATE POLICY "Admins can post discussions" ON policy_discussions
+  FOR INSERT WITH CHECK (true);
+
+CREATE INDEX IF NOT EXISTS idx_policy_discussions_policy ON policy_discussions(policy_id);
+CREATE INDEX IF NOT EXISTS idx_policy_discussions_created ON policy_discussions(created_at ASC);
+
+-- ============================================
+-- CHAT HISTORY TABLE (Grok conversation persistence)
+-- ============================================
+CREATE TABLE IF NOT EXISTS chat_history (
+  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  user_id UUID REFERENCES admin_accounts(id),
+  title TEXT DEFAULT 'New Conversation',
+  messages JSONB DEFAULT '[]',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE chat_history ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Admins can read own chat history" ON chat_history
+  FOR SELECT USING (true);
+
+CREATE POLICY "Admins can insert chat history" ON chat_history
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Admins can update own chat history" ON chat_history
+  FOR UPDATE USING (true);
+
+CREATE POLICY "Admins can delete own chat history" ON chat_history
+  FOR DELETE USING (true);
+
+CREATE INDEX IF NOT EXISTS idx_chat_history_user ON chat_history(user_id);
+CREATE INDEX IF NOT EXISTS idx_chat_history_updated ON chat_history(updated_at DESC);
+
+-- ============================================
+-- ALTER governance_documents for Scroll enhancements
+-- ============================================
+ALTER TABLE governance_documents ADD COLUMN IF NOT EXISTS summary TEXT;
+ALTER TABLE governance_documents ADD COLUMN IF NOT EXISTS key_provisions JSONB DEFAULT '[]';
+ALTER TABLE governance_documents ADD COLUMN IF NOT EXISTS query_count INTEGER DEFAULT 0;
+ALTER TABLE governance_documents ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'general';

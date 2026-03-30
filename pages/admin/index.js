@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useApp } from '../../lib/store'
 import { departments as defaultDepartments, getOverallProgress, getStatusCounts, adminTeams, getTeamByRole, TEAM_ROLES, defaultTeamPolicySuggestions, isLeadsRole } from '../../lib/data'
 import AdminNav from '../../components/AdminNav'
+import { getAuthHeaders } from '../../lib/adminSession'
 import {
   BUDGET_CATEGORIES,
   exportLineItemsToCSV,
@@ -161,6 +162,135 @@ const formatRelativeTime = (dateString) => {
 }
 
 // ==========================================
+// POLICY DISCUSSION PANEL
+// ==========================================
+const TEAM_COLORS = { leads: '#4B9CD3', outreach: '#F59E0B', comms: '#8B5CF6', strategy: '#10B981' }
+
+function PolicyDiscussionPanel({ policyId, policyTitle, isOpen, onClose }) {
+  const [messages, setMessages] = useState([])
+  const [newMessage, setNewMessage] = useState('')
+  const [loading, setLoading] = useState(false)
+  const messagesEndRef = useRef(null)
+
+  const fetchMessages = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/policies/discussions?policyId=${policyId}`, {
+        headers: getAuthHeaders(),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setMessages(Array.isArray(data) ? data.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)) : [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch discussions:', err)
+    }
+  }, [policyId])
+
+  useEffect(() => {
+    if (!isOpen) return
+    setLoading(true)
+    fetchMessages().finally(() => setLoading(false))
+    const interval = setInterval(fetchMessages, 15000)
+    return () => clearInterval(interval)
+  }, [isOpen, fetchMessages])
+
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [messages])
+
+  const handleSend = async () => {
+    if (!newMessage.trim()) return
+    try {
+      const res = await fetch('/api/policies/discussions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ policyId, message: newMessage }),
+      })
+      if (res.ok) {
+        setNewMessage('')
+        await fetchMessages()
+      }
+    } catch (err) {
+      console.error('Failed to send message:', err)
+    }
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="mt-3 bg-gray-900 border border-gray-700 rounded-xl overflow-hidden transition-all">
+      <div className="flex items-center justify-between px-4 py-3 bg-gray-800 border-b border-gray-700">
+        <div className="flex items-center gap-2">
+          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+          <span className="text-sm font-medium text-white">{policyTitle}</span>
+        </div>
+        <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div className="overflow-y-auto px-4 py-3 space-y-3" style={{ maxHeight: '300px' }}>
+        {loading && messages.length === 0 && (
+          <p className="text-center text-gray-500 text-sm py-4">Loading messages...</p>
+        )}
+        {!loading && messages.length === 0 && (
+          <p className="text-center text-gray-500 text-sm py-4">No messages yet — start the conversation</p>
+        )}
+        {messages.map((msg, idx) => (
+          <div key={msg.id || idx} className="flex items-start gap-3">
+            <div
+              className="w-3 h-3 rounded-full mt-1.5 flex-shrink-0"
+              style={{ backgroundColor: TEAM_COLORS[msg.team_role] || '#6B7280' }}
+            />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-medium text-white">{msg.display_name || 'Unknown'}</span>
+                {msg.team_role && (
+                  <span
+                    className="px-1.5 py-0.5 rounded text-[10px] font-mono uppercase"
+                    style={{
+                      backgroundColor: (TEAM_COLORS[msg.team_role] || '#6B7280') + '20',
+                      color: TEAM_COLORS[msg.team_role] || '#6B7280',
+                    }}
+                  >
+                    {msg.team_role}
+                  </span>
+                )}
+                <span className="text-[10px] text-gray-600">{formatRelativeTime(msg.timestamp)}</span>
+              </div>
+              <p className="text-sm text-gray-300 mt-0.5 break-words">{msg.message}</p>
+            </div>
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+      <div className="flex gap-2 px-4 py-3 border-t border-gray-700 bg-gray-800/50">
+        <input
+          type="text"
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+          placeholder="Type a message..."
+          className="flex-1 px-3 py-2 bg-black border border-gray-700 rounded-lg text-sm text-white placeholder-gray-600 focus:border-gray-500 focus:outline-none"
+        />
+        <button
+          onClick={handleSend}
+          disabled={!newMessage.trim()}
+          className="px-4 py-2 bg-white/10 border border-gray-700 rounded-lg text-sm text-white hover:bg-white/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          Send
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ==========================================
 // LIVE CLOCK
 // ==========================================
 const LiveClock = () => {
@@ -196,6 +326,7 @@ export default function AdminConsole() {
     adminRole,
     isLeads,
     isLoaded,
+    accountInfo,
     policies,
     budgetData,
     feedback,
@@ -243,6 +374,8 @@ export default function AdminConsole() {
   const [showConfirmReset, setShowConfirmReset] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [onboardingSelections, setOnboardingSelections] = useState([])
+  const [openDiscussion, setOpenDiscussion] = useState(null)
+  const [discussionCounts, setDiscussionCounts] = useState({})
 
   // Team info
   const teamInfo = useMemo(() => getTeamByRole(adminRole), [adminRole])
@@ -260,12 +393,14 @@ export default function AdminConsole() {
     }
   }, [isLoaded, isAdmin, needsOnboarding, adminRole, policies])
 
-  // Redirect if not admin
+  // Redirect if not admin or account not created
   useEffect(() => {
     if (isLoaded && !isAdmin) {
       router.push('/admin/login')
+    } else if (isLoaded && isAdmin && !accountInfo) {
+      router.push('/admin/register')
     }
-  }, [isLoaded, isAdmin, router])
+  }, [isLoaded, isAdmin, accountInfo, router])
 
   // Get team-scoped policies
   const myPolicies = useMemo(() => getTeamPolicies(adminRole), [adminRole, getTeamPolicies])
@@ -525,7 +660,27 @@ export default function AdminConsole() {
                           >
                             Edit
                           </button>
+                          <button
+                            onClick={() => setOpenDiscussion(openDiscussion === policy.id ? null : policy.id)}
+                            className="relative px-3 py-2 bg-white/10 border border-gray-700 rounded-lg text-xs text-white hover:bg-white/20 transition-all flex items-center gap-1"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                            Discussion
+                            {discussionCounts[policy.id] > 0 && (
+                              <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded-full text-[10px] font-mono">
+                                {discussionCounts[policy.id]}
+                              </span>
+                            )}
+                          </button>
                         </div>
+                        <PolicyDiscussionPanel
+                          policyId={policy.id}
+                          policyTitle={policy.title}
+                          isOpen={openDiscussion === policy.id}
+                          onClose={() => setOpenDiscussion(null)}
+                        />
                       </div>
                     </Reveal>
                   )
@@ -849,8 +1004,28 @@ export default function AdminConsole() {
                                 +10%
                               </button>
                             )}
+                            <button
+                              onClick={() => setOpenDiscussion(openDiscussion === policy.id ? null : policy.id)}
+                              className="relative px-3 py-1.5 bg-white/10 border border-gray-700 rounded text-xs text-white hover:bg-white/20 transition-all flex items-center gap-1"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                              </svg>
+                              Discussion
+                              {discussionCounts[policy.id] > 0 && (
+                                <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded-full text-[10px] font-mono">
+                                  {discussionCounts[policy.id]}
+                                </span>
+                              )}
+                            </button>
                           </div>
                         </div>
+                        <PolicyDiscussionPanel
+                          policyId={policy.id}
+                          policyTitle={policy.title}
+                          isOpen={openDiscussion === policy.id}
+                          onClose={() => setOpenDiscussion(null)}
+                        />
                       </div>
                     </Reveal>
                   )

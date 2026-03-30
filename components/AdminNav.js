@@ -22,7 +22,7 @@ const publicLinks = [
 
 export default function AdminNav() {
   const router = useRouter()
-  const { adminRole, isLeads } = useApp()
+  const { adminRole, isLeads, accountInfo } = useApp()
   const isAdminPage = router.pathname.startsWith('/admin')
 
   const team = getTeamByRole(adminRole)
@@ -71,9 +71,21 @@ export default function AdminNav() {
           ))}
 
           <div className="flex-1" />
+
+          {/* Profile link + Team indicator */}
           <div className="flex items-center gap-2 shrink-0">
-            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: teamColor }} />
-            <span className="text-[10px] font-mono" style={{ color: teamColor }}>{teamName}</span>
+            <Link href="/admin/profile" className="flex items-center gap-2 hover:opacity-80 transition" title={accountInfo ? `@${accountInfo.username}` : teamName}>
+              {accountInfo ? (
+                <div className="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white" style={{ backgroundColor: accountInfo.avatarColor || teamColor }}>
+                  {accountInfo.displayName?.charAt(0)?.toUpperCase() || '?'}
+                </div>
+              ) : (
+                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: teamColor }} />
+              )}
+              <span className="text-[10px] font-mono hidden sm:block" style={{ color: teamColor }}>
+                {accountInfo ? accountInfo.displayName : teamName}
+              </span>
+            </Link>
           </div>
         </div>
       </div>
