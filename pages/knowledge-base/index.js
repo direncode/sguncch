@@ -2,8 +2,19 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Head from 'next/head'
 import Layout from '../../components/Layout'
+import { SEED_DOCUMENTS } from '../../lib/scrollRegistry'
 
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
+
+function findScrollMatch(seed, approvedDocs) {
+  const name = seed.title.toLowerCase()
+  return approvedDocs.find(d => {
+    const title = d.title.toLowerCase()
+    return name.includes(title) || title.includes(name) ||
+      (name.split(/\s+/).filter(w => w.length > 3).some(word => title.includes(word)) &&
+       title.split(/\s+/).filter(w => w.length > 3).some(word => name.includes(word)))
+  })
+}
 
 export default function KnowledgeBase() {
   const [documents, setDocuments] = useState([])
@@ -27,12 +38,24 @@ export default function KnowledgeBase() {
     setLoading(false)
   }
 
-  const filtered = documents
+  // Build combined list: approved docs + unmatched seed docs
+  const seedWithStatus = SEED_DOCUMENTS.map(seed => {
+    const match = findScrollMatch(seed, documents)
+    return { seed, match, inScroll: !!match }
+  })
+
+  const approvedFiltered = documents
     .filter(doc => !search || doc.title.toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => {
       if (sortBy === 'title') return a.title.localeCompare(b.title)
       return new Date(b.approved_at) - new Date(a.approved_at)
     })
+
+  const unmatchedSeeds = seedWithStatus
+    .filter(s => !s.inScroll)
+    .filter(s => !search || s.seed.title.toLowerCase().includes(search.toLowerCase()))
+
+  const filtered = approvedFiltered
 
   return (
     <Layout>
@@ -123,10 +146,47 @@ export default function KnowledgeBase() {
             </div>
           )}
 
+          {/* Pending seed documents */}
+          {!loading && unmatchedSeeds.length > 0 && (
+            <div className="mt-12">
+              <p className="caption mb-4">Pending Documents ({unmatchedSeeds.length})</p>
+              <p className="text-xs text-gray-600 mb-4">These governance documents are registered for The Scroll but have not yet been uploaded by an admin.</p>
+              <div className="space-y-3">
+                {unmatchedSeeds.map(({ seed }) => (
+                  <div key={seed.key} className="card group opacity-60">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-gray-400 font-semibold text-lg truncate">
+                          {seed.title}
+                        </h3>
+                        <div className="flex flex-wrap items-center gap-4 mt-2">
+                          <span className="badge text-xs">v{seed.version}</span>
+                          <span className="text-xs text-gray-600">{seed.category}</span>
+                          {seed.required && (
+                            <span className="text-xs text-yellow-500">Required</span>
+                          )}
+                        </div>
+                        {seed.description && (
+                          <p className="text-xs text-gray-600 mt-2">{seed.description}</p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="text-xs text-gray-600 font-mono">Not yet seeded</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Stats */}
-          {!loading && filtered.length > 0 && (
+          {!loading && (filtered.length > 0 || unmatchedSeeds.length > 0) && (
             <div className="mt-12 text-center">
-              <p className="caption">{filtered.length} approved document{filtered.length !== 1 ? 's' : ''} in the knowledge base</p>
+              <p className="caption">
+                {filtered.length} approved document{filtered.length !== 1 ? 's' : ''} in the knowledge base
+                {unmatchedSeeds.length > 0 && ` · ${unmatchedSeeds.length} pending`}
+              </p>
             </div>
           )}
         </div>

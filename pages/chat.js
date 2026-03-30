@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Head from 'next/head'
 import Layout from '../components/Layout'
 import { useApp } from '../lib/store'
+import { SEED_DOCUMENTS } from '../lib/scrollRegistry'
 
 const formatDate = (d) => d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''
 
@@ -214,12 +215,14 @@ export default function Chat() {
                   An admin must seed The Scroll with the official UNC governing documents first.
                 </p>
                 <div className="bg-white/[0.03] border border-gray-800 rounded-xl p-6 max-w-md w-full mb-6">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-3 font-mono">Required Documents</p>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider mb-3 font-mono">Registered Documents</p>
                   <ul className="space-y-2 text-sm text-gray-400">
-                    <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-gray-700" /> UNC Student Constitution</li>
-                    <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-gray-700" /> USG Student Code</li>
-                    <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-gray-700" /> Joint Code</li>
-                    <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-gray-700" /> GPSG Code</li>
+                    {SEED_DOCUMENTS.map(seed => (
+                      <li key={seed.key} className="flex items-center gap-2">
+                        <span className={`w-1.5 h-1.5 rounded-full ${seed.required ? 'bg-yellow-500' : 'bg-gray-700'}`} />
+                        {seed.title}
+                      </li>
+                    ))}
                   </ul>
                 </div>
                 {isAdmin ? (

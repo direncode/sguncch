@@ -118,22 +118,11 @@ export default function Home() {
               <span className="caption">UNC Student Government 2026</span>
             </div>
 
-            {/* Main Title */}
-            <h1
-              className="hero-title mb-8 opacity-0 animate-fade-in-up"
-              style={{ animationDelay: '0.4s', animationFillMode: 'forwards' }}
-            >
-              Transforming
-              <br />
-              Student Life
-            </h1>
-
             {/* Subtitle */}
             <p
               className="hero-subtitle max-w-2xl mb-12 opacity-0 animate-fade-in-up"
-              style={{ animationDelay: '0.6s', animationFillMode: 'forwards' }}
+              style={{ animationDelay: '0.4s', animationFillMode: 'forwards' }}
             >
-              We build platforms that empower every Carolina student to thrive.
               Transparent governance. Data-driven decisions. Real impact.
             </p>
 
