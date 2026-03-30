@@ -600,6 +600,8 @@ CREATE TABLE IF NOT EXISTS admin_accounts (
   password_hash TEXT NOT NULL,
   avatar_color TEXT DEFAULT '#4B9CD3',
   bio TEXT DEFAULT '',
+  email TEXT,
+  clerk_id TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   last_login TIMESTAMPTZ DEFAULT NOW()
 );
@@ -617,6 +619,12 @@ CREATE POLICY "Admins can update accounts" ON admin_accounts
 
 CREATE INDEX IF NOT EXISTS idx_admin_accounts_username ON admin_accounts(username);
 CREATE INDEX IF NOT EXISTS idx_admin_accounts_role ON admin_accounts(team_role);
+
+-- Clerk OAuth columns (run this migration if upgrading from a previous version)
+ALTER TABLE admin_accounts ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE admin_accounts ADD COLUMN IF NOT EXISTS clerk_id TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_accounts_email ON admin_accounts(email) WHERE email IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_admin_accounts_clerk_id ON admin_accounts(clerk_id) WHERE clerk_id IS NOT NULL;
 
 -- ============================================
 -- POLICY DISCUSSIONS TABLE (Forum-style messaging)
