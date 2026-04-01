@@ -6,7 +6,7 @@ import AdminNav from './AdminNav'
 import { useApp } from '../lib/store'
 
 const navigation = [
-  { name: 'Budget', href: '/budget' },
+  { name: 'Budget', href: '/budget-transparency' },
   { name: 'Resources', href: '/wellness' },
   { name: 'Community', href: '/basic-needs' },
   { name: 'Academic', href: '/academic' },
@@ -14,6 +14,7 @@ const navigation = [
   { name: 'Documents', href: '/documents' },
   { name: 'The Scroll', href: '/scroll' },
   { name: 'Ask AI', href: '/chat' },
+  { name: 'Admin', href: '/admin' },
 ]
 
 const FEEDBACK_CATEGORIES = [
@@ -94,13 +95,6 @@ export default function Layout({ children }) {
 
             {/* Right side */}
             <div className="flex items-center gap-6">
-              <Link
-                href="/admin"
-                className="hidden sm:block text-sm text-gray-400 hover:text-white transition-colors"
-              >
-                Admin
-              </Link>
-
               {/* Mobile menu button */}
               <button
                 onClick={() => setMenuOpen(!menuOpen)}

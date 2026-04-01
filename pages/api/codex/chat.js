@@ -1,7 +1,6 @@
 import { searchRelevantChunks, callGrok, isEmbeddingAvailable } from '../../../lib/embeddings'
 import { getDocumentById, getDocuments } from '../../../lib/codex'
 import { buildPlatformContext, buildEnhancedSystemPrompt } from '../../../lib/platformContext'
-import { MIN_SEED_COUNT } from '../../../lib/scrollRegistry'
 import { getNewsSourcesContext } from '../../../lib/newsSources'
 
 // Stricter rate limiting: 5 requests per minute per IP
@@ -69,6 +68,18 @@ function needsWebSearch(question) {
   return webKeywords.some(kw => q.includes(kw))
 }
 
+// Detect analysis type for enhanced responses
+function detectAnalysisType(question) {
+  const q = question.toLowerCase()
+  if (q.includes('audit') || q.includes('comprehensive') || q.includes('full report') || q.includes('overview of all')) return 'audit'
+  if (q.includes('department') || q.includes('wellness') || q.includes('basic needs') || q.includes('academic') || q.includes('communications') || q.includes('environmental')) return 'department'
+  if (q.includes('budget') || q.includes('funding') || q.includes('spending') || q.includes('allocation') || q.includes('financial')) return 'budget'
+  if (q.includes('feedback') || q.includes('student input') || q.includes('complaints') || q.includes('suggestions')) return 'feedback'
+  if (q.includes('policy') || q.includes('initiative') || q.includes('progress') || q.includes('milestone')) return 'policy'
+  if (q.includes('scroll') || q.includes('document') || q.includes('knowledge base') || q.includes('governance doc')) return 'scroll'
+  return 'general'
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -95,20 +106,14 @@ export default async function handler(req, res) {
       return res.status(503).json({ error: 'AI service is not configured. Please contact an administrator.' })
     }
 
-    // Gate: The Scroll must have seed documents before chat is available
+    // Load approved documents (used for admin context below)
     const { data: approvedDocs } = await getDocuments('approved')
-    if (!approvedDocs || approvedDocs.length < MIN_SEED_COUNT) {
-      return res.status(422).json({
-        error: 'scroll_empty',
-        message: 'The Scroll needs to be seeded with governing documents before Grok can answer questions. An admin must upload .txt versions of the official UNC governing documents first.',
-      })
-    }
 
     // === Determine if web search is needed ===
     const useWebSearch = needsWebSearch(question)
 
-    // === 1. Search for relevant document chunks ===
-    const chunks = await searchRelevantChunks(question, 5)
+    // === 1. Search for relevant document chunks (increased from 5 to 8) ===
+    const chunks = await searchRelevantChunks(question, 8)
 
     let documentContext = ''
     const sourcesWithMeta = []
@@ -159,7 +164,11 @@ export default async function handler(req, res) {
           adminContext += `Total approved documents: ${approvedDocs.length}\n`
           adminContext += `Documents:\n`
           for (const doc of approvedDocs.slice(0, 30)) {
-            adminContext += `- ${doc.title} (v${doc.version}, approved: ${doc.approved_at || 'unknown'})\n`
+            adminContext += `- ${doc.title} (v${doc.version}, approved: ${doc.approved_at || 'unknown'}`
+            if (doc.category) adminContext += `, category: ${doc.category}`
+            if (doc.summary) adminContext += `) Summary: ${doc.summary.slice(0, 100)}`
+            else adminContext += ')'
+            adminContext += '\n'
           }
           if (approvedDocs.length > 30) {
             adminContext += `... and ${approvedDocs.length - 30} more\n`
@@ -181,13 +190,44 @@ export default async function handler(req, res) {
       isAdminMode
     )
 
-    // === 4. Call Grok (with web search if needed) ===
+    // === 4. Build messages array with conversation history ===
     const messages = [
       { role: 'system', content: systemPrompt },
-      { role: 'user', content: question },
     ]
 
-    const answer = await callGrok(messages, { search: useWebSearch })
+    // Add conversation history for multi-turn support (last 10 messages)
+    if (Array.isArray(conversationHistory) && conversationHistory.length > 0) {
+      const recentHistory = conversationHistory.slice(-10)
+      for (const msg of recentHistory) {
+        if (msg.role === 'user' || msg.role === 'assistant') {
+          messages.push({ role: msg.role, content: msg.content })
+        }
+      }
+    }
+
+    messages.push({ role: 'user', content: question })
+
+    // === 5. Call Grok with enhanced settings ===
+    const answer = await callGrok(messages, {
+      search: useWebSearch,
+      temperature: 0.2, // Lower for more precise, detailed answers
+      maxTokens: 4096, // 4x increase for comprehensive responses
+    })
+
+    // === 6. Track query count on matched documents (non-blocking) ===
+    try {
+      const uniqueDocIds = [...new Set(sourcesWithMeta.map(s => s.document_id))]
+      for (const docId of uniqueDocIds) {
+        const { data: doc } = await getDocumentById(docId)
+        if (doc) {
+          // Increment query_count — best effort
+          const { updateDocumentMetadata } = require('../../../lib/codex')
+          if (typeof updateDocumentMetadata === 'function') {
+            await updateDocumentMetadata(docId, { query_count: (doc.query_count || 0) + 1 })
+          }
+        }
+      }
+    } catch { /* non-blocking */ }
 
     return res.status(200).json({
       answer,
@@ -201,6 +241,7 @@ export default async function handler(req, res) {
       model: 'grok-4-1-fast',
       webSearchUsed: useWebSearch,
       platformContextIncluded: Boolean(platformContextStr),
+      analysisType,
     })
   } catch (err) {
     console.error('Chat error:', err)

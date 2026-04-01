@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import Head from 'next/head'
 import Link from 'next/link'
+import Layout from '../components/Layout'
 import { useApp } from '../lib/store'
 import { Editable } from '../components/InlineEditor'
 import {
@@ -159,7 +160,7 @@ export default function BudgetTransparency() {
   const categoryAvailable = (selectedCategoryStats.allocated || 0) - (selectedCategoryStats.spent || 0)
 
   return (
-    <>
+    <Layout>
       <Head>
         <title>Budget Transparency | Project Bold</title>
         <meta name="description" content="Transparent view of Student Government budget allocations, spending, and fund utilization. Request funding directly." />
@@ -711,6 +712,6 @@ export default function BudgetTransparency() {
           </div>
         </main>
       </div>
-    </>
+    </Layout>
   )
 }

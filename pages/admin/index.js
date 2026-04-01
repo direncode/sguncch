@@ -3,8 +3,9 @@ import { useRouter } from 'next/router'
 import Head from 'next/head'
 import Link from 'next/link'
 import { useApp } from '../../lib/store'
-import { departments as defaultDepartments, getOverallProgress, getStatusCounts } from '../../lib/data'
+import { departments as defaultDepartments, getOverallProgress, getStatusCounts, adminTeams, getTeamByRole, TEAM_ROLES, defaultTeamPolicySuggestions, isLeadsRole } from '../../lib/data'
 import AdminNav from '../../components/AdminNav'
+import { getAuthHeaders } from '../../lib/adminSession'
 import {
   BUDGET_CATEGORIES,
   exportLineItemsToCSV,
@@ -159,6 +160,135 @@ const formatRelativeTime = (dateString) => {
 }
 
 // ==========================================
+// POLICY DISCUSSION PANEL
+// ==========================================
+const TEAM_COLORS = { leads: '#4B9CD3', outreach: '#F59E0B', comms: '#8B5CF6', strategy: '#10B981' }
+
+function PolicyDiscussionPanel({ policyId, policyTitle, isOpen, onClose }) {
+  const [messages, setMessages] = useState([])
+  const [newMessage, setNewMessage] = useState('')
+  const [loading, setLoading] = useState(false)
+  const messagesEndRef = useRef(null)
+
+  const fetchMessages = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/policies/discussions?policyId=${policyId}`, {
+        headers: getAuthHeaders(),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setMessages(Array.isArray(data) ? data.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)) : [])
+      }
+    } catch (err) {
+      console.error('Failed to fetch discussions:', err)
+    }
+  }, [policyId])
+
+  useEffect(() => {
+    if (!isOpen) return
+    setLoading(true)
+    fetchMessages().finally(() => setLoading(false))
+    const interval = setInterval(fetchMessages, 15000)
+    return () => clearInterval(interval)
+  }, [isOpen, fetchMessages])
+
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [messages])
+
+  const handleSend = async () => {
+    if (!newMessage.trim()) return
+    try {
+      const res = await fetch('/api/policies/discussions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ policyId, message: newMessage }),
+      })
+      if (res.ok) {
+        setNewMessage('')
+        await fetchMessages()
+      }
+    } catch (err) {
+      console.error('Failed to send message:', err)
+    }
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="mt-3 bg-gray-900 border border-gray-700 rounded-xl overflow-hidden transition-all">
+      <div className="flex items-center justify-between px-4 py-3 bg-gray-800 border-b border-gray-700">
+        <div className="flex items-center gap-2">
+          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+          <span className="text-sm font-medium text-white">{policyTitle}</span>
+        </div>
+        <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors">
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div className="overflow-y-auto px-4 py-3 space-y-3" style={{ maxHeight: '300px' }}>
+        {loading && messages.length === 0 && (
+          <p className="text-center text-gray-500 text-sm py-4">Loading messages...</p>
+        )}
+        {!loading && messages.length === 0 && (
+          <p className="text-center text-gray-500 text-sm py-4">No messages yet — start the conversation</p>
+        )}
+        {messages.map((msg, idx) => (
+          <div key={msg.id || idx} className="flex items-start gap-3">
+            <div
+              className="w-3 h-3 rounded-full mt-1.5 flex-shrink-0"
+              style={{ backgroundColor: TEAM_COLORS[msg.team_role] || '#6B7280' }}
+            />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-sm font-medium text-white">{msg.display_name || 'Unknown'}</span>
+                {msg.team_role && (
+                  <span
+                    className="px-1.5 py-0.5 rounded text-[10px] font-mono uppercase"
+                    style={{
+                      backgroundColor: (TEAM_COLORS[msg.team_role] || '#6B7280') + '20',
+                      color: TEAM_COLORS[msg.team_role] || '#6B7280',
+                    }}
+                  >
+                    {msg.team_role}
+                  </span>
+                )}
+                <span className="text-[10px] text-gray-600">{formatRelativeTime(msg.timestamp)}</span>
+              </div>
+              <p className="text-sm text-gray-300 mt-0.5 break-words">{msg.message}</p>
+            </div>
+          </div>
+        ))}
+        <div ref={messagesEndRef} />
+      </div>
+      <div className="flex gap-2 px-4 py-3 border-t border-gray-700 bg-gray-800/50">
+        <input
+          type="text"
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+          placeholder="Type a message..."
+          className="flex-1 px-3 py-2 bg-black border border-gray-700 rounded-lg text-sm text-white placeholder-gray-600 focus:border-gray-500 focus:outline-none"
+        />
+        <button
+          onClick={handleSend}
+          disabled={!newMessage.trim()}
+          className="px-4 py-2 bg-white/10 border border-gray-700 rounded-lg text-sm text-white hover:bg-white/20 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+        >
+          Send
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ==========================================
 // LIVE CLOCK
 // ==========================================
 const LiveClock = () => {
@@ -191,7 +321,10 @@ export default function AdminConsole() {
   const router = useRouter()
   const {
     isAdmin,
+    adminRole,
+    isLeads,
     isLoaded,
+    accountInfo,
     policies,
     budgetData,
     feedback,
@@ -226,20 +359,45 @@ export default function AdminConsole() {
   const [showAnnouncementModal, setShowAnnouncementModal] = useState(false)
   const [editingAnnouncement, setEditingAnnouncement] = useState(null)
   const [showConfirmReset, setShowConfirmReset] = useState(false)
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [onboardingSelections, setOnboardingSelections] = useState([])
+  const [openDiscussion, setOpenDiscussion] = useState(null)
+  const [discussionCounts, setDiscussionCounts] = useState({})
 
-  // Redirect if not admin
+  // Team info
+  const teamInfo = useMemo(() => getTeamByRole(adminRole), [adminRole])
+
+  // Show onboarding when needed
+  useEffect(() => {
+    if (isLoaded && isAdmin && needsOnboarding) {
+      // Pre-select suggested defaults
+      const suggestedDepts = defaultTeamPolicySuggestions[adminRole] || []
+      const suggestedPolicyIds = policies
+        .filter(p => suggestedDepts.includes(p.department))
+        .map(p => p.id)
+      setOnboardingSelections(suggestedPolicyIds)
+      setShowOnboarding(true)
+    }
+  }, [isLoaded, isAdmin, needsOnboarding, adminRole, policies])
+
+  // Redirect if not admin or account not created
   useEffect(() => {
     if (isLoaded && !isAdmin) {
       router.push('/admin/login')
+    } else if (isLoaded && isAdmin && !accountInfo) {
+      router.push('/admin/register')
     }
-  }, [isLoaded, isAdmin, router])
+  }, [isLoaded, isAdmin, accountInfo, router])
 
-  // Calculate stats
-  const overallProgress = useMemo(() => getOverallProgress(policies), [policies])
-  const statusCounts = useMemo(() => getStatusCounts(policies), [policies])
+  // Get team-scoped policies
+  const myPolicies = useMemo(() => getTeamPolicies(adminRole), [adminRole, getTeamPolicies])
+
+  // Calculate stats (scoped to team)
+  const overallProgress = useMemo(() => getOverallProgress(myPolicies), [myPolicies])
+  const statusCounts = useMemo(() => getStatusCounts(myPolicies), [myPolicies])
 
   const filteredPolicies = useMemo(() => {
-    let items = policies
+    let items = isLeads ? policies : myPolicies
     if (selectedDepartment !== 'all') {
       items = items.filter(p => p.department === selectedDepartment)
     }
@@ -251,7 +409,7 @@ export default function AdminConsole() {
       )
     }
     return items
-  }, [policies, selectedDepartment, searchQuery])
+  }, [policies, myPolicies, isLeads, selectedDepartment, searchQuery])
 
   const newFeedback = feedback.filter(f => f.status === 'new')
 
@@ -305,6 +463,8 @@ export default function AdminConsole() {
     { id: 'settings', label: 'Settings' },
   ]
 
+  const tabs = isLeads ? allTabs : allTabs.filter(t => !t.leadsOnly)
+
   if (!isLoaded) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -331,8 +491,11 @@ export default function AdminConsole() {
               <Link href="/" className="text-xl font-bold tracking-tight">
                 Project Bold
               </Link>
-              <span className="px-3 py-1 bg-white/10 rounded text-xs font-mono uppercase tracking-wider">
-                Admin
+              <span
+                className="px-3 py-1 rounded text-xs font-mono uppercase tracking-wider"
+                style={{ backgroundColor: (teamInfo?.color || '#ffffff') + '20', color: teamInfo?.color || '#ffffff' }}
+              >
+                {teamInfo?.name || 'Admin'}
               </span>
             </div>
             <div className="flex items-center gap-6">
@@ -387,7 +550,163 @@ export default function AdminConsole() {
           {/* ==========================================
               DASHBOARD TAB
           ========================================== */}
-          {activeTab === 'dashboard' && (
+          {activeTab === 'dashboard' && !isLeads && (
+            /* ==========================================
+               TEAM ACTION VIEW (Non-Leads)
+            ========================================== */
+            <div>
+              <Reveal>
+                <div className="mb-8">
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: teamInfo?.color }} />
+                    <h1 className="text-4xl font-bold">{teamInfo?.name || 'Team'} Actions</h1>
+                  </div>
+                  <p className="text-gray-400 text-lg">{teamInfo?.description}</p>
+                </div>
+              </Reveal>
+
+              {/* Team Stats */}
+              <div className="grid grid-cols-3 gap-4 mb-8">
+                <Reveal delay={50}>
+                  <div className="bg-white/5 border border-gray-800 rounded-xl p-6">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Team Progress</p>
+                    <p className="text-4xl font-mono font-bold text-white">{overallProgress}%</p>
+                    <div className="mt-3 h-1 bg-gray-800 rounded-full overflow-hidden">
+                      <div className="h-full rounded-full transition-all" style={{ width: `${overallProgress}%`, backgroundColor: teamInfo?.color }} />
+                    </div>
+                  </div>
+                </Reveal>
+                <Reveal delay={100}>
+                  <div className="bg-white/5 border border-gray-800 rounded-xl p-6">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Active</p>
+                    <p className="text-4xl font-mono font-bold text-white">{statusCounts.in_progress}</p>
+                    <p className="text-xs text-gray-500 mt-2">{myPolicies.length} total policies</p>
+                  </div>
+                </Reveal>
+                <Reveal delay={150}>
+                  <div className="bg-white/5 border border-gray-800 rounded-xl p-6">
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Completed</p>
+                    <p className="text-4xl font-mono font-bold text-white">{statusCounts.completed}</p>
+                    <p className="text-xs text-gray-500 mt-2">{statusCounts.planned} planned</p>
+                  </div>
+                </Reveal>
+              </div>
+
+              {/* Action Cards Grid */}
+              <div className="grid md:grid-cols-2 gap-4 mb-8">
+                {myPolicies.map((policy, i) => {
+                  const dept = defaultDepartments.find(d => d.id === policy.department)
+                  return (
+                    <Reveal key={policy.id} delay={i * 40}>
+                      <div className="bg-white/5 border border-gray-800 rounded-xl p-6 hover:bg-white/[0.07] transition-all">
+                        <div className="flex items-center justify-between mb-3">
+                          <span className={`px-2.5 py-1 rounded text-xs font-mono ${
+                            policy.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                            policy.status === 'in_progress' ? 'bg-yellow-500/20 text-yellow-400' :
+                            'bg-gray-500/20 text-gray-400'
+                          }`}>
+                            {policy.status?.replace('_', ' ').toUpperCase()}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded text-xs font-mono ${
+                            policy.priority === 'high' ? 'bg-red-500/20 text-red-400' :
+                            policy.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400' :
+                            'bg-gray-500/20 text-gray-400'
+                          }`}>
+                            {policy.priority?.toUpperCase()}
+                          </span>
+                        </div>
+
+                        <h3 className="text-lg font-semibold text-white mb-1">{policy.title}</h3>
+                        <p className="text-xs text-gray-500 mb-4">{dept?.name || policy.department}</p>
+
+                        {/* Progress */}
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all"
+                              style={{ width: `${policy.progress}%`, backgroundColor: teamInfo?.color || '#fff' }}
+                            />
+                          </div>
+                          <span className="text-sm font-mono font-bold text-white w-12 text-right">{policy.progress}%</span>
+                        </div>
+
+                        {/* Quick Actions */}
+                        <div className="flex gap-2">
+                          <select
+                            value={policy.status}
+                            onChange={(e) => updatePolicy(policy.id, { status: e.target.value })}
+                            className="flex-1 px-3 py-2 bg-black border border-gray-700 rounded-lg text-xs text-white focus:border-white focus:outline-none"
+                          >
+                            <option value="planned">Planned</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                          </select>
+                          <button
+                            onClick={() => {
+                              const newProgress = Math.min(100, policy.progress + 10)
+                              logPolicyProgress(policy.id, newProgress, `Progress updated to ${newProgress}%`)
+                            }}
+                            className="px-3 py-2 rounded-lg text-xs font-medium transition-all"
+                            style={{ backgroundColor: (teamInfo?.color || '#fff') + '20', color: teamInfo?.color || '#fff', border: `1px solid ${(teamInfo?.color || '#fff')}30` }}
+                          >
+                            +10%
+                          </button>
+                          <button
+                            onClick={() => { setEditingPolicy(policy); setShowPolicyModal(true) }}
+                            className="px-3 py-2 bg-white/10 border border-gray-700 rounded-lg text-xs text-white hover:bg-white/20 transition-all"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => setOpenDiscussion(openDiscussion === policy.id ? null : policy.id)}
+                            className="relative px-3 py-2 bg-white/10 border border-gray-700 rounded-lg text-xs text-white hover:bg-white/20 transition-all flex items-center gap-1"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                            </svg>
+                            Discussion
+                            {discussionCounts[policy.id] > 0 && (
+                              <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded-full text-[10px] font-mono">
+                                {discussionCounts[policy.id]}
+                              </span>
+                            )}
+                          </button>
+                        </div>
+                        <PolicyDiscussionPanel
+                          policyId={policy.id}
+                          policyTitle={policy.title}
+                          isOpen={openDiscussion === policy.id}
+                          onClose={() => setOpenDiscussion(null)}
+                        />
+                      </div>
+                    </Reveal>
+                  )
+                })}
+              </div>
+
+              {myPolicies.length === 0 && (
+                <div className="text-center py-16 text-gray-500">
+                  <p className="text-lg mb-2">No policies assigned yet</p>
+                  <p className="text-sm">Complete the onboarding to select your team's policies.</p>
+                  <button
+                    onClick={() => {
+                      const suggestedDepts = defaultTeamPolicySuggestions[adminRole] || []
+                      const suggestedPolicyIds = policies
+                        .filter(p => suggestedDepts.includes(p.department))
+                        .map(p => p.id)
+                      setOnboardingSelections(suggestedPolicyIds)
+                      setShowOnboarding(true)
+                    }}
+                    className="mt-4 px-6 py-3 bg-white text-black font-medium rounded-lg hover:bg-gray-200 transition-all"
+                  >
+                    Set Up Policies
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'dashboard' && isLeads && (
             <div>
               <Reveal>
                 <div className="mb-12">
@@ -675,8 +994,28 @@ export default function AdminConsole() {
                                 +10%
                               </button>
                             )}
+                            <button
+                              onClick={() => setOpenDiscussion(openDiscussion === policy.id ? null : policy.id)}
+                              className="relative px-3 py-1.5 bg-white/10 border border-gray-700 rounded text-xs text-white hover:bg-white/20 transition-all flex items-center gap-1"
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                              </svg>
+                              Discussion
+                              {discussionCounts[policy.id] > 0 && (
+                                <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded-full text-[10px] font-mono">
+                                  {discussionCounts[policy.id]}
+                                </span>
+                              )}
+                            </button>
                           </div>
                         </div>
+                        <PolicyDiscussionPanel
+                          policyId={policy.id}
+                          policyTitle={policy.title}
+                          isOpen={openDiscussion === policy.id}
+                          onClose={() => setOpenDiscussion(null)}
+                        />
                       </div>
                     </Reveal>
                   )
@@ -1348,6 +1687,48 @@ export default function AdminConsole() {
                     </div>
                   </div>
                 </Reveal>
+
+                {/* Team Management (Leads only) */}
+                <Reveal delay={250}>
+                  <div className="bg-white/5 border border-gray-800 rounded-xl p-8 lg:col-span-2">
+                    <h2 className="text-xl font-semibold mb-6">Team Management</h2>
+                    <p className="text-sm text-gray-400 mb-6">View and manage team policy assignments across all admin teams.</p>
+
+                    <div className="grid md:grid-cols-3 gap-4">
+                      {adminTeams.filter(t => !t.isSuper).map(team => {
+                        const isOnboarded = teamOnboardingComplete[team.id]
+                        const teamPolicies = teamPolicyMap[team.id] || []
+                        return (
+                          <div key={team.id} className="p-4 bg-black/30 rounded-lg border border-gray-800">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: team.color }} />
+                              <h3 className="font-medium text-white">{team.name}</h3>
+                            </div>
+                            <p className="text-xs text-gray-500 mb-3">{team.description}</p>
+                            <div className="flex items-center justify-between text-xs">
+                              <span className={isOnboarded ? 'text-green-400' : 'text-yellow-400'}>
+                                {isOnboarded ? 'Onboarded' : 'Pending Setup'}
+                              </span>
+                              <span className="text-gray-500">{teamPolicies.length} policies</span>
+                            </div>
+                            {isOnboarded && teamPolicies.length > 0 && (
+                              <div className="mt-3 pt-3 border-t border-gray-800">
+                                <div className="space-y-1 max-h-[120px] overflow-y-auto">
+                                  {teamPolicies.map(pId => {
+                                    const p = policies.find(pol => pol.id === pId)
+                                    return p ? (
+                                      <p key={pId} className="text-xs text-gray-400 truncate">{p.title}</p>
+                                    ) : null
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </Reveal>
               </div>
             </div>
           )}
@@ -1427,6 +1808,118 @@ export default function AdminConsole() {
           </div>
         </div>
       )}
+      {/* ==========================================
+          TEAM ONBOARDING MODAL
+      ========================================== */}
+      {showOnboarding && (
+        <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#0a0a0a] border border-gray-800 rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-8">
+              <div className="text-center mb-8">
+                <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: (teamInfo?.color || '#fff') + '20' }}>
+                  <div className="w-5 h-5 rounded-full" style={{ backgroundColor: teamInfo?.color }} />
+                </div>
+                <h2 className="text-2xl font-bold text-white mb-2">Welcome, {teamInfo?.name}!</h2>
+                <p className="text-gray-400">Select the policies your team will manage. These will appear as your action items.</p>
+              </div>
+
+              {/* Policy Selection by Department */}
+              <div className="space-y-6 mb-8">
+                {defaultDepartments.map(dept => {
+                  const deptPolicies = policies.filter(p => p.department === dept.id)
+                  const allSelected = deptPolicies.every(p => onboardingSelections.includes(p.id))
+                  const someSelected = deptPolicies.some(p => onboardingSelections.includes(p.id))
+                  return (
+                    <div key={dept.id} className="bg-white/5 border border-gray-800 rounded-xl p-5">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <h3 className="font-semibold text-white">{dept.name}</h3>
+                          <span className="text-xs text-gray-500">{deptPolicies.length} policies</span>
+                        </div>
+                        <button
+                          onClick={() => {
+                            if (allSelected) {
+                              setOnboardingSelections(prev => prev.filter(id => !deptPolicies.map(p => p.id).includes(id)))
+                            } else {
+                              setOnboardingSelections(prev => [...new Set([...prev, ...deptPolicies.map(p => p.id)])])
+                            }
+                          }}
+                          className={`px-3 py-1 rounded text-xs font-medium transition-all ${
+                            allSelected
+                              ? 'bg-white/20 text-white'
+                              : 'bg-white/5 text-gray-400 hover:bg-white/10'
+                          }`}
+                        >
+                          {allSelected ? 'Deselect All' : 'Select All'}
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        {deptPolicies.map(policy => {
+                          const isSelected = onboardingSelections.includes(policy.id)
+                          return (
+                            <label
+                              key={policy.id}
+                              className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
+                                isSelected ? 'bg-white/10 border border-gray-700' : 'bg-black/30 border border-transparent hover:bg-black/50'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => {
+                                  setOnboardingSelections(prev =>
+                                    isSelected
+                                      ? prev.filter(id => id !== policy.id)
+                                      : [...prev, policy.id]
+                                  )
+                                }}
+                                className="w-4 h-4 rounded border-gray-600 bg-black"
+                                style={{ accentColor: teamInfo?.color }}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <p className={`text-sm ${isSelected ? 'text-white' : 'text-gray-400'}`}>{policy.title}</p>
+                              </div>
+                              <span className={`px-2 py-0.5 rounded text-xs font-mono ${
+                                policy.priority === 'high' ? 'bg-red-500/20 text-red-400' : 'bg-gray-500/20 text-gray-500'
+                              }`}>
+                                {policy.priority}
+                              </span>
+                            </label>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* Confirm */}
+              <div className="sticky bottom-0 bg-[#0a0a0a] pt-4 border-t border-gray-800">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-400">
+                    <span className="font-mono font-bold text-white">{onboardingSelections.length}</span> policies selected
+                  </p>
+                  <button
+                    onClick={() => {
+                      if (onboardingSelections.length === 0) {
+                        alert('Please select at least one policy to manage.')
+                        return
+                      }
+                      saveTeamPolicyMap(adminRole, onboardingSelections)
+                      setShowOnboarding(false)
+                    }}
+                    className="px-8 py-3 font-medium rounded-lg transition-all text-black"
+                    style={{ backgroundColor: teamInfo?.color || '#fff' }}
+                  >
+                    Save & Start Working
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <AdminNav />
       <div className="h-12" />
     </div>

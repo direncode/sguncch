@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
+import { useApp } from '../lib/store'
+import { getTeamByRole } from '../lib/data'
 
 const adminLinks = [
   { href: '/admin', label: 'Dashboard' },
@@ -123,12 +125,26 @@ function useSecurityChecks() {
 
 export default function AdminNav() {
   const router = useRouter()
+  const { adminRole, isLeads, accountInfo } = useApp()
   const isAdminPage = router.pathname.startsWith('/admin')
   const [showSecurity, setShowSecurity] = useState(false)
   const checks = useSecurityChecks()
 
   const passCount = checks.filter(c => c.pass).length
   const allPass = checks.length > 0 && passCount === checks.length
+
+  const team = getTeamByRole(adminRole)
+  const teamColor = team?.color || '#10B981'
+  const teamName = team?.name || 'Admin'
+
+  // Non-leads only see Dashboard + Home
+  const adminLinks = isLeads
+    ? allAdminLinks
+    : allAdminLinks.filter(l => !l.leadsOnly)
+
+  const siteLinks = isLeads
+    ? publicLinks
+    : [{ href: '/', label: 'Home' }]
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 bg-black/95 backdrop-blur-xl border-t border-gray-800">
@@ -185,9 +201,9 @@ export default function AdminNav() {
 
           <span className="w-px h-5 bg-gray-800 mx-2 shrink-0" />
 
-          {/* Public section */}
+          {/* Site section */}
           <span className="text-[10px] text-gray-600 font-mono uppercase tracking-wider shrink-0 mr-1">Site</span>
-          {publicLinks.map(link => (
+          {siteLinks.map(link => (
             <Link key={link.href} href={link.href}
               className={`px-2.5 py-1.5 text-xs rounded transition whitespace-nowrap ${
                 !isAdminPage && router.pathname === link.href
