@@ -67,7 +67,7 @@ export default function FundingRequest() {
                 href="/budget-transparency"
                 className="text-sm text-[#00d4ff] hover:underline"
               >
-                View Full Budget
+                Budget Transparency
               </Link>
             </div>
           </div>
@@ -163,7 +163,7 @@ export default function FundingRequest() {
                 </div>
 
                 <a
-                  href="https://heelslife.unc.edu"
+                  href="https://heellife.unc.edu/organization/rsofinances"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="block w-full px-6 py-3 bg-[#00d4ff] text-[#0d1117] font-semibold rounded-lg hover:bg-[#00d4ff]/90 transition-all text-center"
@@ -193,7 +193,7 @@ export default function FundingRequest() {
                     href="/budget-transparency"
                     className="flex-1 px-4 py-2.5 bg-[#00d4ff]/10 border border-[#00d4ff]/30 rounded-lg text-[#00d4ff] hover:bg-[#00d4ff]/20 transition-all text-sm font-medium text-center"
                   >
-                    Full Transparency Report
+                    Budget Transparency
                   </Link>
                 </div>
               </div>
@@ -210,6 +210,9 @@ export default function FundingRequest() {
                 <Link href="/budget-transparency" className="text-sm text-[#00d4ff] hover:underline">
                   Budget Transparency
                 </Link>
+                <a href="https://software.sites.unc.edu/qualtrics/" target="_blank" rel="noopener noreferrer" className="text-sm text-[#00d4ff] hover:underline">
+                  Qualtrics
+                </a>
                 <Link href="/" className="text-sm text-[#00d4ff] hover:underline">
                   Back to Home
                 </Link>

@@ -92,7 +92,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { question, platformData, isAdminMode, conversationHistory } = req.body
+    const { question, platformData, isAdminMode, primaryDocumentContext } = req.body
 
     if (!question || !question.trim()) {
       return res.status(400).json({ error: 'Question is required' })
@@ -109,20 +109,6 @@ export default async function handler(req, res) {
     // Load approved documents (used for admin context below)
     const { data: approvedDocs } = await getDocuments('approved')
 
-    // === Relevance gate ===
-    const isRelevant = await checkRelevance(question)
-    if (!isRelevant) {
-      return res.status(200).json({
-        answer: 'I can only answer questions related to UNC-Chapel Hill, student government, governance policies, campus operations, budget, and student services. If you have a question about any of those topics, I\'d be happy to help.',
-        sources: [],
-        model: 'grok-4',
-        filtered: true,
-      })
-    }
-
-    // === Detect analysis type ===
-    const analysisType = detectAnalysisType(question)
-
     // === Determine if web search is needed ===
     const useWebSearch = needsWebSearch(question)
 
@@ -131,6 +117,11 @@ export default async function handler(req, res) {
 
     let documentContext = ''
     const sourcesWithMeta = []
+
+    // Include pre-loaded full Scroll digest if provided
+    if (primaryDocumentContext && typeof primaryDocumentContext === 'string') {
+      documentContext = `[FULL SCROLL DIGEST — All Governing Documents]\n${primaryDocumentContext}\n\n---\n\n`
+    }
 
     if (chunks && chunks.length > 0) {
       const docCache = {}
@@ -153,7 +144,7 @@ export default async function handler(req, res) {
         }
       }
 
-      documentContext = sourcesWithMeta.map((s, i) =>
+      documentContext += sourcesWithMeta.map((s, i) =>
         `[Source ${i + 1}: "${s.title}" v${s.version}, Section: ${s.section}, Approved: ${new Date(s.approved_at).toLocaleDateString()}]\n${s.chunk_text}`
       ).join('\n\n---\n\n')
     }
@@ -247,7 +238,7 @@ export default async function handler(req, res) {
         section: s.section,
         approved_at: s.approved_at,
       })),
-      model: 'grok-4',
+      model: 'grok-4-1-fast',
       webSearchUsed: useWebSearch,
       platformContextIncluded: Boolean(platformContextStr),
       analysisType,

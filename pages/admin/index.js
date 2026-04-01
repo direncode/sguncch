@@ -9,8 +9,6 @@ import { getAuthHeaders } from '../../lib/adminSession'
 import {
   BUDGET_CATEGORIES,
   exportLineItemsToCSV,
-  exportFundingRequestsToCSV,
-  generateAuditReport,
 } from '../../lib/budgetEngine'
 
 // ==========================================
@@ -335,14 +333,6 @@ export default function AdminConsole() {
     quickStats,
     siteContent,
     budgetLineItems,
-    fundingRequests,
-    reallocations,
-    // Team Management
-    teamPolicyMap,
-    teamOnboardingComplete,
-    needsOnboarding,
-    saveTeamPolicyMap,
-    getTeamPolicies,
     // Actions
     addPolicy,
     deletePolicy,
@@ -353,10 +343,7 @@ export default function AdminConsole() {
     deleteAnnouncement,
     updateFeedbackStatus,
     updateQuickStats,
-    approveFundingRequest,
-    denyFundingRequest,
-    generateReallocations,
-    approveReallocation,
+    addBudgetLineItem,
     exportAllData,
     importData,
     resetAllData,
@@ -424,8 +411,19 @@ export default function AdminConsole() {
     return items
   }, [policies, myPolicies, isLeads, selectedDepartment, searchQuery])
 
-  const pendingRequests = fundingRequests.filter(r => r.status === 'pending')
   const newFeedback = feedback.filter(f => f.status === 'new')
+
+  // Public Ledger form state
+  const [showLedgerForm, setShowLedgerForm] = useState(false)
+  const [ledgerForm, setLedgerForm] = useState({
+    orgName: '',
+    category: 'events',
+    amount: '',
+    description: '',
+    justification: '',
+    studentsImpacted: '',
+    type: 'expense',
+  })
 
   // Export handlers
   const handleExportAll = () => {
@@ -454,16 +452,15 @@ export default function AdminConsole() {
     reader.readAsText(file)
   }
 
-  const allTabs = [
-    { id: 'dashboard', label: 'Dashboard', leadsOnly: false },
-    { id: 'platform', label: 'Platform Builder', leadsOnly: true },
-    { id: 'budget', label: 'Budget & Funding', leadsOnly: true },
-    { id: 'scroll', label: 'The Scroll', href: '/admin/scroll', leadsOnly: true },
-    { id: 'ai', label: 'Grok AI', href: '/admin/ai', leadsOnly: true },
-    { id: 'submissions', label: 'Submissions', href: '/admin/submissions', leadsOnly: true },
-    { id: 'content', label: 'Content', leadsOnly: true },
-    { id: 'feedback', label: 'Feedback', badge: newFeedback.length, leadsOnly: true },
-    { id: 'settings', label: 'Settings', leadsOnly: true },
+  const tabs = [
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'platform', label: 'Platform Builder' },
+    { id: 'budget', label: 'Public Ledger' },
+    { id: 'scroll', label: 'The Scroll', href: '/admin/scroll' },
+    { id: 'ai', label: 'Grok AI', href: '/admin/ai' },
+    { id: 'content', label: 'Content' },
+    { id: 'feedback', label: 'Feedback', badge: newFeedback.length },
+    { id: 'settings', label: 'Settings' },
   ]
 
   const tabs = isLeads ? allTabs : allTabs.filter(t => !t.leadsOnly)
@@ -738,9 +735,9 @@ export default function AdminConsole() {
                 </Reveal>
                 <Reveal delay={150}>
                   <div className="bg-white/5 border border-gray-800 rounded-xl p-6">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Pending Requests</p>
-                    <p className="text-4xl font-mono font-bold text-white">{pendingRequests.length}</p>
-                    <p className="text-xs text-gray-500 mt-2">${pendingRequests.reduce((s, r) => s + (r.amount || 0), 0).toLocaleString()} total</p>
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Ledger Entries</p>
+                    <p className="text-4xl font-mono font-bold text-white">{budgetLineItems.length}</p>
+                    <p className="text-xs text-gray-500 mt-2">${budgetLineItems.reduce((s, i) => s + (i.approved || 0), 0).toLocaleString()} total</p>
                   </div>
                 </Reveal>
                 <Reveal delay={200}>
@@ -839,8 +836,8 @@ export default function AdminConsole() {
                         onClick={() => setActiveTab('budget')}
                         className="p-4 bg-white/5 border border-gray-700 rounded-lg hover:bg-white/10 transition-all text-left"
                       >
-                        <p className="text-sm font-medium text-white">Funding Requests</p>
-                        <p className="text-xs text-gray-500 mt-1">{pendingRequests.length} pending</p>
+                        <p className="text-sm font-medium text-white">Public Ledger</p>
+                        <p className="text-xs text-gray-500 mt-1">{budgetLineItems.length} entries</p>
                       </button>
                       <Link
                         href="/admin/scroll"
@@ -855,13 +852,6 @@ export default function AdminConsole() {
                       >
                         <p className="text-sm font-medium text-white">Grok AI</p>
                         <p className="text-xs text-gray-500 mt-1">Admin AI assistant</p>
-                      </Link>
-                      <Link
-                        href="/admin/submissions"
-                        className="p-4 bg-white/5 border border-gray-700 rounded-lg hover:bg-white/10 transition-all text-left block"
-                      >
-                        <p className="text-sm font-medium text-white">Submissions</p>
-                        <p className="text-xs text-gray-500 mt-1">View all form submissions</p>
                       </Link>
                     </div>
                   </div>
@@ -1051,9 +1041,17 @@ export default function AdminConsole() {
           {activeTab === 'budget' && (
             <div>
               <Reveal>
-                <div className="mb-8">
-                  <h1 className="text-4xl font-bold mb-4">Budget & Funding</h1>
-                  <p className="text-gray-400 text-lg">Manage funding requests, allocations, and financial transparency.</p>
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h1 className="text-4xl font-bold mb-4">Public Ledger</h1>
+                    <p className="text-gray-400 text-lg">Log all transactions and maintain full financial transparency.</p>
+                  </div>
+                  <button
+                    onClick={() => setShowLedgerForm(!showLedgerForm)}
+                    className="px-6 py-3 bg-white text-black font-medium rounded-lg hover:bg-gray-200 transition-all"
+                  >
+                    {showLedgerForm ? 'Close Form' : '+ Log Transaction'}
+                  </button>
                 </div>
               </Reveal>
 
@@ -1067,94 +1065,221 @@ export default function AdminConsole() {
                 </Reveal>
                 <Reveal delay={100}>
                   <div className="bg-white/5 border border-gray-800 rounded-xl p-6">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Spent</p>
-                    <p className="text-3xl font-mono font-bold text-white">${budgetData.spent?.toLocaleString()}</p>
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Total Spent</p>
+                    <p className="text-3xl font-mono font-bold text-white">${budgetLineItems.reduce((s, i) => s + (i.spent || 0), 0).toLocaleString()}</p>
                   </div>
                 </Reveal>
                 <Reveal delay={150}>
                   <div className="bg-white/5 border border-gray-800 rounded-xl p-6">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Remaining</p>
-                    <p className="text-3xl font-mono font-bold text-white">${(budgetData.total - budgetData.spent)?.toLocaleString()}</p>
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Total Approved</p>
+                    <p className="text-3xl font-mono font-bold text-white">${budgetLineItems.reduce((s, i) => s + (i.approved || 0), 0).toLocaleString()}</p>
                   </div>
                 </Reveal>
                 <Reveal delay={200}>
                   <div className="bg-white/5 border border-gray-800 rounded-xl p-6">
-                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Pending Requests</p>
-                    <p className="text-3xl font-mono font-bold text-white">{pendingRequests.length}</p>
+                    <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Ledger Entries</p>
+                    <p className="text-3xl font-mono font-bold text-white">{budgetLineItems.length}</p>
                   </div>
                 </Reveal>
               </div>
 
-              {/* Pending Funding Requests */}
+              {/* Log Transaction Form */}
+              {showLedgerForm && (
+                <Reveal>
+                  <div className="bg-white/5 border border-gray-800 rounded-xl p-8 mb-12">
+                    <h2 className="text-xl font-semibold mb-6">Log New Transaction</h2>
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault()
+                        if (!ledgerForm.orgName || !ledgerForm.amount || !ledgerForm.description) {
+                          alert('Organization name, amount, and description are required.')
+                          return
+                        }
+                        const amount = parseFloat(ledgerForm.amount)
+                        if (isNaN(amount) || amount <= 0) {
+                          alert('Please enter a valid amount.')
+                          return
+                        }
+                        addBudgetLineItem({
+                          orgName: ledgerForm.orgName,
+                          category: ledgerForm.category,
+                          description: ledgerForm.description,
+                          requested: amount,
+                          approved: amount,
+                          spent: ledgerForm.type === 'expense' ? amount : 0,
+                          status: ledgerForm.type === 'expense' ? 'spent' : 'approved',
+                          impactNotes: ledgerForm.justification,
+                          studentsImpacted: ledgerForm.studentsImpacted ? parseInt(ledgerForm.studentsImpacted) : 0,
+                        })
+                        setLedgerForm({
+                          orgName: '',
+                          category: 'events',
+                          amount: '',
+                          description: '',
+                          justification: '',
+                          studentsImpacted: '',
+                          type: 'expense',
+                        })
+                        setShowLedgerForm(false)
+                      }}
+                      className="space-y-6"
+                    >
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm text-gray-400 mb-2">Organization / Source *</label>
+                          <input
+                            type="text"
+                            value={ledgerForm.orgName}
+                            onChange={(e) => setLedgerForm({ ...ledgerForm, orgName: e.target.value })}
+                            className="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:border-white focus:outline-none"
+                            placeholder="e.g., Student Organization Name"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm text-gray-400 mb-2">Category *</label>
+                          <select
+                            value={ledgerForm.category}
+                            onChange={(e) => setLedgerForm({ ...ledgerForm, category: e.target.value })}
+                            className="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg text-white focus:border-white focus:outline-none"
+                          >
+                            {BUDGET_CATEGORIES.map(cat => (
+                              <option key={cat.id} value={cat.id}>{cat.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm text-gray-400 mb-2">Amount ($) *</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={ledgerForm.amount}
+                            onChange={(e) => setLedgerForm({ ...ledgerForm, amount: e.target.value })}
+                            className="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:border-white focus:outline-none"
+                            placeholder="0.00"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm text-gray-400 mb-2">Transaction Type</label>
+                          <select
+                            value={ledgerForm.type}
+                            onChange={(e) => setLedgerForm({ ...ledgerForm, type: e.target.value })}
+                            className="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg text-white focus:border-white focus:outline-none"
+                          >
+                            <option value="expense">Expense</option>
+                            <option value="allocation">Allocation</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-2">Description *</label>
+                        <textarea
+                          value={ledgerForm.description}
+                          onChange={(e) => setLedgerForm({ ...ledgerForm, description: e.target.value })}
+                          rows={2}
+                          className="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:border-white focus:outline-none resize-none"
+                          placeholder="What is this transaction for?"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-2">Justification / Notes</label>
+                        <textarea
+                          value={ledgerForm.justification}
+                          onChange={(e) => setLedgerForm({ ...ledgerForm, justification: e.target.value })}
+                          rows={2}
+                          className="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:border-white focus:outline-none resize-none"
+                          placeholder="Why was this expenditure made? (optional)"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm text-gray-400 mb-2">Students Impacted</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={ledgerForm.studentsImpacted}
+                          onChange={(e) => setLedgerForm({ ...ledgerForm, studentsImpacted: e.target.value })}
+                          className="w-full px-4 py-3 bg-black border border-gray-800 rounded-lg text-white placeholder-gray-600 focus:border-white focus:outline-none"
+                          placeholder="Estimated number (optional)"
+                        />
+                      </div>
+
+                      <div className="flex gap-4 pt-2">
+                        <button
+                          type="submit"
+                          className="px-6 py-3 bg-white text-black font-medium rounded-lg hover:bg-gray-200 transition-all"
+                        >
+                          Log Transaction
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowLedgerForm(false)}
+                          className="px-6 py-3 bg-white/10 border border-gray-700 rounded-lg text-white hover:bg-white/20 transition-all"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </Reveal>
+              )}
+
+              {/* Ledger Entries List */}
               <Reveal>
-                <h2 className="text-xl font-semibold mb-6">Pending Funding Requests</h2>
+                <h2 className="text-xl font-semibold mb-6">Transaction Ledger</h2>
               </Reveal>
 
-              {pendingRequests.length === 0 ? (
+              {budgetLineItems.length === 0 ? (
                 <Reveal>
                   <div className="bg-white/5 border border-gray-800 rounded-xl p-12 text-center">
-                    <p className="text-gray-400">No pending funding requests</p>
+                    <p className="text-gray-400 mb-4">No transactions logged yet</p>
+                    <button
+                      onClick={() => setShowLedgerForm(true)}
+                      className="text-white hover:text-gray-300 transition-colors"
+                    >
+                      Log your first transaction
+                    </button>
                   </div>
                 </Reveal>
               ) : (
                 <div className="space-y-4">
-                  {pendingRequests.map((request, i) => {
-                    const cat = BUDGET_CATEGORIES.find(c => c.id === request.category)
+                  {[...budgetLineItems].reverse().map((item, i) => {
+                    const cat = BUDGET_CATEGORIES.find(c => c.id === item.category)
                     return (
-                      <Reveal key={request.id} delay={i * 50}>
+                      <Reveal key={item.id} delay={i * 30}>
                         <div className="bg-white/5 border border-gray-800 rounded-xl p-6">
-                          <div className="flex items-start justify-between mb-4">
-                            <div>
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1">
                               <div className="flex items-center gap-3 mb-2">
-                                <h3 className="font-semibold text-white">{request.orgName}</h3>
-                                <span className="px-2 py-0.5 rounded text-xs font-mono bg-white/10 text-gray-400">
-                                  {cat?.name || request.category}
+                                <h3 className="font-semibold text-white">{item.orgName}</h3>
+                                <span className="px-2 py-0.5 rounded text-xs font-mono" style={{ backgroundColor: `${cat?.color}20`, color: cat?.color || '#8b949e' }}>
+                                  {cat?.name || item.category}
+                                </span>
+                                <span className={`px-2 py-0.5 rounded text-xs font-mono ${
+                                  item.status === 'spent' ? 'bg-red-500/20 text-red-400' :
+                                  item.status === 'approved' ? 'bg-green-500/20 text-green-400' :
+                                  'bg-gray-500/20 text-gray-400'
+                                }`}>
+                                  {item.status?.toUpperCase()}
                                 </span>
                               </div>
-                              <p className="text-sm text-gray-400 mb-2">{request.description}</p>
-                              <p className="text-xs text-gray-500">Submitted {formatRelativeTime(request.submittedAt)}</p>
+                              <p className="text-sm text-gray-400 mb-1">{item.description}</p>
+                              {item.impactNotes && (
+                                <p className="text-xs text-gray-500">{item.impactNotes}</p>
+                              )}
+                              <p className="text-xs text-gray-600 mt-2">{formatDate(item.createdAt)}</p>
                             </div>
-                            <div className="text-right">
-                              <p className="text-2xl font-mono font-bold text-white">${request.amount?.toLocaleString()}</p>
-                              {request.contextCheck && (
-                                <span className={`px-2 py-0.5 rounded text-xs font-mono mt-2 inline-block ${
-                                  request.contextCheck.flag === 'PASS'
-                                    ? 'bg-green-500/20 text-green-400'
-                                    : 'bg-yellow-500/20 text-yellow-400'
-                                }`}>
-                                  {request.contextCheck.flag === 'PASS' ? 'Realistic' : 'Review'}
-                                </span>
+                            <div className="text-right ml-6">
+                              <p className="text-2xl font-mono font-bold text-white">${(item.approved || 0).toLocaleString()}</p>
+                              {item.spent > 0 && (
+                                <p className="text-xs text-gray-500 mt-1">${item.spent.toLocaleString()} spent</p>
                               )}
                             </div>
-                          </div>
-
-                          {request.justification && (
-                            <div className="bg-black/30 rounded-lg p-4 mb-4">
-                              <p className="text-xs text-gray-500 uppercase mb-1">Justification</p>
-                              <p className="text-sm text-gray-300">{request.justification}</p>
-                            </div>
-                          )}
-
-                          {request.contextCheck?.note && (
-                            <p className="text-xs text-gray-500 mb-4">Context: {request.contextCheck.note}</p>
-                          )}
-
-                          <div className="flex gap-3">
-                            <button
-                              onClick={() => approveFundingRequest(request.id, request.amount)}
-                              className="px-4 py-2 bg-green-500/20 border border-green-500/30 rounded-lg text-sm text-green-400 hover:bg-green-500/30 transition-all"
-                            >
-                              Approve
-                            </button>
-                            <button
-                              onClick={() => {
-                                const note = prompt('Reason for denial (optional):')
-                                denyFundingRequest(request.id, note || '')
-                              }}
-                              className="px-4 py-2 bg-red-500/20 border border-red-500/30 rounded-lg text-sm text-red-400 hover:bg-red-500/30 transition-all"
-                            >
-                              Deny
-                            </button>
                           </div>
                         </div>
                       </Reveal>
@@ -1175,26 +1300,12 @@ export default function AdminConsole() {
                         const url = URL.createObjectURL(blob)
                         const a = document.createElement('a')
                         a.href = url
-                        a.download = `budget-line-items-${new Date().toISOString().split('T')[0]}.csv`
+                        a.download = `public-ledger-${new Date().toISOString().split('T')[0]}.csv`
                         a.click()
                       }}
                       className="px-4 py-2 bg-white/10 border border-gray-700 rounded-lg text-sm text-white hover:bg-white/20 transition-all"
                     >
-                      Export Line Items CSV
-                    </button>
-                    <button
-                      onClick={() => {
-                        const csv = exportFundingRequestsToCSV(fundingRequests)
-                        const blob = new Blob([csv], { type: 'text/csv' })
-                        const url = URL.createObjectURL(blob)
-                        const a = document.createElement('a')
-                        a.href = url
-                        a.download = `funding-requests-${new Date().toISOString().split('T')[0]}.csv`
-                        a.click()
-                      }}
-                      className="px-4 py-2 bg-white/10 border border-gray-700 rounded-lg text-sm text-white hover:bg-white/20 transition-all"
-                    >
-                      Export Requests CSV
+                      Export Ledger CSV
                     </button>
                   </div>
                 </div>
@@ -1518,8 +1629,8 @@ export default function AdminConsole() {
                         <span className="font-mono text-white">{feedback.length}</span>
                       </div>
                       <div className="flex justify-between py-2 border-b border-gray-800">
-                        <span className="text-gray-400">Funding Requests</span>
-                        <span className="font-mono text-white">{fundingRequests.length}</span>
+                        <span className="text-gray-400">Ledger Entries</span>
+                        <span className="font-mono text-white">{budgetLineItems.length}</span>
                       </div>
                       <div className="flex justify-between py-2 border-b border-gray-800">
                         <span className="text-gray-400">Activity Log Entries</span>
@@ -1564,13 +1675,6 @@ export default function AdminConsole() {
                         className="flex items-center justify-between p-3 bg-black/30 rounded-lg hover:bg-black/50 transition-all"
                       >
                         <span className="text-white">Grok AI</span>
-                        <span className="text-gray-500">→</span>
-                      </Link>
-                      <Link
-                        href="/admin/submissions"
-                        className="flex items-center justify-between p-3 bg-black/30 rounded-lg hover:bg-black/50 transition-all"
-                      >
-                        <span className="text-white">Submissions</span>
                         <span className="text-gray-500">→</span>
                       </Link>
                       <Link

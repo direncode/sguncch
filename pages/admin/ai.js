@@ -107,14 +107,14 @@ export default function AdminAI() {
   const [conversationHistory, setConversationHistory] = useState([])
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [loadingTime, setLoadingTime] = useState(0)
   const [error, setError] = useState(null)
   const [scrollStats, setScrollStats] = useState(null)
-  const [showTemplates, setShowTemplates] = useState(true)
-  const [showDeptPicker, setShowDeptPicker] = useState(false)
-  const [copiedIdx, setCopiedIdx] = useState(null)
-
+  const [scrollDigest, setScrollDigest] = useState(null)
+  const [scrollContext, setScrollContext] = useState('')
   const messagesEndRef = useRef(null)
   const inputRef = useRef(null)
+  const loadingTimerRef = useRef(null)
 
   useEffect(() => {
     if (isLoaded && !isAdmin) router.push('/admin/login')
@@ -124,16 +124,59 @@ export default function AdminAI() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // Track loading time for thinking indicator
+  useEffect(() => {
+    if (isLoading) {
+      setLoadingTime(0)
+      loadingTimerRef.current = setInterval(() => {
+        setLoadingTime(t => t + 1)
+      }, 1000)
+    } else {
+      if (loadingTimerRef.current) clearInterval(loadingTimerRef.current)
+      setLoadingTime(0)
+    }
+    return () => { if (loadingTimerRef.current) clearInterval(loadingTimerRef.current) }
+  }, [isLoading])
+
+  // Load entire Scroll and build compressed digest
   useEffect(() => {
     fetch('/api/codex/scroll')
       .then(r => r.json())
       .then(data => {
-        if (data.documents) {
+        if (data.documents && data.documents.length > 0) {
+          const totalChars = data.documents.reduce((sum, d) => sum + (d.char_count || 0), 0)
           setScrollStats({
             count: data.documents.length,
             categories: data.buckets?.length || 0,
-            chars: data.documents.reduce((sum, d) => sum + (d.char_count || 0), 0),
+            chars: totalChars,
           })
+
+          // Compress all documents into a token-efficient digest
+          // Budget ~8000 chars total, distributed by doc size (larger docs get more)
+          const BUDGET = 8000
+          const docs = [...data.documents].sort((a, b) => (b.char_count || 0) - (a.char_count || 0))
+          const parts = []
+          let used = 0
+
+          for (const doc of docs) {
+            const text = doc.text_full || ''
+            if (!text) continue
+            // Allocate chars proportional to doc size, minimum 200 per doc
+            const share = Math.max(200, Math.floor((doc.char_count / totalChars) * BUDGET))
+            const remaining = BUDGET - used
+            if (remaining <= 100) break
+            const limit = Math.min(share, remaining)
+            // Compress: collapse whitespace, strip redundant blank lines
+            const compressed = text.replace(/\n{3,}/g, '\n\n').replace(/[ \t]+/g, ' ').trim()
+            parts.push(`[${doc.title}]\n${compressed.slice(0, limit)}`)
+            used += Math.min(compressed.length, limit)
+          }
+
+          const digest = parts.join('\n---\n')
+          setScrollDigest({ count: docs.length, chars: digest.length })
+          setScrollContext(digest)
+        } else if (data.documents) {
+          setScrollStats({ count: 0, categories: 0, chars: 0 })
         }
       })
       .catch(() => {})
@@ -160,7 +203,7 @@ export default function AdminAI() {
           question,
           platformData: { policies, operationalData, budgetData, quickStats, announcements, feedback, fundingRequests },
           isAdminMode: true,
-          conversationHistory,
+          primaryDocumentContext: scrollContext || undefined,
         }),
       })
       const data = await res.json()
@@ -192,51 +235,14 @@ export default function AdminAI() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
   }
 
-  const handleTemplateClick = (template) => {
-    if (template.id === 'department') {
-      setShowDeptPicker(true)
-      return
-    }
-    sendMessage(template.prompt)
-  }
-
-  const handleDeptSelect = (dept) => {
-    const prompt = `Generate a comprehensive deep dive analysis of the ${dept} department. Cover every policy in this department with its current progress, status, priority, and metrics. Analyze budget allocations relevant to ${dept}, review any related student feedback, assess operational programs connected to this department, and reference any governance documents in The Scroll that apply. Identify what is working well, what needs attention, and provide specific, actionable recommendations.`
-    setShowDeptPicker(false)
-    sendMessage(prompt)
-  }
-
-  const copyResponse = (text, idx) => {
-    navigator.clipboard.writeText(text).then(() => {
-      setCopiedIdx(idx)
-      setTimeout(() => setCopiedIdx(null), 2000)
-    })
-  }
-
-  const exportConversation = () => {
-    const text = messages.map(m => `[${m.role === 'user' ? 'You' : 'Grok'}]\n${m.content}\n`).join('\n---\n\n')
-    const blob = new Blob([text], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `grok-conversation-${new Date().toISOString().slice(0, 10)}.txt`
-    a.click()
-    URL.revokeObjectURL(url)
-  }
-
-  const startNewConversation = () => {
-    setMessages([])
-    setConversationHistory([])
-    setShowTemplates(true)
-    setError(null)
-  }
-
-  // Count data sources accessed
-  const dataSources = []
-  if (scrollStats?.count > 0) dataSources.push('Scroll')
-  if (policies.length > 0) dataSources.push('Policies')
-  if (budgetData?.total) dataSources.push('Budget')
-  if (feedback.length > 0) dataSources.push('Feedback')
+  const suggestedQuestions = [
+    'Summarize the primary governance document',
+    'What documents are in The Scroll knowledge base?',
+    'Audit report: policy progress across departments',
+    'Summarize recent student feedback and action items',
+    'Overview of current budget allocations and spending',
+    'Which departments are behind on milestones?',
+  ]
 
   if (!isLoaded) return <div className="min-h-screen bg-black flex items-center justify-center"><div className="text-white">Loading...</div></div>
   if (!isAdmin) return null
@@ -257,11 +263,17 @@ export default function AdminAI() {
               </div>
             </div>
             <div className="flex items-center gap-4 text-xs">
+              <span className="text-gray-600 font-mono">grok-4-1-fast</span>
+              {scrollDigest && (
+                <span className="flex items-center gap-1.5 text-green-500 font-mono">
+                  <span className="w-1 h-1 bg-green-500 rounded-full" />
+                  full scroll loaded
+                </span>
+              )}
               {scrollStats && (
                 <div className="flex items-center gap-3 text-gray-600 font-mono">
                   <span>{scrollStats.count} docs</span>
-                  <span>{scrollStats.categories} categories</span>
-                  <span>{(scrollStats.chars / 1000).toFixed(0)}K chars</span>
+                  {scrollDigest && <span>{(scrollDigest.chars / 1000).toFixed(1)}K ctx</span>}
                 </div>
               )}
               {messages.length > 0 && (
@@ -325,11 +337,21 @@ export default function AdminAI() {
               </p>
 
               {scrollStats && (
-                <div className="flex items-center gap-2 mb-8 px-4 py-2 bg-white/[0.02] border border-gray-900 rounded-full">
-                  <GrokIcon size={12} />
-                  <span className="text-[11px] text-gray-500">
-                    {scrollStats.count} documents | {dataSources.length} data sources | Enhanced depth mode
-                  </span>
+                <div className="flex flex-col items-center gap-2 mb-6">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-white/[0.02] border border-gray-900 rounded-full">
+                    <GrokIcon size={12} />
+                    <span className="text-[11px] text-gray-500">
+                      Sourcing from The Scroll: {scrollStats.count} documents across {scrollStats.categories} categories
+                    </span>
+                  </div>
+                  {scrollDigest && (
+                    <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/[0.05] border border-green-500/20 rounded-full">
+                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
+                      <span className="text-[10px] text-green-400 font-mono">
+                        Full Scroll digest: {scrollDigest.count} docs, {(scrollDigest.chars / 1000).toFixed(1)}K chars
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -426,10 +448,16 @@ export default function AdminAI() {
           {isLoading && (
             <div className="mb-6 flex gap-3">
               <div className="shrink-0 mt-1 opacity-40"><GrokIcon size={20} /></div>
-              <div className="flex items-center gap-1.5 py-2">
-                <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-pulse" />
-                <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
-                <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
+              <div className="flex items-center gap-3 py-2">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-pulse" />
+                  <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }} />
+                  <div className="w-1.5 h-1.5 bg-gray-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }} />
+                </div>
+                <span className="text-xs text-gray-500 animate-pulse">
+                  {loadingTime >= 3 ? 'Still thinking...' : 'Thinking'}
+                  {loadingTime >= 1 && <span className="text-gray-600 ml-1 font-mono">{loadingTime}s</span>}
+                </span>
               </div>
             </div>
           )}
@@ -478,7 +506,7 @@ export default function AdminAI() {
             </button>
           </div>
           <p className="text-center text-[11px] text-gray-600 mt-3 tracking-wide">
-            Grok / The Scroll / Admin Data + Documents + Live Platform / Hyper-Tuned Analysis
+            grok-4-1-fast / Full Scroll Digest / Admin Data
           </p>
         </div>
       </div>

@@ -3,9 +3,9 @@ import Head from 'next/head'
 import Link from 'next/link'
 import Layout from '../components/Layout'
 import { useApp } from '../lib/store'
+import { Editable } from '../components/InlineEditor'
 import {
   BUDGET_CATEGORIES,
-  exportLineItemsToCSV,
 } from '../lib/budgetEngine'
 
 // ==========================================
@@ -20,6 +20,7 @@ export default function BudgetTransparency() {
     budgetLineItems,
     fundingRequests,
     submitFundingRequest,
+    getSiteContent,
   } = useApp()
 
   const [selectedCategory, setSelectedCategory] = useState('all')
@@ -101,18 +102,6 @@ export default function BudgetTransparency() {
     return displayLineItems.filter(item => item.category === selectedCategory)
   }, [displayLineItems, selectedCategory])
 
-  // Export CSV handler
-  const handleExportCSV = () => {
-    const csv = exportLineItemsToCSV(displayLineItems)
-    const blob = new Blob([csv], { type: 'text/csv' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `sg-budget-${new Date().toISOString().split('T')[0]}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
-  }
-
   // Handle funding request submission
   const handleSubmitRequest = async (e) => {
     e.preventDefault()
@@ -189,24 +178,16 @@ export default function BudgetTransparency() {
                 <div className="h-6 w-px bg-[#30363d]" />
                 <h1 className="text-[#f0f6fc] text-lg font-bold">Budget Transparency</h1>
               </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => { setShowRequestForm(!showRequestForm); setSubmissionResult(null); }}
-                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                    showRequestForm
-                      ? 'bg-[#21262d] text-[#8b949e] border border-[#30363d]'
-                      : 'bg-[#00d4ff] text-[#0d1117] hover:bg-[#00d4ff]/90'
-                  }`}
-                >
-                  {showRequestForm ? 'Hide Form' : 'Request Funding'}
-                </button>
-                <button
-                  onClick={handleExportCSV}
-                  className="px-4 py-2 bg-[#21262d] border border-[#30363d] rounded-lg text-sm text-[#8b949e] hover:text-[#f0f6fc] hover:border-[#00d4ff] transition-all"
-                >
-                  Export CSV
-                </button>
-              </div>
+              <button
+                onClick={() => { setShowRequestForm(!showRequestForm); setSubmissionResult(null); }}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                  showRequestForm
+                    ? 'bg-[#21262d] text-[#8b949e] border border-[#30363d]'
+                    : 'bg-[#00d4ff] text-[#0d1117] hover:bg-[#00d4ff]/90'
+                }`}
+              >
+                {showRequestForm ? 'Hide Form' : 'Request Funding'}
+              </button>
             </div>
           </div>
         </header>
@@ -665,6 +646,47 @@ export default function BudgetTransparency() {
               </div>
             </div>
           )}
+
+          {/* External Links */}
+          <div className="mt-12 grid md:grid-cols-2 gap-4">
+            {/* Heels Life RSO Finances */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-[#f0f6fc] mb-2">Heels Life &mdash; RSO Finances</h3>
+              <p className="text-sm text-[#8b949e] mb-6">
+                Access the Registered Student Organization financial portal on Heels Life.
+              </p>
+              <a
+                href={getSiteContent('transparency.heellife.url', 'https://heellife.unc.edu/organization/rsofinances')}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full px-6 py-3 bg-[#00d4ff] text-[#0d1117] font-semibold rounded-lg hover:bg-[#00d4ff]/90 transition-all text-center"
+              >
+                Go to Heels Life
+              </a>
+              <p className="text-[10px] text-[#6e7681] font-mono mt-3 text-center break-all">
+                <Editable k="transparency.heellife.url">https://heellife.unc.edu/organization/rsofinances</Editable>
+              </p>
+            </div>
+
+            {/* Qualtrics */}
+            <div className="bg-[#161b22] border border-[#30363d] rounded-xl p-6">
+              <h3 className="text-lg font-semibold text-[#f0f6fc] mb-2">Qualtrics &mdash; Survey Tools</h3>
+              <p className="text-sm text-[#8b949e] mb-6">
+                Information Technology Services &bull; Access UNC&apos;s licensed Qualtrics survey platform.
+              </p>
+              <a
+                href={getSiteContent('transparency.qualtrics.url', 'https://software.sites.unc.edu/qualtrics/')}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full px-6 py-3 bg-[#00d4ff] text-[#0d1117] font-semibold rounded-lg hover:bg-[#00d4ff]/90 transition-all text-center"
+              >
+                Go to Qualtrics
+              </a>
+              <p className="text-[10px] text-[#6e7681] font-mono mt-3 text-center break-all">
+                <Editable k="transparency.qualtrics.url">https://software.sites.unc.edu/qualtrics/</Editable>
+              </p>
+            </div>
+          </div>
 
           {/* Footer */}
           <div className="mt-12 pt-8 border-t border-[#30363d]">
