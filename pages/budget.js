@@ -2,10 +2,10 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import Head from 'next/head'
 import { useRouter } from 'next/router'
 import Layout from '../components/Layout'
-import { Input, Select, Textarea } from '../components/FormInput'
 import { useApp } from '../lib/store'
 import {
   BUDGET_CATEGORIES,
+  exportFundingRequestsToCSV,
 } from '../lib/budgetEngine'
 import {
   Editable,
@@ -63,7 +63,6 @@ export default function BudgetPage() {
     budgetData,
     budgetLineItems,
     fundingRequests,
-    submitFundingRequest,
   } = useApp()
 
   const [activeTab, setActiveTab] = useState('overview')
@@ -76,20 +75,6 @@ export default function BudgetPage() {
   }, [isAdmin, router])
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
-
-  // Funding request form state
-  const [form, setForm] = useState({
-    orgName: '',
-    category: 'events',
-    amount: '',
-    description: '',
-    justification: '',
-    studentsImpacted: '',
-    contactEmail: '',
-  })
-  const [submissionResult, setSubmissionResult] = useState(null)
-  const [error, setError] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const displayLineItems = budgetLineItems || []
   const displayFundingRequests = fundingRequests || []
@@ -158,64 +143,22 @@ export default function BudgetPage() {
     return items
   }, [displayLineItems, selectedCategory, searchQuery])
 
-  // Handle funding request submission
-  const handleSubmitRequest = async (e) => {
-    e.preventDefault()
-    setError('')
-    setIsSubmitting(true)
-
-    if (!form.orgName || !form.amount || !form.description || !form.justification) {
-      setError('Please fill in all required fields')
-      setIsSubmitting(false)
-      return
-    }
-
-    const amount = parseFloat(form.amount)
-    if (isNaN(amount) || amount <= 0) {
-      setError('Please enter a valid amount')
-      setIsSubmitting(false)
-      return
-    }
-
-    const result = submitFundingRequest({
-      orgName: form.orgName,
-      category: form.category,
-      amount: amount,
-      description: form.description,
-      justification: form.justification,
-      studentsImpacted: parseInt(form.studentsImpacted) || 0,
-      contactEmail: form.contactEmail,
-    })
-
-    setIsSubmitting(false)
-
-    if (result.success) {
-      setSubmissionResult(result.request)
-    } else {
-      setError(result.error || 'Failed to submit request')
-    }
+  // Export pending funding requests as CSV download
+  const handleExportRequests = () => {
+    const csv = exportFundingRequestsToCSV(displayFundingRequests)
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `funding-requests-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
   }
-
-  const handleNewRequest = () => {
-    setForm({
-      orgName: '',
-      category: 'events',
-      amount: '',
-      description: '',
-      justification: '',
-      studentsImpacted: '',
-      contactEmail: '',
-    })
-    setSubmissionResult(null)
-    setError('')
-  }
-
-  const selectedCategoryStats = stats.categoryStats[form.category] || {}
-  const categoryAvailable = (selectedCategoryStats.allocated || 0) - (selectedCategoryStats.spent || 0)
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'allocations', label: 'Allocations' },
+    { id: 'pending', label: 'Pending Requests' },
     { id: 'request', label: 'Request Funding' },
     { id: 'transparency', label: 'Transparency' },
   ]
