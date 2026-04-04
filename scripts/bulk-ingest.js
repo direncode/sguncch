@@ -32,7 +32,7 @@ async function main() {
   }
 
   // Resolve admin key (same logic as lib/data.js)
-  const adminKey = process.env.ADMIN_KEY || process.env.NEXT_PUBLIC_ADMIN_KEY || 'dev-only-change-in-production'
+  const adminKey = process.env.ADMIN_KEY || 'dev-only-change-in-production'
 
   // Collect files
   const resolved = path.resolve(target)

@@ -349,6 +349,8 @@ export default function AdminConsole() {
     resetAllData,
     resetAllSiteContent,
     logActivity,
+    getTeamPolicies,
+    needsOnboarding,
   } = useApp()
 
   const [activeTab, setActiveTab] = useState('dashboard')
@@ -462,8 +464,6 @@ export default function AdminConsole() {
     { id: 'feedback', label: 'Feedback', badge: newFeedback.length },
     { id: 'settings', label: 'Settings' },
   ]
-
-  const tabs = isLeads ? allTabs : allTabs.filter(t => !t.leadsOnly)
 
   if (!isLoaded) {
     return (
