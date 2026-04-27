@@ -53,6 +53,10 @@ npm run build
 - React 18
 - Tailwind CSS
 
+## License
+
+Licensed under the [Apache License, Version 2.0](LICENSE).
+
 ---
 
 **Together, We Go Bold.**
